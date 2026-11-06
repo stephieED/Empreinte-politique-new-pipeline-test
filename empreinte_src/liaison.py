@@ -80,8 +80,12 @@ def ordonner(mods) -> list:
 
 class Contexte:
     def __init__(self, dossier_z2: str, dossier_z3: str, dossier_decisions: str | None = None,
-                 generation: int | None = None, date_reference: str | None = None):
+                 generation: int | None = None, date_reference: str | None = None,
+                 registre=None):
         self.z2, self.z3 = dossier_z2, dossier_z3
+        # Registre des identités (ZI, correction P1) : R-IDENTITE y lit les attributions
+        # acquises et y ajoute les nouvelles. None : une règle qui en a besoin le dit.
+        self.registre = registre
         os.makedirs(dossier_z3, exist_ok=True)
         self.generation = generation
         self.date_reference = date_reference      # « aujourd'hui » pour les comptes datés

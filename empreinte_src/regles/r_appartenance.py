@@ -20,7 +20,7 @@ comme une **suite de périodes** (cahier 4.6 ; doc. 1, 1.5.2 et 1.6).
 """
 
 NOM = "R-APPARTENANCE"
-VERSION = 1
+VERSION = 2
 DEPEND = ()
 SORTIES = ("groupe", "appartenance")
 DESCRIPTION = (
@@ -73,13 +73,15 @@ def appliquer(ctx):
                      coalesce(strftime(s.debut_suivant::DATE - 1, '%Y-%m-%d'), {FIN_OUVERTE})) AS fin_eff
         FROM _ga_gp a LEFT JOIN suivant s USING (uid)""")
     # Périodes : mandats d'un même groupe qui se touchent (écart d'un jour au plus) fusionnés.
+    # Le mandat (uid) départage les mandats aux dates identiques (40 dans l'archive) : sans lui,
+    # l'ordre des fenêtres change d'une exécution à l'autre et les îlots peuvent se décaler.
     ctx.ecrire("appartenance", f"""
         WITH g AS (SELECT * FROM _ga_gp2 WHERE NOT ni AND NOT organe_inconnu AND fin_eff >= debut),
-        o AS (SELECT *, max(fin_eff) OVER (PARTITION BY acteur, organe ORDER BY debut, fin_eff
+        o AS (SELECT *, max(fin_eff) OVER (PARTITION BY acteur, organe ORDER BY debut, fin_eff, uid
                      ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS fin_avant FROM g),
         i AS (SELECT *, sum(CASE WHEN fin_avant IS NOT NULL
                                   AND debut::DATE <= fin_avant::DATE + 1 THEN 0 ELSE 1 END)
-                        OVER (PARTITION BY acteur, organe ORDER BY debut, fin_eff
+                        OVER (PARTITION BY acteur, organe ORDER BY debut, fin_eff, uid
                               ROWS UNBOUNDED PRECEDING) AS ilot FROM o)
         SELECT acteur, organe AS groupe, any_value(legislature) AS legislature, min(debut) AS debut,
                nullif(max(fin_eff), {FIN_OUVERTE}) AS fin,

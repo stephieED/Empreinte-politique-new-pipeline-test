@@ -102,11 +102,22 @@ def cmd_calculer(a):
     from .controles import Controles
     from .liaison import Contexte, relier
     import shutil
+    from .identites import RegistreIdentites
+    registre = RegistreIdentites(a.entrepot)
+    ligne_avant = len(registre.attributions)
     ctx = Contexte(a.z2, a.z3, dossier_decisions=a.decisions, generation=gen,
-                   date_reference=(rapport.get("debut") or "")[:10] or None)
+                   date_reference=(rapport.get("debut") or "")[:10] or None, registre=registre)
     with mesures.etape("E4") as m:
         bilan_regles = relier(ctx)
         m["regles"] = len(bilan_regles)
+    # Le registre enrichi part avec la candidate ; la tâche `ecrire` le dépose dans l'entrepôt.
+    import shutil as _sh
+    registre.dossier_sortie = os.path.join(a.sortie, "registres")
+    os.makedirs(registre.dossier_sortie, exist_ok=True)
+    registre.sauver()
+    for n in os.listdir(registre.dossier):
+        _sh.copy2(os.path.join(registre.dossier, n), os.path.join(registre.dossier_sortie, n))
+    nouvelles_attributions = len(registre.attributions) - ligne_avant
     site = os.path.join(a.sortie, "site")
     shutil.rmtree(site, ignore_errors=True)
     ecr = Ecrivain(site, f"g{gen:06d}")
@@ -131,6 +142,8 @@ def cmd_calculer(a):
     controles = ctrl.bilan()
     rapport["calcul"] = {"lecture": l.bilan, "export": ex, "mesures": mesures.etapes,
                          "generation": gen, "regles": bilan_regles,
+                         "registre": {"attributions": len(registre.attributions),
+                                      "nouvelles": nouvelles_attributions},
                          "publication": {"id": f"g{gen:06d}", "fiches": manifeste_site["fiches"],
                                          "faits_publies": nb_publies},
                          "controles": controles}
@@ -196,6 +209,25 @@ def cmd_ecrire(a):
     from .distant import publier
     with open(a.rapport) as f:
         rapport = json.load(f)
+    # Registre des identités enrichi par le calcul (acquis, P1) : vérifié en ajout seul, puis
+    # recopié dans l'entrepôt avant l'écriture.
+    registres = os.path.join(os.path.dirname(a.rapport), "registres")
+    if os.path.isdir(registres):
+        import shutil
+        import pyarrow.parquet as pq
+        from .identites import verifier_ajout_seul, RegistreModifie
+        ancien_p = os.path.join(a.entrepot, "registres", "attribution.parquet")
+        nouveau_p = os.path.join(registres, "attribution.parquet")
+        try:
+            if os.path.exists(ancien_p) and os.path.exists(nouveau_p):
+                verifier_ajout_seul(pq.read_table(ancien_p).to_pylist(), pq.read_table(nouveau_p).to_pylist())
+            os.makedirs(os.path.join(a.entrepot, "registres"), exist_ok=True)
+            for n in os.listdir(registres):
+                shutil.copy2(os.path.join(registres, n), os.path.join(a.entrepot, "registres", n))
+            Entrepot(a.entrepot).actualiser_fichiers([f"registres/{n}" for n in sorted(os.listdir(registres))])
+        except RegistreModifie as e:
+            rapport.setdefault("anomalies", []).append(
+                {"cle": "registre", "texte": f"Registre des identités modifié, non écrit : {e}"})
     try:
         res = publier(a.depot, a.entrepot)
         rapport["ecriture"] = res

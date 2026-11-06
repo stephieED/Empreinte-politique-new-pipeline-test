@@ -363,6 +363,23 @@ class Entrepot:
         self.manifeste = nouveau
         return nouveau
 
+    def actualiser_fichiers(self, chemins_relatifs: list[str]) -> dict:
+        """Le registre des identités est enrichi par la tâche de calcul, après la collecte :
+        avant l'écriture, on remet à jour l'empreinte de ces fichiers dans le manifeste, et
+        l'empreinte du manifeste lui-même."""
+        man = dict(self.manifeste)
+        man.pop("sha256_manifeste", None)
+        for rel in chemins_relatifs:
+            p = os.path.join(self.dossier, rel)
+            man["fichiers"][rel] = {"sha256": sha256_fichier(p), "taille": os.path.getsize(p)}
+        man["fichiers"] = dict(sorted(man["fichiers"].items()))
+        corps = json.dumps(man, sort_keys=True, ensure_ascii=False).encode()
+        man["sha256_manifeste"] = hashlib.sha256(corps).hexdigest()
+        with open(os.path.join(self.dossier, "manifeste.json"), "w") as f:
+            json.dump(man, f, indent=1, sort_keys=True, ensure_ascii=False)
+        self.manifeste = man
+        return man
+
     # -- reconstruction (P2) -------------------------------------------------------------
     def membres_du_releve(self, releve_id: str) -> list[dict]:
         out = []
