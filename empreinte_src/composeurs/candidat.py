@@ -283,8 +283,16 @@ def _commun(ctx, au) -> dict:
             WHERE uid IN (SELECT amendement FROM amendement_canonique WHERE acteur IN
                           (SELECT acteur FROM candidat WHERE publie AND acteur IS NOT NULL))
             GROUP BY 1""")
+    # Lignée publiée de chaque organe de groupe affiché (R-LIGNEE) : cible du lien « groupe actuel ».
+    lignee_de = {}
+    if _vue(ctx, "lignee_maillon") and _vue(ctx, "lignee"):
+        lignee_de = {o: a for o, a in ctx.x("""
+            SELECT unnest(m.organes), l.adresse FROM lignee_maillon m JOIN lignee l USING (lignee)
+            WHERE l.publiee AND m.affiche""")}
+    fiches |= {f"lignee/{a}" for a in lignee_de.values()}
     return {"au": au, "lic": lic, "gouvs": gouvs, "publies_g": publies_g, "fiches": fiches,
-            "groupes": groupes, "titres": titres, "debut17": debut17, "legs": legs}
+            "groupes": groupes, "titres": titres, "debut17": debut17, "legs": legs,
+            "lignee_de": lignee_de}
 
 
 def _lien_gouv(organe, commun):
@@ -361,7 +369,7 @@ def _composer_un(ctx, ecr, c, ident, commun):
             "source_url": c["source_url"], "source_point": PA_WP, "revision": c["revision"],
             "licence_source": commun["lic"].get(PA_WP),
             "note_licence": "faits repris de Wikipédia : hors licence des données (cahier 2.2)"},
-        "groupe_actuel": _groupe_actuel(carriere, au),
+        "groupe_actuel": _groupe_actuel(carriere, au, commun),
         "en_bref": {
             "carriere": {"colonnes": COLS_CARRIERE,
                          "lignes": [[l.get(k) for k in COLS_CARRIERE] for l in carriere],
@@ -461,7 +469,7 @@ def _carriere(ctx, f, c, commun):
     return lignes, couv
 
 
-def _groupe_actuel(carriere, au) -> dict:
+def _groupe_actuel(carriere, au, commun=None) -> dict:
     cours = [l for l in carriere if l["institution"] in ("assemblee", "senat")
              and l["etat"] == "en_fonction" and l["fin"] is None]
     if not cours:
@@ -469,9 +477,14 @@ def _groupe_actuel(carriere, au) -> dict:
                 "detail": "Aucun mandat parlementaire en cours le " + _fr(au) + " dans nos sources.",
                 "au": au}
     l = max(cours, key=lambda x: x["debut"])
+    adresse = ((commun or {}).get("lignee_de") or {}).get(l["groupe"]) if l["institution"] == "assemblee" else None
+    raison = (None if adresse else
+              "groupe du Sénat : pas de fiche de groupe" if l["institution"] == "senat" else
+              "aucun groupe à cette date (non-inscrit ou appartenance non établie)" if not l["groupe"] else
+              "groupe sans lignée publiée")
     return {"statut": l["groupe_statut"], "groupe": l["groupe"], "sigle": l["groupe_sigle"],
             "libelle": l["groupe_libelle"], "institution": l["institution"], "depuis": l["debut"],
-            "raison_lien": "aucune fiche de groupe n'est publiée dans l'essai : pas de lien",
+            "lien": f"lignee/{adresse}" if adresse else None, "raison_lien": raison,
             "source_url": l["source_url"], "au": au}
 
 
@@ -904,6 +917,10 @@ def _exclusions(ctx, acteur, debut17) -> dict:
     if not _vue(ctx, "an_scrutins__decompte_groupe") or not _vue(ctx, "groupe"):
         return {}
     legs = ", ".join(str(x) for x in LEGISLATURES_AVEC_FICHE)
+    # Même condition 5 que R-DIVERGENCE : le groupe appartient à une lignée publiée.
+    avec_fiche = ("AND g.organe IN (SELECT unnest(m.organes) FROM lignee_maillon m "
+                  "JOIN lignee l USING (lignee) WHERE l.publiee AND m.affiche)"
+                  if _vue(ctx, "lignee_maillon") else "")
     rows = ctx.x(f"""
         WITH v AS (SELECT * FROM vote_personne WHERE acteur = ? AND nature = 'ensemble' AND date >= ?),
         dg AS (SELECT scrutin, organe AS groupe,
@@ -923,7 +940,7 @@ def _exclusions(ctx, acteur, debut17) -> dict:
                                     WHEN 'abstention' THEN dg.abst END < greatest(dg.pour, dg.contre, dg.abst)
                          THEN 'position_publiee_contredite_par_le_decompte'
                END AS raison, count(*)
-        FROM v LEFT JOIN groupe g ON g.organe = v.groupe AND g.legislature IN ({legs})
+        FROM v LEFT JOIN groupe g ON g.organe = v.groupe AND g.legislature IN ({legs}) {avec_fiche}
         LEFT JOIN dg ON dg.scrutin = v.scrutin AND dg.groupe = v.groupe
         GROUP BY 1""", [acteur, debut17 or ""])
     return {r: n for r, n in rows if r is not None}

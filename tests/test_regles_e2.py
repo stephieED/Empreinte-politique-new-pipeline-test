@@ -563,7 +563,7 @@ def _divergence(tmp_path, votes, decomptes):
         return {}
 
     def _gr(ctx):
-        ctx.ecrire("groupe", """SELECT * FROM (VALUES ('PG17', 17, 'G'), ('PG16', 16, 'H'))
+        ctx.ecrire("groupe", """SELECT * FROM (VALUES ('PG17', 17, 'G'), ('PG13', 13, 'H'))
                                 AS t(organe, legislature, sigle)""")
         ctx.ecrire("appartenance", "SELECT NULL AS acteur WHERE false")
         return {}
@@ -595,10 +595,10 @@ def test_divergence_conditions_une_par_une(tmp_path):
         {**VOTE, "acteur": "PA7", "scrutin": "VTANR5L17V5"},                        # 2 : publiée mais contredite
         {**VOTE, "acteur": "PA8", "derniere_lecture": False},                       # 3 : pas la dernière lecture
         {**VOTE, "acteur": "PA9", "nature": "motion_censure", "derniere_lecture": False},  # 4
-        {**VOTE, "acteur": "PA10", "groupe": "PG16", "groupe_scrutin": "PG16"},     # 5 : groupe sans fiche
+        {**VOTE, "acteur": "PA10", "groupe": "PG13", "groupe_scrutin": "PG13"},     # 5 : groupe sans fiche (XIIIe)
         {**VOTE, "acteur": "PA11", "groupe": None},                                 # sans groupe à la date
     ]
-    dg = [_dg("VTANR5L17V1", "PG17", "pour", 6, 2, 0), _dg("VTANR5L17V1", "PG16", "pour", 6, 2, 0),
+    dg = [_dg("VTANR5L17V1", "PG17", "pour", 6, 2, 0), _dg("VTANR5L17V1", "PG13", "pour", 6, 2, 0),
           _dg("VTANR5L17V2", "PO0", "pour", 6, 2, 0),
           _dg("VTANR5L17V3", "PG17", "pour", 6, 2, 0), _dg("VTANR5L17V3", "PG17", "contre", 2, 6, 0, occ=1),
           _dg("VTANR5L17V4", "PG17", "pour", 0, 0, 0),
@@ -612,5 +612,5 @@ def test_divergence_conditions_une_par_une(tmp_path):
     assert c["positions_comparables_sur_positions_en_derniere_lecture"] == [2, 10]   # 10 votes « ensemble »
     assert c["exclues_position_du_groupe_non_etablie"] == [4, 10]
     assert c["dont_position_publiee_contredite_par_le_decompte"] == [1, 10]
-    assert c["exclues_groupe_sans_fiche_hors_xviie"] == [1, 10]
+    assert c["exclues_groupe_sans_fiche"] == [1, 10]
     assert c["exclues_sans_groupe_a_la_date"] == [1, 10]

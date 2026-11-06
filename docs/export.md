@@ -72,6 +72,23 @@ FULL JOIN 'faits-g000013.parquet' b USING (cle_fait)
 WHERE a.cle_fait IS NULL OR b.cle_fait IS NULL OR a.valeur <> b.valeur;
 ```
 
+## Faits publiés, fiche par fiche
+
+`faits-publies-gNNNNNN.parquet`, dans la même release : une ligne par élément **affiché** par
+une fiche du site (commande, section 7). Colonnes : `fiche` (`lignee/socialistes-et-apparentes`),
+`section` (le fichier servi, sans `.json.gz`), `type_fait`, les mêmes `id_*` que ci-dessus,
+`valeur` (la ligne servie, en JSON, avec ses seules colonnes affichées), `date`, `source_url`.
+
+Un même fait de la source peut être publié par plusieurs fiches (une prise de parole sur la fiche
+d'un candidat et sur celle de sa lignée) : une ligne par fiche. Une section qui n'est qu'un
+**index** d'une autre section de la même fiche (l'index léger des prises de parole d'une lignée,
+dont chaque ligne renvoie à son extrait) n'ajoute pas de lignes : le fait est compté une fois,
+avec son extrait.
+
+Mesuré en local sur la XVIIe (collecte du 06/11/2026, sans Wikidata : candidats non rattachés) :
+608 933 faits publiés, 33,7 Mo en Parquet, dont 564 008 par les 18 fiches de lignée (extraits de
+parole 290 859, amendements 141 279, votes 107 215).
+
 ## Types de faits
 
 La liste à jour se lit dans le code : chaque lecteur (`empreinte_src/lecteurs/*.py`) déclare ses

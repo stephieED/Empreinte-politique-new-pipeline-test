@@ -57,7 +57,10 @@ class Fiche:
                 licence: str | None = "licence", couverture: dict | None = None,
                 colonnes: list[str] | None = None, extra: dict | None = None):
         """Écrit `<nom>.json.gz` et inscrit ses lignes comme faits publiés.
-        `ids` : {clé d'identifiant de l'export: colonne de la ligne}."""
+        `ids` : {clé d'identifiant de l'export: colonne de la ligne}. Avec `type_fait=None`, la
+        section est un **index** de faits inscrits par une autre section de la fiche (par exemple
+        l'index léger des prises de parole, dont chaque ligne renvoie à son extrait) : ses lignes
+        ne sont pas inscrites une seconde fois."""
         colonnes = colonnes or sorted({k for l in lignes for k in l})
         contenu = {"contrat": CONTRAT, "fiche": self.id, "section": nom,
                    "colonnes": colonnes, "lignes": [[l.get(c) for c in colonnes] for l in lignes],
@@ -69,7 +72,8 @@ class Fiche:
         for l in lignes:
             if licence and l.get(licence):
                 self.licences.add(l[licence])
-            self.ecr.fait_publie(self, nom, type_fait, l, ids or {}, date, source)
+            if type_fait is not None:
+                self.ecr.fait_publie(self, nom, type_fait, l, ids or {}, date, source)
         return info
 
     def fermer(self):
