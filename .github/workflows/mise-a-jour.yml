@@ -57,9 +57,9 @@ jobs:
           FAIRE=true
           if [ "${{ github.event_name }}" = "schedule" ]; then
             # Le second déclenchement s'arrête si une génération a déjà été écrite depuis 20 h.
-            FAIRE=$(python -m empreinte.planification --depot "$GITHUB_REPOSITORY")
+            FAIRE=$(python -m empreinte_src.planification --depot "$GITHUB_REPOSITORY")
           fi
-          R=$(python -m empreinte.rattrapage --depot "$GITHUB_REPOSITORY" --run-actuel "$GITHUB_RUN_ID")
+          R=$(python -m empreinte_src.rattrapage --depot "$GITHUB_REPOSITORY" --run-actuel "$GITHUB_RUN_ID")
           echo "Rattrapage : ${R}"
           echo "faire=$FAIRE" >> "$GITHUB_OUTPUT"
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
@@ -158,13 +158,21 @@ jobs:
           path: z2
           key: z2-${{ github.run_id }}
           restore-keys: z2-
-      - name: Lire et exporter (E3, export)
+      - name: Faits publiés la nuit précédente (pour le contrôle des pertes, C1)
+        run: |
+          BASE=$(python -c 'import json; print("%06d" % json.load(open("entrepot/manifeste.json"))["base"])')
+          mkdir -p precedent
+          gh release download export -R "$GITHUB_REPOSITORY" -p "faits-publies-g${BASE}.parquet" -D precedent \
+            || echo "Pas de publication précédente : le contrôle des pertes ne s'applique pas cette nuit."
+      - name: Lire, relier, composer, contrôler, exporter (E3 à E6)
         env:
           EMPREINTE_DUCKDB_MEMOIRE: 4GB      # machine de GitHub : 16 Go (la valeur par défaut, 1 Go, vise la machine de développement)
           EMPREINTE_DUCKDB_FILS: "4"
         run: |
           /usr/bin/time -v -o sortie/time-calculer.txt \
-            empreinte calculer --entrepot entrepot --z2 z2 --sortie sortie --rapport sortie/rapport.json
+            empreinte calculer --entrepot entrepot --z2 z2 --z3 z3 --decisions decisions \
+              --sortie sortie --rapport sortie/rapport.json \
+              --faits-precedents "$(ls precedent/faits-publies-g*.parquet 2>/dev/null | head -1)"
           grep -E "Maximum resident|Elapsed" sortie/time-calculer.txt || true
       - name: Garder les faits lus
         uses: actions/cache/save@v4

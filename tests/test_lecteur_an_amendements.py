@@ -6,11 +6,11 @@ import zipfile
 import pyarrow.parquet as pq
 import pytest
 
-from empreinte.depaquetage import depaqueter
-from empreinte.entrepot import Entrepot
-from empreinte.export import exporter
-from empreinte.lecture import Lecture, MembreLu
-from empreinte.lecteurs import an_amendements
+from empreinte_src.depaquetage import depaqueter
+from empreinte_src.entrepot import Entrepot
+from empreinte_src.export import exporter
+from empreinte_src.lecture import Lecture, MembreLu
+from empreinte_src.lecteurs import an_amendements
 
 EXTRAIT = os.path.join(os.path.dirname(__file__), "extraits", "amendements_l17_extrait.zip")
 PA = {"id": "an-amendements-l17", "source": "an", "type": "amendements", "format": "zip",

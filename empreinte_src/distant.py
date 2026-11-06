@@ -152,7 +152,25 @@ def publier_export(depot: str, dossier_export: str, generation: int) -> list[dic
             "--notes", "Export plat des faits, une ligne par fait, un jeu par nuit (génération). "
                        "Documentation : voir le dépôt. Licences : colonne `licence` de chaque ligne.")
     envois = []
-    for nom in ("faits.parquet", "faits.csv.gz"):
+    for nom in ("faits.parquet", "faits.csv.gz", "faits-publies.parquet"):
+        if not os.path.exists(os.path.join(dossier_export, nom)):
+            continue
         cible = f"{nom.split('.')[0]}-g{generation:06d}.{nom.split('.', 1)[1]}"
         envois.append(_envoyer(depot, os.path.join(dossier_export, nom), cible))
     return envois
+
+
+def publier_site(depot: str, dossier_site: str, generation: int) -> list[dict]:
+    """Fichiers servis et page minimale de la nuit (release `publication`), en une archive.
+    Pas de déploiement (décision du 06/11/2026) : l'archive s'ouvre en local."""
+    import tarfile
+    r = _gh("release", "view", "publication", "-R", depot, check=False)
+    if r.returncode != 0:
+        _gh("release", "create", "publication", "-R", depot, "--title", "Publications",
+            "--notes", "Fichiers servis aux fiches et page minimale, une archive par nuit. "
+                       "Pour la regarder : extraire, puis `python -m http.server` dans le dossier.")
+    with tempfile.TemporaryDirectory() as d:
+        archive = os.path.join(d, f"site-g{generation:06d}.tar.gz")
+        with tarfile.open(archive, "w:gz") as t:
+            t.add(dossier_site, arcname=f"site-g{generation:06d}")
+        return [_envoyer(depot, archive, os.path.basename(archive))]

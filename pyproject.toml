@@ -16,16 +16,20 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest==9.0.1"]
+doc = ["pdoc==16.0.0"]
 
 [project.scripts]
-empreinte = "empreinte.cli:main"
+empreinte = "empreinte_src.cli:main"
 
 [build-system]
 requires = ["setuptools==80.9.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["empreinte*"]
+include = ["empreinte_src*"]
+
+[tool.setuptools.package-data]
+empreinte_src = ["site/*.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

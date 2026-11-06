@@ -5,11 +5,11 @@ import tarfile
 
 import pyarrow.parquet as pq
 
-from empreinte.depaquetage import depaqueter
-from empreinte.entrepot import Entrepot
-from empreinte.export import exporter
-from empreinte.lecture import Lecture, MembreLu
-from empreinte.lecteurs import jo_actes
+from empreinte_src.depaquetage import depaqueter
+from empreinte_src.entrepot import Entrepot
+from empreinte_src.export import exporter
+from empreinte_src.lecture import Lecture, MembreLu
+from empreinte_src.lecteurs import jo_actes
 
 EXTRAITS = os.path.join(os.path.dirname(__file__), "extraits")
 LIVRAISONS = ["20261102-213929", "20261103-214151", "20261104-004428"]

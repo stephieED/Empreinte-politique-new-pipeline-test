@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fichiers servis</title>
+<style>
+  :root { --fond: #fafaf8; --texte: #1c1c1a; --doux: #6b6b66; --trait: #e3e2dc; --accent: #7a2e5a; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fond: #18181a; --texte: #ececea; --doux: #a3a39e; --trait: #34343a; --accent: #d98bb8; }
+  }
+  body { margin: 0; padding: 16px; font: 15px/1.45 system-ui, sans-serif; background: var(--fond); color: var(--texte); }
+  main { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 4px; } h2 { font-size: 17px; margin: 24px 0 8px; }
+  .doux { color: var(--doux); font-size: 13px; }
+  a, button.lien { color: var(--accent); background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-decoration: underline; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--trait); vertical-align: top; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .defile { overflow-x: auto; }
+  pre { white-space: pre-wrap; font-size: 12px; background: var(--trait); padding: 8px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Fichiers servis</h1>
+  <p class="doux">Page de contrôle de l'étape 2 : elle montre ce qu'une fiche télécharge, fichier par fichier,
+     sans mise en forme. Les poids sont ceux des fichiers compressés (gzip), tels qu'un navigateur les télécharge.</p>
+  <div id="contenu">Chargement…</div>
+</main>
+<script>
+const racine = "donnees/";
+const contenu = document.getElementById("contenu");
+let publication = null;
+const octets = n => n < 1024 ? n + " o" : n < 1048576 ? (n / 1024).toFixed(1) + " Ko" : (n / 1048576).toFixed(2) + " Mo";
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+
+async function lireGz(chemin) {
+  const r = await fetch(racine + publication + "/" + chemin);
+  if (!r.ok) throw new Error(chemin + " : HTTP " + r.status);
+  const flux = r.body.pipeThrough(new DecompressionStream("gzip"));
+  return JSON.parse(await new Response(flux).text());
+}
+
+async function accueil() {
+  publication = (await (await fetch("publication.json")).json()).id;
+  const man = await (await fetch(racine + publication + "/manifeste.json")).json();
+  let h = `<p class="doux">Publication ${esc(publication)} — générée le ${esc(man.genere_le)}</p>`;
+  h += `<div class="defile"><table><tr><th>Fiche</th><th class="n">Chargement initial</th><th class="n">Toutes sections ouvertes</th></tr>`;
+  for (const f of man.fiches) {
+    const total = f.entete.gz + Object.values(f.sections).reduce((a, s) => a + s.gz, 0);
+    h += `<tr><td><button class="lien" data-fiche="${esc(f.fiche)}">${esc(f.titre)}</button>
+          <span class="doux">${esc(f.fiche)}</span></td><td class="n">${octets(f.entete.gz)}</td><td class="n">${octets(total)}</td></tr>`;
+  }
+  contenu.innerHTML = h + "</table></div>";
+  contenu.querySelectorAll("[data-fiche]").forEach(b => b.onclick = () => fiche(b.dataset.fiche));
+}
+
+async function fiche(id) {
+  const dossier = id.replace("/", "s/");
+  const f = await lireGz(dossier + "/fiche.json.gz");
+  let h = `<p><button class="lien" id="retour">← toutes les fiches</button></p><h1>${esc(f.titre)}</h1>`;
+  h += `<p class="doux">${esc(f.fiche)} · licences : ${esc((f.licences || []).join(", ") || "—")}</p>`;
+  const entete = Object.fromEntries(Object.entries(f).filter(([k]) => !["sections", "couverture", "licences"].includes(k)));
+  h += `<h2>En-tête (fiche.json)</h2><pre>${esc(JSON.stringify(entete, null, 1))}</pre><h2>Sections</h2>`;
+  h += `<table><tr><th>Section</th><th class="n">Lignes</th><th class="n">Poids</th><th>Couverture</th></tr>`;
+  for (const [nom, s] of Object.entries(f.sections)) {
+    const c = (f.couverture || []).find(x => x.section === nom);
+    h += `<tr><td><button class="lien" data-section="${esc(nom)}">${esc(nom)}</button></td><td class="n">${s.lignes}</td>
+          <td class="n">${octets(s.gz)}</td><td class="doux">${esc(c ? JSON.stringify(c) : "")}</td></tr>`;
+  }
+  h += `</table><div id="section"></div>`;
+  contenu.innerHTML = h;
+  document.getElementById("retour").onclick = accueil;
+  contenu.querySelectorAll("[data-section]").forEach(b => b.onclick = () => section(dossier, b.dataset.section));
+}
+
+async function section(dossier, nom) {
+  const s = await lireGz(dossier + "/" + nom + ".json.gz");
+  const lignes = s.lignes.slice(0, 300);
+  let h = `<h2>${esc(nom)}</h2><p class="doux">${s.lignes.length} lignes${s.lignes.length > 300 ? " (300 premières affichées)" : ""}</p>`;
+  h += `<div class="defile"><table><tr>${s.colonnes.map(c => `<th>${esc(c)}</th>`).join("")}</tr>`;
+  for (const l of lignes) h += `<tr>${l.map(v => `<td>${v && String(v).startsWith("http") ? `<a href="${esc(v)}">source</a>` : esc(typeof v === "object" && v !== null ? JSON.stringify(v) : v)}</td>`).join("")}</tr>`;
+  document.getElementById("section").innerHTML = h + "</table></div>";
+}
+
+accueil().catch(e => contenu.textContent = "Erreur : " + e.message);
+</script>
+</body>
+</html>

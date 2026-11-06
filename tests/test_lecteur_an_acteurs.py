@@ -7,11 +7,11 @@ import orjson
 import pyarrow.parquet as pq
 import pytest
 
-from empreinte.depaquetage import depaqueter
-from empreinte.entrepot import Entrepot
-from empreinte.export import exporter
-from empreinte.lecture import Lecture, MembreLu
-from empreinte.lecteurs import an_acteurs
+from empreinte_src.depaquetage import depaqueter
+from empreinte_src.entrepot import Entrepot
+from empreinte_src.export import exporter
+from empreinte_src.lecture import Lecture, MembreLu
+from empreinte_src.lecteurs import an_acteurs
 
 EXTRAITS = os.path.join(os.path.dirname(__file__), "extraits")
 L17 = os.path.join(EXTRAITS, "amo30_l17_extrait.zip")

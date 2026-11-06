@@ -7,7 +7,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from empreinte.transport import Transport
+from empreinte_src.transport import Transport
 
 V1 = bytes(range(256)) * 400        # 102 400 octets
 V2 = bytes(reversed(range(256))) * 400

@@ -1,0 +1,204 @@
+{
+ "head": {
+  "vars": [
+   "item",
+   "an",
+   "senat",
+   "sycomore",
+   "naissance",
+   "article"
+  ]
+ },
+ "results": {
+  "bindings": [
+   {
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2926942"
+    },
+    "article": {
+     "type": "uri",
+     "value": "https://fr.wikipedia.org/wiki/Bruno_Retailleau"
+    },
+    "naissance": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+     "type": "literal",
+     "value": "1960-11-20T00:00:00Z"
+    },
+    "sycomore": {
+     "type": "literal",
+     "value": "6689"
+    },
+    "an": {
+     "type": "literal",
+     "value": "2538"
+    },
+    "senat": {
+     "type": "literal",
+     "value": "senateur/retailleau_bruno04033b"
+    }
+   },
+   {
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2926942"
+    },
+    "article": {
+     "type": "uri",
+     "value": "https://fr.wikipedia.org/wiki/Bruno_Retailleau"
+    },
+    "naissance": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+     "type": "literal",
+     "value": "1960-11-20T00:00:00Z"
+    },
+    "sycomore": {
+     "type": "literal",
+     "value": "6689"
+    },
+    "an": {
+     "type": "literal",
+     "value": "2538"
+    },
+    "senat": {
+     "type": "literal",
+     "value": "senateur/retailleau_bruno04033b"
+    }
+   },
+   {
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q3085763"
+    },
+    "article": {
+     "type": "uri",
+     "value": "https://fr.wikipedia.org/wiki/Fran%C3%A7ois_Ruffin"
+    },
+    "naissance": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+     "type": "literal",
+     "value": "1975-10-18T00:00:00Z"
+    },
+    "sycomore": {
+     "type": "literal",
+     "value": "19368"
+    },
+    "an": {
+     "type": "literal",
+     "value": "722142"
+    }
+   },
+   {
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q5829"
+    },
+    "article": {
+     "type": "uri",
+     "value": "https://fr.wikipedia.org/wiki/Jean-Luc_M%C3%A9lenchon"
+    },
+    "naissance": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+     "type": "literal",
+     "value": "1951-08-19T00:00:00Z"
+    },
+    "sycomore": {
+     "type": "literal",
+     "value": "19278"
+    },
+    "an": {
+     "type": "literal",
+     "value": "2150"
+    },
+    "senat": {
+     "type": "literal",
+     "value": "senateur/melenchon_jean_luc86039k"
+    }
+   },
+   {
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q5829"
+    },
+    "article": {
+     "type": "uri",
+     "value": "https://fr.wikipedia.org/wiki/Jean-Luc_M%C3%A9lenchon"
+    },
+    "naissance": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+     "type": "literal",
+     "value": "1951-08-19T00:00:00Z"
+    },
+    "sycomore": {
+     "type": "literal",
+     "value": "19278"
+    },
+    "an": {
+     "type": "literal",
+     "value": "2150"
+    },
+    "senat": {
+     "type": "literal",
+     "value": "senateur/melenchon_jean_luc86039k"
+    }
+   },
+   {
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q100593241"
+    },
+    "article": {
+     "type": "uri",
+     "value": "https://fr.wikipedia.org/wiki/Ernest_de_Talleyrand-P%C3%A9rigord"
+    },
+    "naissance": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+     "type": "literal",
+     "value": "1807-03-17T00:00:00Z"
+    },
+    "senat": {
+     "type": "literal",
+     "value": "pair-de-france/talleyrand_perigord_ernestpf1280"
+    }
+   },
+   {
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q100974"
+    },
+    "article": {
+     "type": "uri",
+     "value": "https://fr.wikipedia.org/wiki/Nicolas_Delsor"
+    },
+    "naissance": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+     "type": "literal",
+     "value": "1847-10-05T00:00:00Z"
+    },
+    "senat": {
+     "type": "literal",
+     "value": "senateur-3eme-republique/delsor_nicolas1108r3"
+    }
+   },
+   {
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1029162"
+    },
+    "article": {
+     "type": "uri",
+     "value": "https://fr.wikipedia.org/wiki/Camille_Delthil"
+    },
+    "naissance": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+     "type": "literal",
+     "value": "1834-06-30T00:00:00Z"
+    },
+    "senat": {
+     "type": "literal",
+     "value": "senateur-3eme-republique/dethil_camille1725r3"
+    }
+   }
+  ]
+ }
+}

@@ -4,6 +4,32 @@ Dépôt d'essai de l'**étape 2** : réaliser et faire tourner chaque nuit le tr
 pour Empreinte politique (collecte, entrepôt, lecture, contrôles, publication des données).
 Ce n'est pas le dépôt du site ; rien n'est publié sur `empreinte-politique.fr`.
 
+## Où est quoi
+
+| Dossier | Contenu |
+| --- | --- |
+| `empreinte_src/` | le code du traitement (Python) ; la commande installée s'appelle `empreinte` |
+| `empreinte_src/lecteurs/` | un lecteur par famille de données : fichiers des sources → tables de faits |
+| `empreinte_src/regles/` | une règle de liaison par fichier ; sa `DESCRIPTION` est le texte de la page de méthodologie |
+| `empreinte_src/composeurs/` | un composeur par type de fiche : règles → fichiers servis |
+| `empreinte_src/site/` | la page minimale qui affiche les fichiers servis (contrôle, pas l'interface du site) |
+| `.github/workflows/` | la mise à jour du soir et les tests |
+| `config/` | les points d'accès aux sources et les réglages |
+| `decisions/` | les décisions de la propriétaire, un fichier par décision |
+| `tests/` | les tests sans réseau et les extraits réels des sources qu'ils utilisent |
+| `docs/` | la documentation de l'export des faits |
+
+Le fonctionnement d'ensemble (étapes, données, contrôles) est décrit dans les documents de
+conception, rédigés à part.
+
+**Documentation du code** : générée par [pdoc](https://pdoc.dev) à partir des docstrings, à
+chaque envoi de code (workflow *Tests*, artefact `documentation-code`). En local :
+
+```sh
+pip install -e ".[doc]"
+pdoc ./empreinte_src --docformat markdown    # ouvre la documentation dans le navigateur
+```
+
 ## Ce qui tourne
 
 Le workflow `Mise à jour` (`.github/workflows/mise-a-jour.yml`) tourne chaque soir. Il a cinq
@@ -13,7 +39,7 @@ tâches, chacune avec ses droits minimaux :
 | --- | --- | --- |
 | `preparer` | vérifie les options, décide si la nuit est à faire | lecture |
 | `collecter` | relève les sources, garde chaque fichier reçu à l'octet près, versionné | lecture |
-| `calculer` | lecture des fichiers collectés en tables de faits, export plat des faits (liaisons, fiches et contrôles : tranche 3) | lecture |
+| `calculer` | lecture des fichiers collectés, règles de liaison, composition des fiches, contrôles, export des faits | lecture |
 | `ecrire` | **seule tâche qui écrit** : dépose la génération dans l'entrepôt | `contents: write` |
 | `alerter` | une issue par sujet d'alerte, fermée quand le sujet disparaît | `issues: write` |
 

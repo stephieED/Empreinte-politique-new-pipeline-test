@@ -1,6 +1,6 @@
 """Retrait à la source ou panne (cahier 6.0 ; doc. 2, 2.4)."""
-from empreinte.depaquetage import depaqueter
-from empreinte.entrepot import RETIRE, Entrepot
+from empreinte_src.depaquetage import depaqueter
+from empreinte_src.entrepot import RETIRE, Entrepot
 from tests.conftest import zip_avec
 
 
