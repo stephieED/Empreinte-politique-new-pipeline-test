@@ -74,5 +74,5 @@ WHERE a.cle_fait IS NULL OR b.cle_fait IS NULL OR a.valeur <> b.valeur;
 
 ## Types de faits
 
-La liste à jour se lit dans le code : chaque lecteur (`empreinte/lecteurs/*.py`) déclare ses
+La liste à jour se lit dans le code : chaque lecteur (`empreinte_src/lecteurs/*.py`) déclare ses
 types dans `EXPORT` (clé, identifiants, date).

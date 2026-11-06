@@ -25,6 +25,9 @@ def sujets_du_rapport(rapport: dict) -> dict[str, str]:
                            "celles du dernier relevé complet.")
     for a in rapport.get("anomalies", []):
         sujets[a["cle"]] = a["texte"]
+    if rapport.get("publication_refusee"):
+        sujets["publication"] = (f"Rien n'a été publié cette nuit : {rapport['publication_refusee']}. "
+                                 "L'acquis est écrit ; le site garde l'état précédent complet.")
     if rapport.get("echec_ecriture"):
         sujets["ecriture"] = f"L'écriture dans l'entrepôt a échoué : {rapport['echec_ecriture']}"
     return sujets

@@ -18,3 +18,5 @@ la session, non versionné).
 Le test `test_liste_de_suppressions` porte, dans son code, les cinq lignes de la liste de
 suppressions de la livraison `20261020-214622` (`liste_suppression_jorf.dat`, rangée dans
 l'entrepôt complet du 06/11/2026) : aucune des trois livraisons de `travail/sources/` n'en a.
+
+| `jo_JORF_20261104-004428_regles_extrait.tar.gz` | 4 actes recopiés à l'octet de la livraison `JORF_20261104-004428.tar.gz` (DILA), pour les tests des règles du JO (`tests/test_regles_d.py`) | 04/11/2026 | Licence Ouverte 2.0 |

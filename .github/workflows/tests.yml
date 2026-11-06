@@ -16,3 +16,21 @@ jobs:
         with: { python-version: "3.12" }
       - run: pip install -q -e ".[test]"
       - run: python -m pytest -q
+
+  documentation:
+    # Documentation du code, tirée des docstrings par pdoc ; déposée comme artefact (pas de
+    # déploiement sur le dépôt d'essai).
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -q -e ".[doc]"
+      - run: pdoc ./empreinte_src --docformat markdown -o documentation-code
+      - uses: actions/upload-artifact@v4
+        with:
+          name: documentation-code
+          path: documentation-code/
+          retention-days: 30

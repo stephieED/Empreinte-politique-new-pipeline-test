@@ -108,3 +108,16 @@ points_acces:
     uid: candidatures-2027
     licence: cc-by-sa-4.0
     faits_seulement: false        # CC BY-SA : la révision lue peut être gardée, avec attribution
+
+  # --- Wikidata : identifiants Assemblée (P4123), Sénat (P1808), Sycomore (P1045), naissance,
+  # et titre de l'article Wikipédia, pour toutes les personnes qui ont un identifiant
+  # parlementaire. Sert à rattacher un candidat (lien de l'article dans Wikipédia) à son
+  # identifiant à l'Assemblée sans passer par le nom (décision du 06/11/2026). Résultats triés :
+  # sans tri, l'ordre change d'une nuit à l'autre et chaque nuit ferait une version nouvelle.
+  - id: wd-identifiants-parlementaires
+    source: wikidata
+    type: identifiants_wikidata
+    url: "https://query.wikidata.org/sparql?format=json&query=SELECT%20%3Fitem%20%3Fan%20%3Fsenat%20%3Fsycomore%20%3Fnaissance%20%3Farticle%20WHERE%20%7B%0A%20%20%7B%20%3Fitem%20wdt%3AP4123%20%3Fan%20.%20%7D%20UNION%20%7B%20%3Fitem%20wdt%3AP1808%20%3Fsenat%20.%20%7D%0A%20%20OPTIONAL%20%7B%20%3Fitem%20wdt%3AP1808%20%3Fsenat%20.%20%7D%0A%20%20OPTIONAL%20%7B%20%3Fitem%20wdt%3AP4123%20%3Fan%20.%20%7D%0A%20%20OPTIONAL%20%7B%20%3Fitem%20wdt%3AP1045%20%3Fsycomore%20.%20%7D%0A%20%20OPTIONAL%20%7B%20%3Fitem%20wdt%3AP569%20%3Fnaissance%20.%20%7D%0A%20%20OPTIONAL%20%7B%20%3Farticle%20schema%3Aabout%20%3Fitem%20%3B%20schema%3AisPartOf%20%3Chttps%3A//fr.wikipedia.org/%3E%20.%20%7D%0A%7D%20ORDER%20BY%20%3Fitem%20%3Fan%20%3Fsenat%20%3Fsycomore%20%3Fnaissance%20%3Farticle"
+    format: api_json
+    uid: identifiants-parlementaires
+    licence: cc0-1.0

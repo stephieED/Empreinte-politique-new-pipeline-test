@@ -3,7 +3,7 @@ import random
 
 import pytest
 
-from empreinte.identites import RegistreIdentites, RegistreModifie, verifier_ajout_seul
+from empreinte_src.identites import RegistreIdentites, RegistreModifie, verifier_ajout_seul
 
 GROUPES = [
     {("an", "PA722142"), ("wd", "Q3082206")},

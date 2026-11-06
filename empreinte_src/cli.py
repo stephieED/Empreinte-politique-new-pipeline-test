@@ -96,8 +96,53 @@ def cmd_calculer(a):
     with mesures.etape("export") as m:
         ex = exporter(a.z2, lecteurs(), os.path.join(a.sortie, "export"))
         m.update(faits=ex.get("total"))
+    gen = e.generation_base
+    # E4 relier, E5 composer, E6 contrôler.
+    from .composition import Ecrivain, composeurs
+    from .controles import Controles
+    from .liaison import Contexte, relier
+    import shutil
+    ctx = Contexte(a.z2, a.z3, dossier_decisions=a.decisions, generation=gen,
+                   date_reference=(rapport.get("debut") or "")[:10] or None)
+    with mesures.etape("E4") as m:
+        bilan_regles = relier(ctx)
+        m["regles"] = len(bilan_regles)
+    site = os.path.join(a.sortie, "site")
+    shutil.rmtree(site, ignore_errors=True)
+    ecr = Ecrivain(site, f"g{gen:06d}")
+    with mesures.etape("E5") as m:
+        for c in composeurs():
+            c.composer(ctx, ecr)
+        manifeste_site = ecr.clore()
+        nb_publies = ecr.ecrire_faits_publies(os.path.join(a.sortie, "export", "faits-publies.parquet"))
+        m.update(fiches=len(manifeste_site["fiches"]), faits_publies=nb_publies)
+    from importlib.resources import files
+    shutil.copy(str(files("empreinte_src").joinpath("site/index.html")), os.path.join(site, "index.html"))
+    with open(os.path.join(site, "publication.json"), "w") as f:
+        json.dump({"id": f"g{gen:06d}"}, f)
+    with mesures.etape("E6"):
+        ctrl = Controles(ecr.racine, levees=ctx.decisions.get("levee_controle", []))
+        ctrl.c2_liens({f["fiche"] for f in manifeste_site["fiches"]})
+        ctrl.c4_interdits()
+        ctrl.c5_couverture(rapport.get("releves", []))
+        changes = {r["uid"].split("@")[0] for r in e._index if r["vu_du"] == gen}
+        ctrl.c1_c6_comparer(a.faits_precedents or None, os.path.join(a.sortie, "export", "faits-publies.parquet"),
+                            uids_changes_a_la_source=changes)
+    controles = ctrl.bilan()
     rapport["calcul"] = {"lecture": l.bilan, "export": ex, "mesures": mesures.etapes,
-                         "generation": e.generation_base}
+                         "generation": gen, "regles": bilan_regles,
+                         "publication": {"id": f"g{gen:06d}", "fiches": manifeste_site["fiches"],
+                                         "faits_publies": nb_publies},
+                         "controles": controles}
+    for an in controles["anomalies"]:
+        if an["bloquant"]:
+            anomalies_txt = "\n".join(f"- {x}" for x in an["exemples"])
+            rapport.setdefault("anomalies", []).append({
+                "cle": f"controle:{an['controle']}",
+                "texte": (f"**Publication refusée** : {an['titre']} ({an['nb_objets']} objets).\n\n"
+                          f"{anomalies_txt}\n\nPour l'autoriser quand même, une décision "
+                          f"`decisions/levee_controle/<nom>.yaml` avec `type: levee_controle`, "
+                          f"`empreinte: {an['empreinte']}` et un `motif`.")})
     anomalies = rapport.setdefault("anomalies", [])
     illisibles = [b for b in l.bilan if b["illisibles"]]
     if illisibles:
@@ -113,7 +158,10 @@ def cmd_calculer(a):
               "| --- | ---: | ---: | ---: |"]
     lignes += [f"| {b['lecteur']} | {b['versions']:,} | {b['lues']:,} | {b['illisibles']:,} |"
                for b in l.bilan]
-    lignes += ["", f"Export : {ex.get('total', 0):,} faits, {ex.get('cles_en_double', 0)} clés en double."]
+    lignes += ["", f"Export : {ex.get('total', 0):,} faits, {ex.get('cles_en_double', 0)} clés en double.",
+               f"Fiches : {len(manifeste_site['fiches'])} ; faits publiés : {nb_publies:,}.",
+               "Contrôles : " + ("publication autorisée" if controles["publication_autorisee"]
+                                  else "**publication refusée** (" + ", ".join(controles["bloquantes"]) + ")")]
     texte = "\n".join(lignes)
     print(texte)
     if os.environ.get("GITHUB_STEP_SUMMARY"):
@@ -151,10 +199,17 @@ def cmd_ecrire(a):
     try:
         res = publier(a.depot, a.entrepot)
         rapport["ecriture"] = res
-        export = os.path.join(os.path.dirname(a.rapport), "export")
-        if os.path.exists(os.path.join(export, "faits.parquet")):
-            from .distant import publier_export
+        sortie = os.path.dirname(a.rapport)
+        export = os.path.join(sortie, "export")
+        calcul = rapport.get("calcul") or {}
+        autorisee = (calcul.get("controles") or {}).get("publication_autorisee")
+        if autorisee and os.path.exists(os.path.join(export, "faits.parquet")):
+            from .distant import publier_export, publier_site
             rapport["ecriture_export"] = publier_export(a.depot, export, res["generation"])
+            rapport["ecriture_site"] = publier_site(a.depot, os.path.join(sortie, "site"), res["generation"])
+        else:
+            rapport["publication_refusee"] = ("calcul absent ou échoué" if not calcul else
+                                              "contrôles bloquants : " + ", ".join(calcul["controles"]["bloquantes"]))
     except Exception as e:
         rapport["echec_ecriture"] = str(e)
     with open(a.rapport, "w") as f:
@@ -225,6 +280,8 @@ def main(argv=None):
     s.add_argument("--tmp", default=None)
     s = sp.add_parser("calculer", parents=[commun]); s.set_defaults(f=cmd_calculer)
     s.add_argument("--z2", default="z2"); s.add_argument("--sortie", default="sortie")
+    s.add_argument("--z3", default="z3"); s.add_argument("--decisions", default="decisions")
+    s.add_argument("--faits-precedents", default=None)
     s = sp.add_parser("superposer", parents=[commun]); s.set_defaults(f=cmd_superposer)
     s.add_argument("--depuis", required=True)
     s = sp.add_parser("restaurer", parents=[commun]); s.set_defaults(f=cmd_restaurer)

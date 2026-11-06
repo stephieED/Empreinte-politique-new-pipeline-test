@@ -7,11 +7,11 @@ import os
 import orjson
 import pytest
 
-from empreinte.depaquetage import depaqueter
-from empreinte.entrepot import Entrepot
-from empreinte.export import exporter
-from empreinte.lecture import Lecture, MembreLu
-from empreinte.lecteurs import wp_candidatures as wp
+from empreinte_src.depaquetage import depaqueter
+from empreinte_src.entrepot import Entrepot
+from empreinte_src.export import exporter
+from empreinte_src.lecture import Lecture, MembreLu
+from empreinte_src.lecteurs import wp_candidatures as wp
 
 EXTRAIT = os.path.join(os.path.dirname(__file__), "extraits", "wp_candidatures_section1.json")
 PA_WP = {"id": "wp-candidatures-2027", "source": "wikipedia", "type": "candidatures",

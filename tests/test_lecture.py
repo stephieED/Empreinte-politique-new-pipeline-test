@@ -4,10 +4,10 @@ import zipfile
 
 import pyarrow.parquet as pq
 
-from empreinte.depaquetage import depaqueter
-from empreinte.entrepot import Entrepot
-from empreinte.lecture import Lecture
-from empreinte.lecteurs import an_agenda
+from empreinte_src.depaquetage import depaqueter
+from empreinte_src.entrepot import Entrepot
+from empreinte_src.lecture import Lecture
+from empreinte_src.lecteurs import an_agenda
 
 CFG = {"points_acces": [{"id": "an-agenda-l17", "licence": "etalab-2.0"}]}
 

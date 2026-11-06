@@ -93,7 +93,7 @@ def pa_id(x) -> str | None:
 # -- registre des lecteurs -------------------------------------------------------------------
 
 def lecteurs() -> list:
-    """Tous les modules de `empreinte/lecteurs/` qui déclarent NOM, VERSION, TYPES, TABLES, lire."""
+    """Tous les modules de `empreinte_src/lecteurs/` qui déclarent NOM, VERSION, TYPES, TABLES, lire."""
     from . import lecteurs as paquet
     out = []
     for info in pkgutil.iter_modules(paquet.__path__):

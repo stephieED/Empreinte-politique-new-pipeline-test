@@ -5,11 +5,11 @@ import zipfile
 
 import pytest
 
-from empreinte.depaquetage import depaqueter
-from empreinte.entrepot import Entrepot
-from empreinte.export import exporter
-from empreinte.lecture import Lecture, MembreLu
-from empreinte.lecteurs import senat_export
+from empreinte_src.depaquetage import depaqueter
+from empreinte_src.entrepot import Entrepot
+from empreinte_src.export import exporter
+from empreinte_src.lecture import Lecture, MembreLu
+from empreinte_src.lecteurs import senat_export
 
 EXTRAIT = os.path.join(os.path.dirname(__file__), "extraits", "senat_export_extrait.zip")
 PA_SENAT = {"id": "senat-export", "source": "senat", "type": "export_sens", "format": "zip",

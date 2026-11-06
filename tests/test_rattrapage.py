@@ -2,11 +2,11 @@
 import json
 import shutil
 
-from empreinte import rattrapage
-from empreinte.cli import main
-from empreinte.depaquetage import depaqueter
-from empreinte.distant import base_attendue
-from empreinte.entrepot import Entrepot
+from empreinte_src import rattrapage
+from empreinte_src.cli import main
+from empreinte_src.depaquetage import depaqueter
+from empreinte_src.distant import base_attendue
+from empreinte_src.entrepot import Entrepot
 from tests.conftest import zip_avec
 
 

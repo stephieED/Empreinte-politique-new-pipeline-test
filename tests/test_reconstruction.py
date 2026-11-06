@@ -2,8 +2,8 @@
 import hashlib
 import zipfile
 
-from empreinte.depaquetage import depaqueter
-from empreinte.entrepot import Entrepot
+from empreinte_src.depaquetage import depaqueter
+from empreinte_src.entrepot import Entrepot
 
 
 def test_archive_reconstruite_a_l_octet_pres(tmp_path, extrait_agenda, pa_agenda):
