@@ -84,7 +84,7 @@ class Fiche:
         info = self.ecr.ecrire(f"{self.dossier}/fiche.json.gz", contenu)
         self.ecr.fiches.append({"fiche": self.id, "type": self.type, "adresse": self.adresse,
                                 "titre": self.titre, "entete": info,
-                                "sections": {k: {"brut": v["brut"], "gz": v["gz"]}
+                                "sections": {k: {"brut": v["brut"], "gz": v["gz"], "lignes": v["lignes"]}
                                              for k, v in self.sections.items()}})
 
 

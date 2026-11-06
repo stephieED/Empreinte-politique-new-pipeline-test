@@ -126,6 +126,7 @@ def cmd_calculer(a):
             c.composer(ctx, ecr)
         manifeste_site = ecr.clore()
         nb_publies = ecr.ecrire_faits_publies(os.path.join(a.sortie, "export", "faits-publies.parquet"))
+        ecr.faits.clear()            # écrits : les contrôles relisent le fichier (mémoire)
         m.update(fiches=len(manifeste_site["fiches"]), faits_publies=nb_publies)
     from importlib.resources import files
     shutil.copy(str(files("empreinte_src").joinpath("site/index.html")), os.path.join(site, "index.html"))
@@ -139,6 +140,26 @@ def cmd_calculer(a):
         changes = {r["uid"].split("@")[0] for r in e._index if r["vu_du"] == gen}
         ctrl.c1_c6_comparer(a.faits_precedents or None, os.path.join(a.sortie, "export", "faits-publies.parquet"),
                             uids_changes_a_la_source=changes)
+        # C3, C7 et avertissements : tables des règles et faits publiés de la candidate.
+        ctrl.preparer(ctx.con, os.path.join(a.sortie, "export", "faits-publies.parquet"),
+                      {f["fiche"] for f in manifeste_site["fiches"]}, manifeste_site["fiches"])
+        ctrl.c3_laisses_de_cote()
+        ctrl.c7_personnes()
+        ctrl.a1_hors_modele(ctx.decisions.get("fiche_hors_modele", []))
+        nb_a2 = int(cfg.get("parametres", {}).get("verification_croisee", 20) or 0)
+        if nb_a2:
+            from .verification import recuperateur
+            import time as _t
+            t0 = _t.monotonic()
+            ctrl.a2_verification_croisee(gen, recuperateur(cfg["parametres"]["user_agent"]), nb_a2)
+            if getattr(ctrl, "bilan_a2", None):
+                ctrl.bilan_a2["duree_s"] = round(_t.monotonic() - t0, 1)
+        ctrl.a3_totaux()
+        ctrl.a4_double_affichage()
+        ctrl.a5_famille_a_zero()
+        ctrl.a6_couverture()
+        ctrl.a8_mandats_ouverts()
+        ctrl.a7_non_resolues(ctx.decisions)          # en dernier : il vérifie les levées sans objet
     controles = ctrl.bilan()
     rapport["calcul"] = {"lecture": l.bilan, "export": ex, "mesures": mesures.etapes,
                          "generation": gen, "regles": bilan_regles,
@@ -156,6 +177,21 @@ def cmd_calculer(a):
                           f"{anomalies_txt}\n\nPour l'autoriser quand même, une décision "
                           f"`decisions/levee_controle/<nom>.yaml` avec `type: levee_controle`, "
                           f"`empreinte: {an['empreinte']}` et un `motif`.")})
+    # Avertissements : publication maintenue, une issue par avertissement (décomptes et
+    # identifiants seulement).
+    par_code: dict[str, list] = {}
+    for an in controles["anomalies"]:
+        if an["controle"].startswith("A"):
+            par_code.setdefault(an["controle"], []).append(an)
+    for code, ans in sorted(par_code.items()):
+        blocs = []
+        for an in ans:
+            ex = "\n".join(f"- {x}" for x in an["exemples"])
+            suite = f"\n- … ({an['nb_objets'] - len(an['exemples'])} autres)" if an["nb_objets"] > len(an["exemples"]) else ""
+            blocs.append(f"**{an['titre']}** ({an['nb_objets']}).\n\n{ex}{suite}")
+        rapport.setdefault("anomalies", []).append({
+            "cle": f"avertissement:{code}",
+            "texte": "Avertissement (la publication n'est pas bloquée).\n\n" + "\n\n".join(blocs)})
     anomalies = rapport.setdefault("anomalies", [])
     illisibles = [b for b in l.bilan if b["illisibles"]]
     if illisibles:
