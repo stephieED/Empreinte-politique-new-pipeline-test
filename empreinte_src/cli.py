@@ -186,9 +186,10 @@ def cmd_calculer(a):
     for code, ans in sorted(par_code.items()):
         blocs = []
         for an in ans:
-            ex = "\n".join(f"- {x}" for x in an["exemples"])
+            # `exemples`, pas `ex` : `ex` est le bilan de l'export, relu plus bas.
+            exemples = "\n".join(f"- {x}" for x in an["exemples"])
             suite = f"\n- … ({an['nb_objets'] - len(an['exemples'])} autres)" if an["nb_objets"] > len(an["exemples"]) else ""
-            blocs.append(f"**{an['titre']}** ({an['nb_objets']}).\n\n{ex}{suite}")
+            blocs.append(f"**{an['titre']}** ({an['nb_objets']}).\n\n{exemples}{suite}")
         rapport.setdefault("anomalies", []).append({
             "cle": f"avertissement:{code}",
             "texte": "Avertissement (la publication n'est pas bloquée).\n\n" + "\n\n".join(blocs)})
