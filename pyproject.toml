@@ -1,0 +1,31 @@
+[project]
+name = "empreinte"
+version = "0.1.0"
+description = "Collecte et publication des données d'Empreinte politique (dépôt d'essai, étape 2)"
+license = "AGPL-3.0-only"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "duckdb==2.0.0",
+  "pyarrow==26.0.1",
+  "orjson==3.13.0",
+  "zstandard==0.25.0",
+  "requests==2.34.2",
+  "lxml==6.1.3",
+  "pyyaml==6.0.3",
+]
+
+[project.optional-dependencies]
+test = ["pytest==9.0.1"]
+
+[project.scripts]
+empreinte = "empreinte.cli:main"
+
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["empreinte*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

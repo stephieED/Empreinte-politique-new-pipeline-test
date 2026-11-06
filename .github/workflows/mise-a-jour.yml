@@ -1,0 +1,169 @@
+# Mise à jour nocturne (doc. 2 ; droits : doc. 2, 2.15, correction P3).
+# Seule la tâche `ecrire` peut écrire dans le dépôt ; seule `alerter` peut écrire des issues.
+name: Mise à jour
+
+on:
+  schedule:
+    - cron: "30 20 * * *"     # chaque soir, 21 h 30 ou 22 h 30 à Paris
+    - cron: "30 23 * * *"     # second déclenchement : GitHub retarde ou abandonne parfois une tâche planifiée
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "quotidien, complet (relire toutes les sources sans requête conditionnelle) ou essai (aucune écriture)"
+        type: choice
+        options: [quotidien, complet, essai]
+        default: quotidien
+      points:
+        description: "Points d'accès à relever, séparés par des espaces (vide = tous)"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mise-a-jour
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  preparer:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      faire: ${{ steps.plan.outputs.faire }}
+      mode: ${{ steps.plan.outputs.mode }}
+      points: ${{ steps.plan.outputs.points }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -q -e .
+      - id: plan
+        name: Plan de la nuit
+        run: |
+          MODE="${{ inputs.mode || 'quotidien' }}"
+          POINTS="${{ inputs.points }}"
+          empreinte preparer --mode "$MODE" ${POINTS:+--points $POINTS}
+          FAIRE=true
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            # Le second déclenchement s'arrête si une génération a déjà été écrite depuis 20 h.
+            FAIRE=$(python -m empreinte.planification --depot "$GITHUB_REPOSITORY")
+          fi
+          echo "faire=$FAIRE" >> "$GITHUB_OUTPUT"
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "points=$POINTS" >> "$GITHUB_OUTPUT"
+
+  collecter:
+    needs: preparer
+    if: needs.preparer.outputs.faire == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -q -e .
+      - name: Copie de travail (cache, accélérateur seulement)
+        uses: actions/cache/restore@v4
+        with:
+          path: entrepot
+          key: entrepot-${{ github.run_id }}
+          restore-keys: entrepot-
+      - name: Restaurer la génération courante (sans les octets)
+        run: empreinte restaurer --entrepot entrepot
+      - name: Relever, dépaqueter, versionner (E1, E2)
+        run: |
+          POINTS="${{ needs.preparer.outputs.points }}"
+          mkdir -p sortie
+          /usr/bin/time -v -o sortie/time-collecter.txt \
+            empreinte collecter --entrepot entrepot --mode "${{ needs.preparer.outputs.mode }}" \
+              --rapport sortie/rapport.json --tmp "$RUNNER_TEMP" ${POINTS:+--points $POINTS}
+          grep -E "Maximum resident|Elapsed" sortie/time-collecter.txt || true
+      - name: Remettre l'acquis à la tâche d'écriture
+        uses: actions/upload-artifact@v4
+        with:
+          name: acquis
+          path: |
+            entrepot/manifeste.json
+            entrepot/index.parquet
+            entrepot/releves.parquet
+            entrepot/generations.parquet
+            entrepot/registres/
+            entrepot/blobs/
+            entrepot/membres/
+            sortie/
+          retention-days: 14
+          if-no-files-found: error
+      - name: Garder la copie de travail (sans les octets)
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            entrepot/manifeste.json
+            entrepot/index.parquet
+            entrepot/releves.parquet
+            entrepot/generations.parquet
+            entrepot/registres/
+          key: entrepot-${{ github.run_id }}
+
+  calculer:
+    needs: collecter
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - run: echo "Lecture, liaison, composition et contrôles (E3 à E6) arrivent avec la tranche 2."
+
+  ecrire:
+    # Seule tâche qui écrit (P3). Elle écrit l'acquis même si le calcul a échoué.
+    needs: [preparer, collecter, calculer]
+    if: always() && needs.collecter.result == 'success' && needs.preparer.outputs.mode != 'essai'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -q -e .
+      - uses: actions/download-artifact@v4
+        with: { name: acquis, path: . }
+      - name: Écrire la génération dans l'entrepôt
+        run: empreinte ecrire --entrepot entrepot --rapport sortie/rapport.json
+      - name: Rapport de la nuit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport
+          path: sortie/
+          retention-days: 90
+
+  alerter:
+    needs: [preparer, collecter, ecrire]
+    if: always() && needs.preparer.outputs.faire == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -q -e .
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with: { name: rapport, path: sortie }
+      - uses: actions/download-artifact@v4
+        if: needs.ecrire.result != 'success'
+        continue-on-error: true
+        with: { name: acquis, path: . }
+      - name: Une issue par sujet
+        env:
+          URL_EXECUTION: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: empreinte alerter --rapport sortie/rapport.json

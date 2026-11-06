@@ -218,3 +218,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Empreinte : copies de travail, jamais commitées
+/travail/
+/entrepot/
+/sortie/

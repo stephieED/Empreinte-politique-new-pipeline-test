@@ -1,0 +1,107 @@
+# Points d'accès relevés par le traitement (étape 2, périmètre validé le 06/11/2026).
+# Chaque point d'accès : une source, une adresse, un format d'archive, une cadence.
+# Les adresses de l'Assemblée sont celles des pages de jeux du portail, vérifiées le
+# 06/11/2026 ; elles ne sont jamais déduites d'une législature à l'autre.
+
+parametres:
+  user_agent: "empreinte-pipeline-essai/0.1 (+https://github.com/stephieED/Empreinte-politique-new-pipeline-test)"
+  fenetre_interdite: false        # 9 h–19 h lun.–ven. hors fériés : désactivée sur le dépôt d'essai
+  baisse_suspecte: 0.05           # Q12 : un relevé dont le nombre de membres baisse de plus de 5 % est suspect
+  segment_max_octets: 94371840    # Q25 : 90 Mo
+  morceau_blob_octets: 67108864   # un fichier membre plus gros est rangé en morceaux de 64 Mo
+
+points_acces:
+
+  # --- Assemblée nationale, XVIIe législature (archives courantes, republiées chaque nuit)
+  - id: an-amo30-l17
+    source: an
+    type: acteurs_organes
+    legislature: 17
+    url: https://data.assemblee-nationale.fr/static/openData/repository/17/amo/tous_acteurs_mandats_organes_xi_legislature/AMO30_tous_acteurs_tous_mandats_tous_organes_historique.json.zip
+    format: zip
+    licence: etalab-2.0
+  - id: an-scrutins-l17
+    source: an
+    type: scrutins
+    legislature: 17
+    url: https://data.assemblee-nationale.fr/static/openData/repository/17/loi/scrutins/Scrutins.json.zip
+    format: zip
+    licence: etalab-2.0
+  - id: an-dossiers-l17
+    source: an
+    type: dossiers
+    legislature: 17
+    url: https://data.assemblee-nationale.fr/static/openData/repository/17/loi/dossiers_legislatifs/Dossiers_Legislatifs.json.zip
+    format: zip
+    licence: etalab-2.0
+  - id: an-amendements-l17
+    source: an
+    type: amendements
+    legislature: 17
+    url: https://data.assemblee-nationale.fr/static/openData/repository/17/loi/amendements_div_legis/Amendements.json.zip
+    format: zip
+    licence: etalab-2.0
+  - id: an-syceron-l17
+    source: an
+    type: comptes_rendus
+    legislature: 17
+    url: https://data.assemblee-nationale.fr/static/openData/repository/17/vp/syceronbrut/syseron.xml.zip
+    format: zip
+    licence: etalab-2.0
+  - id: an-agenda-l17
+    source: an
+    type: agenda
+    legislature: 17
+    url: https://data.assemblee-nationale.fr/static/openData/repository/17/vp/reunions/Agenda.json.zip
+    format: zip
+    licence: etalab-2.0
+  - id: an-questions-ecrites-l17
+    source: an
+    type: questions_ecrites
+    legislature: 17
+    url: https://data.assemblee-nationale.fr/static/openData/repository/17/questions/questions_ecrites/Questions_ecrites.json.zip
+    format: zip
+    licence: etalab-2.0
+  - id: an-questions-gouvernement-l17
+    source: an
+    type: questions_gouvernement
+    legislature: 17
+    url: https://data.assemblee-nationale.fr/static/openData/repository/17/questions/questions_gouvernement/Questions_gouvernement.json.zip
+    format: zip
+    licence: etalab-2.0
+  - id: an-questions-orales-l17
+    source: an
+    type: questions_orales
+    legislature: 17
+    url: https://data.assemblee-nationale.fr/static/openData/repository/17/questions/questions_orales_sans_debat/Questions_orales_sans_debat.json.zip
+    format: zip
+    licence: etalab-2.0
+
+  # --- Sénat : export complet (un dump SQL), régénéré chaque nuit
+  - id: senat-export
+    source: senat
+    type: export_sens
+    url: https://data.senat.fr/data/senateurs/export_sens.zip
+    format: zip
+    taille_min: 1000000            # l'export a déjà été servi vide (444 octets, HTTP 200)
+    licence: etalab-2.0
+
+  # --- Journal officiel : livraisons de la DILA, relevées depuis la dernière traitée
+  - id: jo-livraisons
+    source: dila
+    type: jorf
+    url: https://echanges.dila.gouv.fr/OPENDATA/JORF/
+    format: liste_tar
+    motif: '^JORF_\d{8}-\d{6}\.tar\.gz$'
+    premiere_livraison: "JORF_20261006"   # premier remplissage de cette tranche : 30 jours ; le dump global est un chantier à part
+    licence: etalab-2.0
+
+  # --- Wikipédia : l'article des candidatures (on ne garde que les faits, voir doc. 1, 1.3.2)
+  - id: wp-candidatures-2027
+    source: wikipedia
+    type: candidatures
+    url: https://fr.wikipedia.org/w/api.php?action=parse&page=Candidatures_%C3%A0_l%27%C3%A9lection_pr%C3%A9sidentielle_fran%C3%A7aise_de_2027&prop=wikitext%7Crevid&format=json&formatversion=2
+    format: api_json
+    uid: candidatures-2027
+    licence: cc-by-sa-4.0
+    faits_seulement: false        # CC BY-SA : la révision lue peut être gardée, avec attribution
