@@ -6,9 +6,20 @@ tâche `ecrire` écrit alors l'acquis, et rien d'autre). Chaque anomalie a une *
 égal à celle de l'anomalie la lève, pour cette anomalie seulement : si l'anomalie change, la
 levée ne vaut plus (doc. 3, J16).
 
-Contrôles réalisés dans cette tranche : C1 (pertes non expliquées), C2 (liens pendants), C4
-(données interdites), C5 (lecture incomplète présentée comme complète), C6 (effondrement).
-C3 et C7 restent à faire (voir le journal de l'étape 2).
+Contrôles bloquants : C1 (pertes non expliquées), C2 (liens pendants), C3 (données laissées de
+côté), C4 (données interdites), C5 (lecture incomplète présentée comme complète), C6
+(effondrement), C7 (personne attendue écartée en silence).
+
+**Avertissements** (doc. 2, 2.8.2) : la publication est maintenue, la propriétaire est avertie
+(une issue par avertissement). A1 fiche hors modèle, A2 vérification croisée sur les pages
+publiques (module `verification`), A3 totaux d'une autre source, A4 double affichage, A5 famille
+à zéro pour tout le monde, A6 couverture insuffisante, A7 entrées non résolues, A8 mandat ouvert
+dans un organe clos. Les textes d'avertissement donnent des **décomptes et des identifiants**,
+jamais un indice individuel (doc. 2, 2.10) : A6 compte les membres sans prise de parole servie,
+sans les nommer.
+
+C3, C7 et les avertissements lisent les tables des règles (Z2, Z3) par la connexion du contexte
+et l'export des faits publiés de la candidate : `preparer(con, faits_publies, fiches)` d'abord.
 """
 from __future__ import annotations
 
@@ -129,10 +140,255 @@ class Controles:
             self._signaler("C6", "Effondrement d'une section", chutes)
         con.close()
 
+    # -- préparation : faits publiés et tables communes à C3, C7 et aux avertissements --------
+    def preparer(self, con, faits_publies: str, fiches: set[str], manifeste_fiches: list | None = None):
+        self.con, self.fiches = con, set(fiches)
+        self.manifeste_fiches = manifeste_fiches or []
+        # Vue sur le fichier, pas une copie en mémoire : 600 000 faits avec leur valeur JSON.
+        con.execute(f"CREATE OR REPLACE TEMP VIEW _ctl_fp AS SELECT * FROM read_parquet('{faits_publies}')")
+        con.execute("CREATE OR REPLACE TEMP TABLE _ctl_fiches (fiche VARCHAR)")
+        if fiches:
+            con.executemany("INSERT INTO _ctl_fiches VALUES (?)", [[f] for f in sorted(fiches)])
+        vues = {r[0] for r in con.execute("SELECT view_name FROM duckdb_views()").fetchall()}
+        vues |= {r[0] for r in con.execute("SELECT table_name FROM duckdb_tables()").fetchall()}
+        self._vues = vues
+        # Appartenances aux groupes affichés des lignées publiées ; organes de ces groupes.
+        if {"lignee", "lignee_maillon", "appartenance"} <= vues:
+            con.execute("""CREATE OR REPLACE TEMP TABLE _ctl_lm AS
+                WITH o AS (SELECT lm.legislature, unnest(lm.organes) AS organe
+                           FROM lignee_maillon lm JOIN lignee l USING (lignee) WHERE l.publiee AND lm.affiche)
+                SELECT o.legislature, o.organe, a.acteur, a.debut, coalesce(a.fin, '9999-12-31') AS fin
+                FROM o JOIN appartenance a ON a.groupe = o.organe""")
+        else:
+            con.execute("""CREATE OR REPLACE TEMP TABLE _ctl_lm (legislature INTEGER, organe VARCHAR,
+                           acteur VARCHAR, debut VARCHAR, fin VARCHAR)""")
+        con.execute("CREATE OR REPLACE TEMP TABLE _ctl_cand (acteur VARCHAR)")
+        if "candidat" in vues:
+            con.execute("""INSERT INTO _ctl_cand SELECT DISTINCT c.acteur FROM candidat c
+                           JOIN _ctl_fiches f ON f.fiche = 'candidat/' || c.adresse
+                           WHERE c.acteur IS NOT NULL""")
+        con.execute("CREATE OR REPLACE TEMP TABLE _ctl_gouv (organe VARCHAR)")
+        if "gouvernement" in vues:
+            con.execute("""INSERT INTO _ctl_gouv SELECT g.organe FROM gouvernement g
+                           JOIN _ctl_fiches f ON f.fiche = 'gouvernement/' || g.adresse""")
+
+    def _a(self, *tables) -> bool:
+        return set(tables) <= self._vues
+
+    def _x(self, sql, params=None):
+        return self.con.execute(sql, params or []).fetchall()
+
+    # -- C3 : données laissées de côté ----------------------------------------------------
+    def c3_laisses_de_cote(self) -> list[dict]:
+        """Bilan par famille : objets lus = servis + écartés avec une raison. Un objet sans raison
+        d'être écarté (« attendu ») et absent des faits publiés bloque la publication."""
+        membre = ("EXISTS (SELECT 1 FROM _ctl_lm m WHERE m.acteur = x.acteur "
+                  "AND x.date_ref BETWEEN m.debut AND m.fin)")
+        legs = [int(f.split("/")[1]) for f in self.fiches if f.startswith("legislature/")]
+        legs_sql = ", ".join(map(str, legs)) or "NULL"
+        familles = [
+            ("scrutins", ("an_scrutins__scrutin", "an_scrutins__decompte_groupe"),
+             """SELECT DISTINCT uid AS id FROM an_scrutins__scrutin""",
+             """CASE WHEN x.id LIKE 'VTCG%' THEN 'congres'
+                     WHEN NOT EXISTS (SELECT 1 FROM an_scrutins__decompte_groupe d
+                                      WHERE d.scrutin = x.id AND d.organe IN (SELECT organe FROM _ctl_lm))
+                          THEN 'aucun_decompte_d_un_groupe_avec_fiche' END""",
+             "SELECT DISTINCT id_scrutin FROM _ctl_fp"),
+            ("amendements", ("amendement_canonique",),
+             "SELECT amendement AS id, acteur, date_depot AS date_ref FROM amendement_canonique",
+             f"""CASE WHEN x.acteur IN (SELECT acteur FROM _ctl_cand) THEN NULL
+                      WHEN NOT {membre} THEN 'auteur_hors_groupe_a_la_date' END""",
+             "SELECT DISTINCT id_amendement FROM _ctl_fp"),
+            ("prises_de_parole", ("intervention_attribuee",),
+             """SELECT compte_rendu || '#' || id_syceron AS id, acteur, date AS date_ref, compte_rendu,
+                       id_syceron FROM intervention_attribuee""",
+             f"""CASE WHEN x.acteur IS NULL THEN 'orateur_non_attribue'
+                      WHEN x.acteur IN (SELECT acteur FROM _ctl_cand) THEN NULL
+                      WHEN {"EXISTS (SELECT 1 FROM parole_gouvernement p WHERE p.compte_rendu = x.compte_rendu AND p.id_syceron = x.id_syceron AND p.gouvernement IN (SELECT organe FROM _ctl_gouv))" if self._a("parole_gouvernement") else "false"} THEN NULL
+                      WHEN NOT {membre} THEN 'orateur_hors_groupe_a_la_date' END""",
+             """SELECT DISTINCT id_compte_rendu || '#' || id_autre FROM _ctl_fp
+                WHERE id_compte_rendu IS NOT NULL AND id_autre IS NOT NULL"""),
+            ("actes_jo", ("acte_rattache",),
+             "SELECT acte AS id, gouvernement, dans_periode_couverte FROM acte_rattache",
+             """CASE WHEN x.gouvernement IS NULL THEN 'sans_gouvernement_a_la_date'
+                     WHEN x.gouvernement NOT IN (SELECT organe FROM _ctl_gouv) THEN 'gouvernement_sans_fiche'
+                     WHEN NOT coalesce(x.dans_periode_couverte, false) THEN 'hors_periode_couverte' END""",
+             "SELECT DISTINCT id_acte FROM _ctl_fp"),
+            ("dossiers", ("an_dossiers__dossier", "an_dossiers__acte"),
+             "SELECT DISTINCT uid AS id, TRY_CAST(legislature AS INTEGER) AS legislature FROM an_dossiers__dossier",
+             f"""CASE WHEN x.legislature IS NULL OR x.legislature NOT IN ({legs_sql}) THEN 'legislature_sans_fiche'
+                      WHEN x.id NOT IN (SELECT dossier FROM an_dossiers__acte WHERE type_acte = 'DepotInitiative_Type')
+                           THEN 'sans_texte_depose' END""",
+             "SELECT DISTINCT id_dossier FROM _ctl_fp"),
+            ("questions", ("an_questions__question", "question_personne"),
+             "SELECT DISTINCT uid AS id FROM an_questions__question",
+             """CASE WHEN NOT EXISTS (SELECT 1 FROM question_personne q WHERE q.question = x.id
+                                      AND q.acteur IN (SELECT acteur FROM _ctl_cand))
+                     THEN 'auteur_sans_fiche_candidat' END""",
+             "SELECT DISTINCT id_question FROM _ctl_fp"),
+        ]
+        bilans, fautifs = [], []
+        for nom, tables, lus, raison, servis in familles:
+            if not self._a(*tables):
+                bilans.append({"famille": nom, "statut": "non_evalue", "tables_absentes":
+                               sorted(set(tables) - self._vues)})
+                continue
+            self._x(f"""CREATE OR REPLACE TEMP TABLE _ctl_c3 AS
+                SELECT x.id, {raison} AS raison, coalesce(x.id IN ({servis}), false) AS servi FROM ({lus}) x""")
+            n, sv = self._x("SELECT count(*), count(*) FILTER (servi) FROM _ctl_c3")[0]
+            ec = dict(self._x("""SELECT raison, count(*) FROM _ctl_c3 WHERE NOT servi AND raison IS NOT NULL
+                                 GROUP BY 1 ORDER BY 1"""))
+            nx = [r[0] for r in self._x("SELECT id FROM _ctl_c3 WHERE NOT servi AND raison IS NULL ORDER BY id")]
+            bilans.append({"famille": nom, "statut": "evalue", "lus": n, "servis": sv, "ecartes": ec,
+                           "non_expliques": len(nx), "exemples": nx[:10]})
+            fautifs += [f"{nom}: {i}" for i in nx]
+        self._x("DROP TABLE IF EXISTS _ctl_c3")
+        if fautifs:
+            self._signaler("C3", "Données laissées de côté sans raison", fautifs,
+                           detail={b["famille"]: b.get("non_expliques") for b in bilans})
+        self.bilan_c3 = bilans
+        return bilans
+
+    # -- C7 : personne attendue écartée en silence -----------------------------------------
+    def c7_personnes(self):
+        if not self._a("population"):
+            return
+        nom = ("(SELECT any_value(c.nom) FROM candidat c WHERE c.per = p.per)" if self._a("candidat") else "NULL")
+        manquants = self._x(f"""
+            SELECT p.population, coalesce(p.per, p.acteur) || coalesce(' ' || {nom}, ''),
+                   coalesce(p.fiche_attendue, '(aucune adresse)'), p.detail
+            FROM population p
+            WHERE p.raison_sortie IS NULL AND p.population <> 'depute_ni'
+              -- Sans adresse, la fiche attendue est vide : la personne est absente (jamais « inconnu »).
+              AND NOT coalesce(CASE WHEN p.population = 'candidat'
+                            THEN p.fiche_attendue IN (SELECT fiche FROM _ctl_fiches)
+                            ELSE EXISTS (SELECT 1 FROM _ctl_fp f WHERE f.fiche = p.fiche_attendue
+                                         AND f.section = p.section_attendue AND f.id_acteur = p.acteur) END, false)
+            ORDER BY 1, 2""")
+        if manquants:
+            self._signaler("C7", "Personnes attendues absentes, sans raison établie",
+                           [f"{pop} {qui} → {fiche}" + (f" ({d})" if d else "") for pop, qui, fiche, d in manquants])
+
+    # -- avertissements ---------------------------------------------------------------------
+    def _avertir(self, code, titre, objets, detail=None):
+        if objets:
+            self._signaler(code, titre, objets, bloquant=False, detail=detail)
+
+    def a1_hors_modele(self, decisions: list[dict]):
+        self._avertir("A1", "Fiches hors modèle (décision)",
+                      [f"{d.get('objet') or d.get('fiche')} : {d.get('motif')} ({d.get('fichier')})" for d in decisions])
+
+    def a2_verification_croisee(self, generation: int, recuperer, nb_scrutins=20):
+        from .verification import verifier
+        if not self._a("an_scrutins__scrutin", "an_scrutins__position_vote"):
+            return None
+        r = verifier(self.con, generation, recuperer, nb_scrutins)
+        self.bilan_a2 = {k: (v if not isinstance(v, list) else len(v)) for k, v in r.items()}
+        self._avertir("A2", "Écarts avec les pages publiques de l'Assemblée", r["ecarts"],
+                      detail=self.bilan_a2)
+        if r["faits"] and len(r["non_verifies"]) == r["faits"]:
+            self._avertir("A2", "Vérification croisée impossible : aucune page lue", r["non_verifies"][:5],
+                          detail=self.bilan_a2)
+        return r
+
+    def a3_totaux(self):
+        """Effectif de chaque groupe à chaque scrutin (nos appartenances à la date) contre le
+        nombre de membres publié par le scrutin ; lois promulguées sans dossier rattaché."""
+        objets = []
+        if self._a("an_scrutins__decompte_groupe", "an_scrutins__scrutin"):
+            ecarts = self._x("""
+                WITH d AS (SELECT d.scrutin, d.organe, any_value(d.nombre_membres) AS publie,
+                                  any_value(s.date) AS date
+                           FROM an_scrutins__decompte_groupe d JOIN an_scrutins__scrutin s ON s.uid = d.scrutin
+                           WHERE d.organe IN (SELECT organe FROM _ctl_lm) GROUP BY 1, 2)
+                SELECT d.scrutin, d.organe, d.publie,
+                       (SELECT count(DISTINCT m.acteur) FROM _ctl_lm m WHERE m.organe = d.organe
+                         AND d.date BETWEEN m.debut AND m.fin) AS nous
+                FROM d""")
+            diff = [e for e in ecarts if e[2] is not None and e[2] != e[3]]
+            if diff:
+                self.bilan_a3 = {"decomptes_compares": len(ecarts), "ecarts": len(diff)}
+                objets += [f"{s} {o} : publié {p}, nos appartenances {n}" for s, o, p, n in sorted(diff)]
+        if self._a("loi"):
+            objets += [f"loi {n} ({d}) sans dossier rattaché" for n, d in self._x(
+                "SELECT numero_loi, date_promulgation FROM loi WHERE dossier IS NULL AND legislature = 17 ORDER BY 1")]
+        self._avertir("A3", "Totaux différents d'une autre source", objets,
+                      detail=getattr(self, "bilan_a3", None))
+
+    def a4_double_affichage(self):
+        objets = [f"{f} / {s} : {n} lignes identiques" for f, s, n in self._x("""
+            SELECT fiche, section, count(*) - count(DISTINCT hash(valeur)) FROM _ctl_fp GROUP BY 1, 2
+            HAVING count(*) > count(DISTINCT hash(valeur)) ORDER BY 1, 2""")]
+        if self._a("amendement_canonique"):
+            objets += [f"amendement {a} servi alors qu'il est une copie de {c}" for a, c in self._x("""
+                SELECT DISTINCT f.id_amendement, a.amendement FROM _ctl_fp f
+                JOIN (SELECT amendement, unnest(alias) AS copie FROM amendement_canonique WHERE alias IS NOT NULL) a
+                  ON a.copie = f.id_amendement AND a.copie <> a.amendement ORDER BY 1""")]
+        self._avertir("A4", "Même objet affiché deux fois", objets)
+
+    def a5_famille_a_zero(self):
+        import re as _re
+        par: dict[tuple, list] = {}
+        for f in self.manifeste_fiches:
+            for nom, info in (f.get("sections") or {}).items():
+                base = _re.sub(r"-\d{4}(-s\d)?(-\d+)?$|-\d{3}$", "", nom)
+                par.setdefault((f["type"], base), []).append(info.get("lignes"))
+        objets = [f"{t} / {b} : vide sur les {len(v)} fiches" for (t, b), v in sorted(par.items())
+                  if len(v) >= 2 and all(x == 0 for x in v)]
+        self._avertir("A5", "Section vide pour toutes les fiches d'un type", objets)
+
+    def a6_couverture(self):
+        objets = []
+        if self._a("population"):
+            objets += [f"candidat {q} sans fiche : {r}" for q, r in self._x("""
+                SELECT coalesce(per, acteur), raison_sortie FROM population
+                WHERE population = 'candidat' AND raison_sortie IS NOT NULL ORDER BY 1""")]
+        if self._a("parole_personne"):
+            n, tot = self._x("""
+                WITH m AS (SELECT DISTINCT acteur FROM _ctl_lm WHERE legislature = 17)
+                SELECT count(*) FILTER (NOT EXISTS (SELECT 1 FROM _ctl_fp f WHERE f.id_acteur = m.acteur
+                                                    AND f.section LIKE 'paroles-textes%')), count(*) FROM m""")[0]
+            if n:
+                # Un décompte, jamais une liste de noms : ce serait un indice individuel.
+                objets.append(f"{n} membres de groupes de la XVIIe sur {tot} sans prise de parole servie")
+        self._avertir("A6", "Couverture insuffisante", objets)
+
+    def a7_non_resolues(self, decisions: dict):
+        objets = []
+        for t, col_a, col_b in (("filiation", "maillon_avant", "maillon_apres"),
+                                ("continuite_groupe", "organe_avant", "organe_apres")):
+            if self._a(t):
+                objets += [f"{t} à trancher : {a} → {b}" for a, b in self._x(
+                    f"SELECT {col_a}, {col_b} FROM {t} WHERE verdict = 'a_trancher' ORDER BY 1, 2")]
+                paires = {(a, b) for a, b in self._x(f"SELECT {col_a}, {col_b} FROM {t}")}
+                objets += [f"décision {d.get('fichier')} sans objet : {d.get('avant')} → {d.get('apres')}"
+                           for d in decisions.get(t, []) if (d.get("avant"), d.get("apres")) not in paires]
+        if self._a("population"):
+            pers = {r[0] for r in self._x("SELECT DISTINCT coalesce(per, '') FROM population")} | \
+                   {r[0] for r in self._x("SELECT DISTINCT coalesce(acteur, '') FROM population")}
+            objets += [f"décision {d.get('fichier')} sans objet : {d.get('personne')}"
+                       for d in decisions.get("perimetre", []) if d.get("personne") not in pers]
+        empreintes = {a["empreinte"] for a in self.anomalies}
+        objets += [f"levée {l.get('fichier')} sans objet cette nuit : {e}" for e, l in sorted(self.levees.items())
+                   if e not in empreintes]
+        if self._a("legislature"):
+            objets += [f"législature {n} en cours sans fiche" for (n,) in self._x(
+                "SELECT numero FROM legislature WHERE fin IS NULL ORDER BY 1")
+                if f"legislature/{n}" not in self.fiches]
+        self._avertir("A7", "Entrées non résolues", objets)
+
+    def a8_mandats_ouverts(self):
+        if self._a("mandat_ouvert_organe_clos"):
+            self._avertir("A8", "Mandats ouverts dans un organe clos", [
+                f"{m} ({a}) dans {o}, clos le {f}" for m, a, o, f in self._x(
+                    "SELECT mandat, acteur, organe, organe_fin FROM mandat_ouvert_organe_clos ORDER BY organe, mandat")])
+
     def bilan(self) -> dict:
         bloquantes = [a for a in self.anomalies if a["bloquant"]]
         return {"publication_autorisee": not bloquantes, "anomalies": self.anomalies,
-                "bloquantes": [a["empreinte"] for a in bloquantes]}
+                "bloquantes": [a["empreinte"] for a in bloquantes],
+                "avertissements": [a["empreinte"] for a in self.anomalies if a["controle"].startswith("A")],
+                "c3": getattr(self, "bilan_c3", None), "a2": getattr(self, "bilan_a2", None)}
 
 
 def _touche(valeur_json: str, uids: set[str]) -> bool:
