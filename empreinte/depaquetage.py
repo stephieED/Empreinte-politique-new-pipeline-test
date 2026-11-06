@@ -26,7 +26,7 @@ class Membre:
 
 def uid_du_chemin(chemin: str) -> str:
     nom = os.path.basename(chemin)
-    for ext in (".json", ".xml", ".sql", ".csv", ".txt"):
+    for ext in (".json", ".xml", ".sql", ".csv", ".txt", ".dat"):
         if nom.lower().endswith(ext):
             return nom[: -len(ext)]
     return nom

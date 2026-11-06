@@ -133,6 +133,10 @@ def collecter(entrepot: Entrepot, transport: Transport, config: dict, mesures: M
     params = config.get("parametres", {})
     releves = []
     for pa_cfg in config["points_acces"]:
+        if not entrepot.qualifiant_a_jour(pa_cfg):
+            with mesures.etape("requalifier", point_acces=pa_cfg["id"]) as m:
+                m["uid_changes"] = entrepot.requalifier(pa_cfg)
+    for pa_cfg in config["points_acces"]:
         if points and pa_cfg["id"] not in points:
             continue
         with mesures.etape("E1-E2", point_acces=pa_cfg["id"]) as m:

@@ -27,8 +27,16 @@ def test_seule_ecrire_ecrit_le_contenu():
             assert droits == {"contents": "write"}
         elif nom == "alerter":
             assert droits == {"issues": "write"}
+        elif nom in ("preparer", "collecter"):      # lisent l'artefact d'une nuit à rattraper
+            assert droits == {"contents": "read", "actions": "read"}, f"{nom} : {droits}"
         else:
             assert droits == {"contents": "read"}, f"{nom} : {droits}"
+
+
+def test_aucune_autre_tache_n_ecrit():
+    for nom, tache in _wf()["jobs"].items():
+        ecritures = {k for k, v in tache["permissions"].items() if v == "write"}
+        assert ecritures <= ({"contents"} if nom == "ecrire" else {"issues"} if nom == "alerter" else set())
 
 
 def test_ecrire_tourne_meme_si_le_calcul_echoue():

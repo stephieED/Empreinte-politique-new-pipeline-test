@@ -47,3 +47,23 @@ def test_prolonger_sur_304(tmp_path, pa_agenda):
     e2 = Entrepot(str(tmp_path / "e"))
     e2.prolonger("an-agenda-l17")
     assert e2.presents("an-agenda-l17")["A"]["vu_jusqu_au"] == e2.generation
+
+
+def test_requalifier_l_historique_sans_recollecte(tmp_path):
+    """Une règle d'uid corrigée atteint l'historique depuis les chemins gardés (P2)."""
+    pa = {"id": "jo", "source": "dila", "type": "jorf", "format": "liste_tar"}
+    e = Entrepot(str(tmp_path / "e"))
+    for k, liv in enumerate(["20261101-010101", "20261102-010101"], 1):
+        z = zip_avec(str(tmp_path / f"l{k}.zip"), {
+            f"{liv}/jorf/global/texte/version/JORF/TEXT/JORFTEXT1.xml": f"v{k}".encode(),
+            f"{liv}/jorf/global/texte/struct/JORF/TEXT/JORFTEXT1.xml": f"s{k}".encode()})
+        e.versionner(pa, f"R{k}", depaqueter(z, "zip"), complet=True, delta=True)
+    avant = {r["uid"] for r in e._index}
+    assert len(avant) == 3                     # ancienne règle : un uid de plus par livraison
+    pa["qualifier_uid"] = r"^\d{8}-\d{6}/jorf/global/(?P<q>.+?)/JORF/"
+    assert not e.qualifiant_a_jour(pa)
+    e.requalifier(pa)
+    apres = sorted((r["uid"], r["version"]) for r in e._index)
+    assert apres == [("JORFTEXT1@texte-struct", 1), ("JORFTEXT1@texte-struct", 2),
+                     ("JORFTEXT1@texte-version", 1), ("JORFTEXT1@texte-version", 2)]
+    assert e.qualifiant_a_jour(pa)

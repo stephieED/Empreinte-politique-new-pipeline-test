@@ -13,13 +13,16 @@ tâches, chacune avec ses droits minimaux :
 | --- | --- | --- |
 | `preparer` | vérifie les options, décide si la nuit est à faire | lecture |
 | `collecter` | relève les sources, garde chaque fichier reçu à l'octet près, versionné | lecture |
-| `calculer` | lecture, liaison, composition, contrôles (tranche 2) | lecture |
+| `calculer` | lecture des fichiers collectés en tables de faits, export plat des faits (liaisons, fiches et contrôles : tranche 3) | lecture |
 | `ecrire` | **seule tâche qui écrit** : dépose la génération dans l'entrepôt | `contents: write` |
 | `alerter` | une issue par sujet d'alerte, fermée quand le sujet disparaît | `issues: write` |
 
 L'**entrepôt** est la release `entrepot` de ce dépôt : relevés, index des versions, octets des
 fichiers reçus, registres d'identité. Le fichier `manifeste.json` dit quelle est la génération
 courante et l'empreinte de chaque fichier.
+
+L'**export des faits** de chaque nuit est dans la release `export` (une ligne par fait,
+documenté dans [`docs/export.md`](docs/export.md)).
 
 Le contenu de l'entrepôt reste sous la licence de chaque source (Licence Ouverte pour
 l'Assemblée nationale, le Sénat et le Journal officiel ; CC BY-SA pour Wikipédia).

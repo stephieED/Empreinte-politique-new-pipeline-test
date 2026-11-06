@@ -79,6 +79,65 @@ def cmd_collecter(a):
     _resume(rapport)
 
 
+def cmd_calculer(a):
+    """E3 (lire) puis export plat. Les étapes E4 à E6 arrivent avec la tranche 3."""
+    from .export import exporter
+    from .lecture import Lecture, lecteurs
+    cfg = _config(a.config)
+    mesures = Mesures()
+    with open(a.rapport) as f:
+        rapport = json.load(f)
+    e = Entrepot(a.entrepot)
+    l = Lecture(e, a.z2, cfg)
+    for mod in lecteurs():
+        with mesures.etape("E3", lecteur=mod.NOM) as m:
+            b = l.executer(mod)
+            m.update(lues=b["lues"], illisibles=b["illisibles"])
+    with mesures.etape("export") as m:
+        ex = exporter(a.z2, lecteurs(), os.path.join(a.sortie, "export"))
+        m.update(faits=ex.get("total"))
+    rapport["calcul"] = {"lecture": l.bilan, "export": ex, "mesures": mesures.etapes,
+                         "generation": e.generation_base}
+    anomalies = rapport.setdefault("anomalies", [])
+    illisibles = [b for b in l.bilan if b["illisibles"]]
+    if illisibles:
+        anomalies.append({"cle": "lecture:illisibles", "texte": "Membres illisibles à la lecture :\n\n"
+                          + "\n".join(f"- `{b['lecteur']}` : {b['illisibles']} ({'; '.join(b['exemples_illisibles'][:2])})"
+                                      for b in illisibles)})
+    if ex.get("cles_en_double"):
+        anomalies.append({"cle": "export:doublons",
+                          "texte": f"{ex['cles_en_double']} clés de fait en double dans l'export."})
+    with open(a.rapport, "w") as f:
+        json.dump(rapport, f, indent=1, ensure_ascii=False, default=str)
+    lignes = ["", "## Lecture et export", "", "| Lecteur | Versions | Lues | Illisibles |",
+              "| --- | ---: | ---: | ---: |"]
+    lignes += [f"| {b['lecteur']} | {b['versions']:,} | {b['lues']:,} | {b['illisibles']:,} |"
+               for b in l.bilan]
+    lignes += ["", f"Export : {ex.get('total', 0):,} faits, {ex.get('cles_en_double', 0)} clés en double."]
+    texte = "\n".join(lignes)
+    print(texte)
+    if os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+            f.write(texte + "\n")
+
+
+def cmd_superposer(a):
+    """Rattrapage : superpose l'acquis d'une nuit non écrite à la copie de travail."""
+    import shutil
+    src = a.depuis
+    for racine, _, noms in os.walk(src):
+        for n in noms:
+            rel = os.path.relpath(os.path.join(racine, n), src)
+            cible = os.path.join(a.entrepot, rel)
+            os.makedirs(os.path.dirname(cible), exist_ok=True)
+            shutil.copy2(os.path.join(racine, n), cible)
+    os.makedirs(os.path.join(a.entrepot, "rattrapage"), exist_ok=True)
+    shutil.copy2(os.path.join(src, "manifeste.json"),
+                 os.path.join(a.entrepot, "rattrapage", "manifeste.json"))
+    with open(os.path.join(src, "manifeste.json")) as f:
+        print(f"nuit rattrapée : génération {json.load(f)['generation']}")
+
+
 def cmd_restaurer(a):
     from .distant import restaurer
     man = restaurer(a.depot, a.entrepot, avec_blobs=a.avec_blobs, avec_membres=a.avec_membres)
@@ -92,6 +151,10 @@ def cmd_ecrire(a):
     try:
         res = publier(a.depot, a.entrepot)
         rapport["ecriture"] = res
+        export = os.path.join(os.path.dirname(a.rapport), "export")
+        if os.path.exists(os.path.join(export, "faits.parquet")):
+            from .distant import publier_export
+            rapport["ecriture_export"] = publier_export(a.depot, export, res["generation"])
     except Exception as e:
         rapport["echec_ecriture"] = str(e)
     with open(a.rapport, "w") as f:
@@ -160,6 +223,10 @@ def main(argv=None):
     s = sp.add_parser("collecter", parents=[commun]); s.set_defaults(f=cmd_collecter)
     s.add_argument("--mode", default="quotidien"); s.add_argument("--points", nargs="*")
     s.add_argument("--tmp", default=None)
+    s = sp.add_parser("calculer", parents=[commun]); s.set_defaults(f=cmd_calculer)
+    s.add_argument("--z2", default="z2"); s.add_argument("--sortie", default="sortie")
+    s = sp.add_parser("superposer", parents=[commun]); s.set_defaults(f=cmd_superposer)
+    s.add_argument("--depuis", required=True)
     s = sp.add_parser("restaurer", parents=[commun]); s.set_defaults(f=cmd_restaurer)
     s.add_argument("--avec-blobs", action="store_true"); s.add_argument("--avec-membres", action="store_true")
     s = sp.add_parser("ecrire", parents=[commun]); s.set_defaults(f=cmd_ecrire)

@@ -69,6 +69,18 @@ def restaurer(depot: str, dossier: str, avec_blobs: bool = False, avec_membres: 
     return man
 
 
+def base_attendue(dossier: str, man: dict) -> int:
+    """Génération que l'entrepôt distant doit avoir pour accepter cette écriture. Avec une
+    nuit rattrapée, c'est la base de la nuit rattrapée (les deux sont écrites ensemble)."""
+    rattrape = os.path.join(dossier, "rattrapage", "manifeste.json")
+    if os.path.exists(rattrape):
+        with open(rattrape) as f:
+            mr = json.load(f)
+        if mr["generation"] == man["base"]:
+            return mr["base"]
+    return man["base"]
+
+
 def publier(depot: str, dossier: str) -> dict:
     """Envoie la génération préparée par la collecte. Refuse si une autre exécution a écrit
     entre-temps (la génération de base n'est plus la génération courante)."""
@@ -76,7 +88,12 @@ def publier(depot: str, dossier: str) -> dict:
         man = json.load(f)
     distant = manifeste_distant(depot)
     gen_distante = distant["generation"] if distant else 0
-    if gen_distante != man["base"]:
+    base_admise = base_attendue(dossier, man)
+    rattrape = os.path.join(dossier, "rattrapage", "manifeste.json")
+    if os.path.exists(rattrape):
+        with open(rattrape) as f:
+            mr = json.load(f)
+    if gen_distante != base_admise:
         raise RuntimeError(f"génération distante {gen_distante} ≠ base {man['base']} : "
                            "une autre exécution a écrit ; rien n'est envoyé")
     if distant is None:
@@ -95,6 +112,8 @@ def publier(depot: str, dossier: str) -> dict:
     rates = [m["actif"] for m in mesures if not m["reussi"]]
     if rates:
         raise RuntimeError(f"envoi échoué pour {rates} : le manifeste n'est pas remplacé")
+    if os.path.exists(rattrape):
+        mesures.append(_envoyer(depot, rattrape, f"manifeste-g{mr['generation']:06d}.json"))
     with tempfile.TemporaryDirectory() as d:
         copie = os.path.join(d, f"manifeste-g{man['generation']:06d}.json")
         with open(copie, "w") as f:
@@ -123,3 +142,17 @@ def _envoyer(depot, chemin, nom, essais=3) -> dict:
 def _sha(p):
     from .entrepot import sha256_fichier
     return sha256_fichier(p)
+
+
+def publier_export(depot: str, dossier_export: str, generation: int) -> list[dict]:
+    """Export plat de la nuit (commande, section 7) : release `export`, un jeu par génération."""
+    r = _gh("release", "view", "export", "-R", depot, check=False)
+    if r.returncode != 0:
+        _gh("release", "create", "export", "-R", depot, "--title", "Export des faits",
+            "--notes", "Export plat des faits, une ligne par fait, un jeu par nuit (génération). "
+                       "Documentation : voir le dépôt. Licences : colonne `licence` de chaque ligne.")
+    envois = []
+    for nom in ("faits.parquet", "faits.csv.gz"):
+        cible = f"{nom.split('.')[0]}-g{generation:06d}.{nom.split('.', 1)[1]}"
+        envois.append(_envoyer(depot, os.path.join(dossier_export, nom), cible))
+    return envois
