@@ -1,5 +1,7 @@
 # Mise à jour nocturne (doc. 2 ; droits : doc. 2, 2.15, correction P3).
 # Seule la tâche `ecrire` peut écrire dans le dépôt ; seule `alerter` peut écrire des issues.
+# `preparer` et `collecter` lisent les artefacts des exécutions passées (rattrapage d'une
+# nuit non écrite) : droit `actions: read`.
 name: Mise à jour
 
 on:
@@ -34,10 +36,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read
     outputs:
       faire: ${{ steps.plan.outputs.faire }}
       mode: ${{ steps.plan.outputs.mode }}
       points: ${{ steps.plan.outputs.points }}
+      rattrapage_run: ${{ steps.plan.outputs.rattrapage_run }}
+      rattrapage_nom: ${{ steps.plan.outputs.rattrapage_nom }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -54,9 +59,13 @@ jobs:
             # Le second déclenchement s'arrête si une génération a déjà été écrite depuis 20 h.
             FAIRE=$(python -m empreinte.planification --depot "$GITHUB_REPOSITORY")
           fi
+          R=$(python -m empreinte.rattrapage --depot "$GITHUB_REPOSITORY" --run-actuel "$GITHUB_RUN_ID")
+          echo "Rattrapage : ${R}"
           echo "faire=$FAIRE" >> "$GITHUB_OUTPUT"
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
           echo "points=$POINTS" >> "$GITHUB_OUTPUT"
+          echo "rattrapage_run=$(echo "$R" | python -c 'import json,sys; print(json.load(sys.stdin).get("run",""))')" >> "$GITHUB_OUTPUT"
+          echo "rattrapage_nom=$(echo "$R" | python -c 'import json,sys; print(json.load(sys.stdin).get("nom",""))')" >> "$GITHUB_OUTPUT"
 
   collecter:
     needs: preparer
@@ -65,6 +74,9 @@ jobs:
     timeout-minutes: 330
     permissions:
       contents: read
+      actions: read
+    outputs:
+      generation: ${{ steps.collecte.outputs.generation }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -73,12 +85,29 @@ jobs:
       - name: Copie de travail (cache, accélérateur seulement)
         uses: actions/cache/restore@v4
         with:
-          path: entrepot
+          path: |
+            entrepot/manifeste.json
+            entrepot/index.parquet
+            entrepot/releves.parquet
+            entrepot/generations.parquet
+            entrepot/registres/
           key: entrepot-${{ github.run_id }}
           restore-keys: entrepot-
       - name: Restaurer la génération courante (sans les octets)
         run: empreinte restaurer --entrepot entrepot
-      - name: Relever, dépaqueter, versionner (E1, E2)
+      - name: Récupérer l'acquis d'une nuit non écrite
+        if: needs.preparer.outputs.rattrapage_run != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.preparer.outputs.rattrapage_nom }}
+          run-id: ${{ needs.preparer.outputs.rattrapage_run }}
+          github-token: ${{ github.token }}
+          path: rattrapage
+      - name: Superposer la nuit rattrapée
+        if: needs.preparer.outputs.rattrapage_run != ''
+        run: empreinte superposer --entrepot entrepot --depuis rattrapage/entrepot
+      - id: collecte
+        name: Relever, dépaqueter, versionner (E1, E2)
         run: |
           POINTS="${{ needs.preparer.outputs.points }}"
           mkdir -p sortie
@@ -86,23 +115,17 @@ jobs:
             empreinte collecter --entrepot entrepot --mode "${{ needs.preparer.outputs.mode }}" \
               --rapport sortie/rapport.json --tmp "$RUNNER_TEMP" ${POINTS:+--points $POINTS}
           grep -E "Maximum resident|Elapsed" sortie/time-collecter.txt || true
+          echo "generation=$(python -c 'import json; print("%06d" % json.load(open("entrepot/manifeste.json"))["generation"])')" >> "$GITHUB_OUTPUT"
       - name: Remettre l'acquis à la tâche d'écriture
         uses: actions/upload-artifact@v4
         with:
-          name: acquis
+          name: acquis-g${{ steps.collecte.outputs.generation }}
           path: |
-            entrepot/manifeste.json
-            entrepot/index.parquet
-            entrepot/releves.parquet
-            entrepot/generations.parquet
-            entrepot/registres/
-            entrepot/blobs/
-            entrepot/membres/
+            entrepot/
             sortie/
           retention-days: 14
           if-no-files-found: error
       - name: Garder la copie de travail (sans les octets)
-        if: always()
         uses: actions/cache/save@v4
         with:
           path: |
@@ -114,12 +137,46 @@ jobs:
           key: entrepot-${{ github.run_id }}
 
   calculer:
-    needs: collecter
+    needs: [collecter]
     runs-on: ubuntu-latest
+    timeout-minutes: 330
     permissions:
       contents: read
     steps:
-      - run: echo "Lecture, liaison, composition et contrôles (E3 à E6) arrivent avec la tranche 2."
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -q -e .
+      - name: Octets des générations écrites
+        run: empreinte restaurer --entrepot entrepot --avec-blobs
+      - name: Acquis de la nuit
+        uses: actions/download-artifact@v4
+        with: { name: "acquis-g${{ needs.collecter.outputs.generation }}", path: . }
+      - name: Faits déjà lus (cache, accélérateur seulement)
+        uses: actions/cache/restore@v4
+        with:
+          path: z2
+          key: z2-${{ github.run_id }}
+          restore-keys: z2-
+      - name: Lire et exporter (E3, export)
+        env:
+          EMPREINTE_DUCKDB_MEMOIRE: 4GB      # machine de GitHub : 16 Go (la valeur par défaut, 1 Go, vise la machine de développement)
+          EMPREINTE_DUCKDB_FILS: "4"
+        run: |
+          /usr/bin/time -v -o sortie/time-calculer.txt \
+            empreinte calculer --entrepot entrepot --z2 z2 --sortie sortie --rapport sortie/rapport.json
+          grep -E "Maximum resident|Elapsed" sortie/time-calculer.txt || true
+      - name: Garder les faits lus
+        uses: actions/cache/save@v4
+        with:
+          path: z2
+          key: z2-${{ github.run_id }}
+      - name: Remettre la candidate à la tâche d'écriture
+        uses: actions/upload-artifact@v4
+        with:
+          name: candidate-g${{ needs.collecter.outputs.generation }}
+          path: sortie/
+          retention-days: 14
 
   ecrire:
     # Seule tâche qui écrit (P3). Elle écrit l'acquis même si le calcul a échoué.
@@ -134,20 +191,26 @@ jobs:
         with: { python-version: "3.12" }
       - run: pip install -q -e .
       - uses: actions/download-artifact@v4
-        with: { name: acquis, path: . }
-      - name: Écrire la génération dans l'entrepôt
+        with: { name: "acquis-g${{ needs.collecter.outputs.generation }}", path: . }
+      - name: Candidate (si le calcul a réussi)
+        if: needs.calculer.result == 'success'
+        uses: actions/download-artifact@v4
+        with: { name: "candidate-g${{ needs.collecter.outputs.generation }}", path: sortie }
+      - name: Écrire la génération dans l'entrepôt, et l'export
         run: empreinte ecrire --entrepot entrepot --rapport sortie/rapport.json
       - name: Rapport de la nuit
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: rapport
-          path: sortie/
+          path: |
+            sortie/rapport.json
+            sortie/time-*.txt
           retention-days: 90
 
   alerter:
-    needs: [preparer, collecter, ecrire]
-    if: always() && needs.preparer.outputs.faire == 'true'
+    needs: [preparer, collecter, calculer, ecrire]
+    if: always() && needs.preparer.outputs.faire == 'true' && needs.preparer.outputs.mode != 'essai'
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -159,10 +222,6 @@ jobs:
       - uses: actions/download-artifact@v4
         continue-on-error: true
         with: { name: rapport, path: sortie }
-      - uses: actions/download-artifact@v4
-        if: needs.ecrire.result != 'success'
-        continue-on-error: true
-        with: { name: acquis, path: . }
       - name: Une issue par sujet
         env:
           URL_EXECUTION: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

@@ -26,6 +26,7 @@ import datetime as dt
 import hashlib
 import json
 import os
+import re
 from dataclasses import dataclass, field
 
 import pyarrow as pa
@@ -137,6 +138,47 @@ class Entrepot:
         r["generation"] = self.generation
         self._releves.append(r)
 
+    # -- identifiant stable d'un membre ---------------------------------------------------
+    @staticmethod
+    def uid_stable(pa_cfg: dict, uid_base: str, chemin: str) -> str:
+        """L'uid d'un membre. Si le point d'accès déclare `qualifier_uid` (une expression dont
+        le groupe `q` lit le dossier du membre, sans l'horodatage de livraison), l'uid est
+        qualifié par ce dossier : un même identifiant rangé dans deux dossiers d'une archive
+        (plan et version d'un texte du JO) donne deux membres stables d'une livraison à l'autre."""
+        motif = pa_cfg.get("qualifier_uid")
+        if motif:
+            m = re.search(motif, chemin)
+            if m:
+                return f"{uid_base}@{m.group('q').replace('/', '-')}"
+        return uid_base
+
+    def requalifier(self, pa_cfg: dict) -> int:
+        """Réapplique la règle d'uid à tout l'historique d'un point d'accès, depuis les chemins
+        gardés (correction P2 : un découpage corrigé atteint l'historique sans recollecte).
+        Rend le nombre d'uid changés."""
+        lignes = [r for r in self._index if r["point_acces"] == pa_cfg["id"]]
+        changes = 0
+        for r in lignes:
+            nouveau = self.uid_stable(pa_cfg, r["uid"].split("@")[0], r["chemin"])
+            if nouveau != r["uid"]:
+                r["uid"] = nouveau
+                changes += 1
+        # Versions renumérotées par uid, dans l'ordre où elles ont été vues.
+        par_uid: dict[str, list] = {}
+        for r in lignes:
+            par_uid.setdefault(r["uid"], []).append(r)
+        for rs in par_uid.values():
+            rs.sort(key=lambda r: (r["vu_du"], r["version"]))
+            for k, r in enumerate(rs, 1):
+                r["version"] = k
+        self._index.sort(key=lambda r: (r["point_acces"], r["uid"], r["version"]))
+        self._derniere = {(r["point_acces"], r["uid"]): i for i, r in enumerate(self._index)}
+        self.manifeste.setdefault("qualifiants", {})[pa_cfg["id"]] = pa_cfg.get("qualifier_uid")
+        return changes
+
+    def qualifiant_a_jour(self, pa_cfg: dict) -> bool:
+        return self.manifeste.get("qualifiants", {}).get(pa_cfg["id"]) == pa_cfg.get("qualifier_uid")
+
     def versionner(self, pa_cfg: dict, releve_id: str, membres, complet: bool,
                    delta: bool = False) -> Bilan:
         """Range les membres d'une archive reçue. `membres` est un itérable de Membre."""
@@ -144,10 +186,10 @@ class Entrepot:
         bilan = Bilan()
         vus: dict[str, str] = {}
         for m in membres:
-            uid = m.uid
+            uid = self.uid_stable(pa_cfg, m.uid, m.chemin)
             if uid in vus:                    # même uid deux fois dans l'archive
                 bilan.doublons += 1
-                uid = f"{m.uid}@{hashlib.sha1(m.chemin.encode()).hexdigest()[:8]}"
+                uid = f"{uid}@{hashlib.sha1(m.chemin.encode()).hexdigest()[:8]}"
             vus[uid] = m.empreinte
             bilan.membres += 1
             self._membres.append({"releve_id": releve_id, "uid": uid, "chemin": m.chemin,
@@ -217,6 +259,35 @@ class Entrepot:
         self._writer.write_table(pa.Table.from_pylist(self._blobs_buffer, schema=SCHEMA_BLOBS))
         self._blobs_buffer, self._blobs_taille = [], 0
 
+    def parcourir(self, empreintes):
+        """Rend (empreinte, octets) pour les empreintes demandées, en un seul passage sur les
+        fichiers d'octets, groupe de lignes par groupe de lignes (mémoire bornée)."""
+        import pyarrow.compute as pc
+        voulues = pa.array(sorted(set(empreintes)), type=pa.string())
+        if len(voulues) == 0:
+            return
+        en_cours: dict[str, list] = {}
+        for nom in sorted(os.listdir(os.path.join(self.dossier, "blobs"))):
+            f = pq.ParquetFile(os.path.join(self.dossier, "blobs", nom))
+            for rg in range(f.num_row_groups):
+                # D'abord la seule colonne des empreintes : on ne décompresse les octets que
+                # des groupes de lignes qui contiennent ce qu'on cherche.
+                cles = f.read_row_group(rg, columns=["empreinte"])["empreinte"]
+                if not pc.any(pc.is_in(cles, value_set=voulues)).as_py():
+                    continue
+                t = f.read_row_group(rg)
+                t = t.filter(pc.is_in(t["empreinte"], value_set=voulues))
+                for r in t.to_pylist():
+                    if r["nb_morceaux"] == 1:
+                        yield r["empreinte"], r["octets"]
+                        continue
+                    ms = en_cours.setdefault(r["empreinte"], [])
+                    ms.append(r)
+                    if len(ms) == r["nb_morceaux"]:
+                        ms.sort(key=lambda x: x["morceau"])
+                        yield r["empreinte"], b"".join(x["octets"] for x in ms)
+                        del en_cours[r["empreinte"]]
+
     def lire_plusieurs(self, empreintes) -> dict[str, bytes]:
         """Rend {empreinte: octets} en lisant chaque fichier d'octets une seule fois."""
         import pyarrow.compute as pc
@@ -277,12 +348,13 @@ class Entrepot:
             for n in noms:
                 p = os.path.join(racine, n)
                 rel = os.path.relpath(p, d)
-                if rel.startswith("manifeste"):
+                if rel.startswith("manifeste") or rel.startswith("rattrapage"):
                     continue
                 fichiers[rel] = {"sha256": sha256_fichier(p), "taille": os.path.getsize(p)}
         precedent = self.manifeste.get("sha256_manifeste")
         nouveau = {"generation": self.generation, "base": self.generation_base,
                    "cree_le": maintenant(), "code": version_code,
+                   "qualifiants": self.manifeste.get("qualifiants", {}),
                    "fichiers": dict(sorted(fichiers.items())), "precedent": precedent}
         corps = json.dumps(nouveau, sort_keys=True, ensure_ascii=False).encode()
         nouveau["sha256_manifeste"] = hashlib.sha256(corps).hexdigest()

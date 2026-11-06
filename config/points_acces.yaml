@@ -93,6 +93,9 @@ points_acces:
     url: https://echanges.dila.gouv.fr/OPENDATA/JORF/
     format: liste_tar
     motif: '^JORF_\d{8}-\d{6}\.tar\.gz$'
+    # Un même texte figure deux fois par livraison (texte/version et texte/struct) : l'uid est
+    # qualifié par ce dossier, lu sans l'horodatage de la livraison.
+    qualifier_uid: '^\d{8}-\d{6}/jorf/global/(?P<q>.+?)/JORF/'
     premiere_livraison: "JORF_20261006"   # premier remplissage de cette tranche : 30 jours ; le dump global est un chantier à part
     licence: etalab-2.0
 
