@@ -19,9 +19,9 @@ Une ligne par (acteur, scrutin) **seulement si les 5 conditions de la section 4.
 3. **dernière lecture** du texte (R-DERNIERE-LECTURE) ;
 4. vote sur l'**ensemble** du texte (même source) ;
 5. **groupe ayant une fiche** : le groupe de la personne **à la date** du scrutin
-   (R-APPARTENANCE, jamais l'organe que porte le scrutin) a une fiche publiée. Dans l'essai, les
-   fiches de groupe sont celles de la XVIIe (`LEGISLATURES_AVEC_FICHE`) : c'est dit dans la
-   couverture.
+   (R-APPARTENANCE, jamais l'organe que porte le scrutin) appartient à une lignée publiée
+   (R-LIGNEE : groupes de la XIVe à la XVIIe, `LEGISLATURES_AVEC_FICHE`). Sans R-LIGNEE, la
+   règle s'en tient aux législatures de `LEGISLATURES_AVEC_FICHE`.
 
 `diverge` dit si les deux positions diffèrent. La bande de la fiche montre chaque ligne ; les
 divergences y sont cliquables. **Aucun total** de divergences n'est calculé, par personne ni par
@@ -30,12 +30,13 @@ membres du groupe n'ont pas tous voté de même, critère brut sans seuil, cahie
 décomptes du groupe sont servis tels que publiés."""
 
 NOM = "R-DIVERGENCE"
-VERSION = 1
+VERSION = 2
 DEPEND = ("R-VOTE-PERSONNE", "R-APPARTENANCE")
+DEPEND_FACULTATIF = ("R-LIGNEE",)
 SORTIES = ("divergence",)
 
-# Législatures dont les groupes ont une fiche dans l'essai (fiche législature XVIIe).
-LEGISLATURES_AVEC_FICHE = (17,)
+# Législatures dont les groupes ont une fiche (fiches de lignée, cahier 4.1).
+from .r_lignee import LEGISLATURES_AVEC_FICHE  # noqa: E402
 
 DESCRIPTION = (
     "Sur un scrutin, la position d'une personne est placée à côté de la position majoritaire de "
@@ -44,7 +45,7 @@ DESCRIPTION = (
     "est publiée par l'Assemblée et n'est pas contredite par le décompte des voix du groupe publié "
     "avec elle ; le scrutin est la dernière lecture du texte ; il porte sur "
     "l'ensemble du texte ; le groupe auquel la personne appartient à la date du vote a une fiche "
-    "sur le site (dans cette version, les groupes de la XVIIe législature). Le groupe est divisé dès "
+    "sur le site (les groupes de la XIVe législature à aujourd'hui). Le groupe est divisé dès "
     "que ses membres n'ont pas tous voté de même, sans seuil. Les divergences ne sont jamais "
     "comptées ni transformées en fréquence.")
 
@@ -53,6 +54,9 @@ POSITIONS = "('pour', 'contre', 'abstention')"
 
 def appliquer(ctx):
     legs = ", ".join(str(x) for x in LEGISLATURES_AVEC_FICHE)
+    avec_fiche = ("AND g.organe IN (SELECT unnest(m.organes) FROM lignee_maillon m "
+                  "JOIN lignee l USING (lignee) WHERE l.publiee AND m.affiche)"
+                  if ctx.existe("lignee_maillon") else "")
     ctx.x(f"""CREATE OR REPLACE TEMP TABLE _dv AS
         WITH dg AS (   -- position publiée d'un groupe à un scrutin ; deux occurrences discordantes : non établie
             SELECT scrutin, organe AS groupe,
@@ -85,7 +89,7 @@ def appliquer(ctx):
                     WHEN dg.contredite THEN 'position_publiee_contredite_par_le_decompte'
                END AS raison_exclusion
         FROM vote_personne v
-        LEFT JOIN groupe g ON g.organe = v.groupe AND g.legislature IN ({legs})
+        LEFT JOIN groupe g ON g.organe = v.groupe AND g.legislature IN ({legs}) {avec_fiche}
         LEFT JOIN dgc dg ON dg.scrutin = v.scrutin AND dg.groupe = v.groupe
         WHERE v.nature = 'ensemble'""")
     ctx.ecrire("divergence", """
@@ -111,6 +115,6 @@ def appliquer(ctx):
     return {"positions_comparables_sur_positions_en_derniere_lecture": (r[1], r[0]),
             "exclues_position_du_groupe_non_etablie": (r[2], r[0]),
             "dont_position_publiee_contredite_par_le_decompte": (r[3], r[0]),
-            "exclues_groupe_sans_fiche_hors_xviie": (r[4], r[0]),
+            "exclues_groupe_sans_fiche": (r[4], r[0]),
             "exclues_sans_groupe_a_la_date": (r[5], r[0]),
             "exclues_position_personne_non_votant": (r[6], r[0])}

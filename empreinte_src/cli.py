@@ -216,11 +216,19 @@ def cmd_ecrire(a):
         import shutil
         import pyarrow.parquet as pq
         from .identites import verifier_ajout_seul, RegistreModifie
-        ancien_p = os.path.join(a.entrepot, "registres", "attribution.parquet")
-        nouveau_p = os.path.join(registres, "attribution.parquet")
+        # Registres en ajout seul : personnes, lignées de groupe et adresses des lignées.
+        en_ajout_seul = (("attribution.parquet", ("per", "source", "uid", "depuis")),
+                         ("lignee_attribution.parquet", ("per", "source", "uid", "depuis")),
+                         ("lignee_adresse.parquet", ("adresse", "per", "depuis")))
         try:
-            if os.path.exists(ancien_p) and os.path.exists(nouveau_p):
-                verifier_ajout_seul(pq.read_table(ancien_p).to_pylist(), pq.read_table(nouveau_p).to_pylist())
+            for nom, cles in en_ajout_seul:
+                ancien_p = os.path.join(a.entrepot, "registres", nom)
+                nouveau_p = os.path.join(registres, nom)
+                if os.path.exists(ancien_p):
+                    if not os.path.exists(nouveau_p):
+                        raise RegistreModifie(f"{nom} absent de la candidate")
+                    verifier_ajout_seul(pq.read_table(ancien_p).to_pylist(),
+                                        pq.read_table(nouveau_p).to_pylist(), cles)
             os.makedirs(os.path.join(a.entrepot, "registres"), exist_ok=True)
             for n in os.listdir(registres):
                 shutil.copy2(os.path.join(registres, n), os.path.join(a.entrepot, "registres", n))

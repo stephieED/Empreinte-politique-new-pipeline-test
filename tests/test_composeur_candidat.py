@@ -277,7 +277,8 @@ def test_entete_identite_groupe_et_liens_publies(sortie):
     assert f["personne"]["profession"] == {"valeur": "Reporter", "source": "an",
                                            "source_point": "an-amo30-l17", "raison": None}
     g = f["groupe_actuel"]
-    assert g["sigle"] == "ECOS" and "lien" not in g and "aucune fiche de groupe" in g["raison_lien"]
+    # Sans lignée publiée pour ce groupe : pas de lien, la raison est écrite.
+    assert g["sigle"] == "ECOS" and g["lien"] is None and g["raison_lien"] == "groupe sans lignée publiée"
     car = _rows(f["en_bref"]["carriere"])
     # legislature/16 n'est pas publiée : pas de lien, la raison est écrite.
     assert [l["lien"] for l in car] == [None, "legislature/17", "legislature/17"]
@@ -289,6 +290,22 @@ def test_entete_identite_groupe_et_liens_publies(sortie):
     assert inst["parlement_europeen"] == inst["local"] == "non_collecte"
     for c in f["en_bref"]["compteurs"]:
         assert c["au"] == AU
+
+
+def test_groupe_actuel_renvoie_a_sa_lignee(tmp_path):
+    """Le groupe actuel d'un député renvoie à la fiche de sa lignée (R-LIGNEE), seule cible publiée."""
+    lignee = [{"lignee": "lig:000016", "adresse": "ecologiste-et-social", "publiee": True}]
+    maillon = [{"lignee": "lig:000016", "maillon": "grp:17:POG", "organes": ["POG"], "affiche": True}]
+    _, man, racine = _composer(tmp_path, lignee=lignee, lignee_maillon=maillon)
+    g = _lire(racine, "candidats/alice-martin/fiche.json.gz")["groupe_actuel"]
+    assert g["lien"] == "lignee/ecologiste-et-social" and g["raison_lien"] is None
+    c = Controles(racine)
+    c.c2_liens({f["fiche"] for f in man["fiches"]} | {"legislature/17", "gouvernement/beta"})
+    assert not c.bilan()["publication_autorisee"]          # la lignée n'est pas composée ici
+    c = Controles(racine)
+    c.c2_liens({f["fiche"] for f in man["fiches"]} | {"legislature/17", "gouvernement/beta",
+                                                       "lignee/ecologiste-et-social"})
+    assert c.bilan()["publication_autorisee"]
 
 
 def test_chaque_section_a_sa_couverture(sortie):
