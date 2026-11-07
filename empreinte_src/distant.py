@@ -123,19 +123,20 @@ def publier(depot: str, dossier: str) -> dict:
     return {"generation": man["generation"], "envois": mesures}
 
 
-def _envoyer(depot, chemin, nom, essais=3) -> dict:
+def _envoyer(depot, chemin, nom, essais=3, release=RELEASE) -> dict:
+    """Dépose un fichier dans une release (par défaut l'entrepôt), avec reprise."""
     debut = time.monotonic()
     taille = os.path.getsize(chemin)
     with tempfile.TemporaryDirectory() as d:
         p = os.path.join(d, nom)
         os.symlink(os.path.abspath(chemin), p)
         for k in range(essais):
-            r = _gh("release", "upload", RELEASE, p, "-R", depot, "--clobber", check=False)
+            r = _gh("release", "upload", release, p, "-R", depot, "--clobber", check=False)
             if r.returncode == 0:
-                return {"actif": nom, "octets": taille, "duree_s": round(time.monotonic() - debut, 2),
-                        "essais": k + 1, "reussi": True}
+                return {"actif": nom, "release": release, "octets": taille,
+                        "duree_s": round(time.monotonic() - debut, 2), "essais": k + 1, "reussi": True}
             time.sleep(10 * (k + 1))
-    return {"actif": nom, "octets": taille, "duree_s": round(time.monotonic() - debut, 2),
+    return {"actif": nom, "release": release, "octets": taille, "duree_s": round(time.monotonic() - debut, 2),
             "essais": essais, "reussi": False, "erreur": (r.stderr or "").strip()[:300]}
 
 
@@ -156,7 +157,7 @@ def publier_export(depot: str, dossier_export: str, generation: int) -> list[dic
         if not os.path.exists(os.path.join(dossier_export, nom)):
             continue
         cible = f"{nom.split('.')[0]}-g{generation:06d}.{nom.split('.', 1)[1]}"
-        envois.append(_envoyer(depot, os.path.join(dossier_export, nom), cible))
+        envois.append(_envoyer(depot, os.path.join(dossier_export, nom), cible, release="export"))
     return envois
 
 
@@ -173,4 +174,4 @@ def publier_site(depot: str, dossier_site: str, generation: int) -> list[dict]:
         archive = os.path.join(d, f"site-g{generation:06d}.tar.gz")
         with tarfile.open(archive, "w:gz") as t:
             t.add(dossier_site, arcname=f"site-g{generation:06d}")
-        return [_envoyer(depot, archive, os.path.basename(archive))]
+        return [_envoyer(depot, archive, os.path.basename(archive), release="publication")]

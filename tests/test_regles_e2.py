@@ -232,6 +232,9 @@ def test_amendements_reel_copies_sorts_et_signatures(reel):
     assert p["amendement"] == "AMANR5L17PO838901BTC2202P0D1N000011"
     assert p["alias"] == ["AMANR5L17PO838901B2202P0D1N000011"] and p["nb_copies"] == 2
     assert (p["dossier"], p["raison_dossier"]) == (None, "document_vise_absent_des_dossiers")
+    # Adresse publique : la page /dyn/17/amendements/<uid> redirige vers celle de l'amendement.
+    assert p["source_url"] == "https://www.assemblee-nationale.fr/dyn/17/amendements/AMANR5L17PO838901BTC2202P0D1N000011"
+    assert p["raison_source_url"] is None
     s = {x["amendement"][9:]: (x["sort"], x["famille_sort"], x["acteur"], x["type_auteur"])
          for x in lignes(ctx, "SELECT * FROM amendement_canonique")}
     assert s["PO838901B1906P1D2N000001"][:3] == ("efface", "efface", None)
@@ -365,9 +368,9 @@ def test_questions_reelles(reel):
     assert (q["QANR5L17QOSD680"]["type"], q["QANR5L17QOSD680"]["date_reponse"]) == ("orale_sans_debat", None)
     e = q["QANR5L17QE2225"]                                   # quatre ministères attributaires
     assert (e["type"], e["ministere"], e["ministere_attributaire"]) == ("ecrite", "PO847668", "PO873685")
-    assert all(x["source_url"] is None and x["raison_source_url"] == "adresse_non_publiee_dans_les_donnees"
-               for x in q.values())
-    assert b["R-QUESTION-PERSONNE"]["couverture"]["adresse_publique_verifiable"] == [0, 6]
+    assert all(x["source_url"] == f"https://www.assemblee-nationale.fr/dyn/17/questions/{u}"
+               and x["raison_source_url"] is None for u, x in q.items())
+    assert b["R-QUESTION-PERSONNE"]["couverture"]["adresse_publique_verifiable"] == [6, 6]
 
 
 # --------------------------------------------------------------------------- petites tables

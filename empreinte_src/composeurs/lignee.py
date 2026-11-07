@@ -543,8 +543,8 @@ def _amendements(ctx, f, l, m17, anciens, commun):
                   ids={"acteur": "acteur", "amendement": "amendement", "dossier": "dossier",
                        "document": "document", "organe": "commission"}, date="date_depot",
                   couverture=_couv("amendements", "complet", f"Amendements déposés en {annee} par un membre, "
-                                   "auteur principal, pendant son appartenance (copies dédoublonnées). Aucune "
-                                   "adresse publique vérifiable : l'identifiant est servi.", len(ls), len(ls),
+                                   "auteur principal, pendant son appartenance (copies dédoublonnées), avec "
+                                   "l'adresse de sa page sur le site de l'Assemblée.", len(ls), len(ls),
                                    pts, au=au),
                   colonnes=COLS_AMENDEMENTS, extra={"annee": annee, "ordre": "chronologique",
                                                     "aide_a_la_lecture": ["commission_libelle"]})

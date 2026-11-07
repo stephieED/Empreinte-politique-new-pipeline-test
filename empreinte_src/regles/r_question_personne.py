@@ -10,13 +10,12 @@ ministère attributaire, la rubrique, l'analyse, les dates de question et de ré
   Elle ne porte aucune référence de séance : son rapprochement avec une prise de parole est
   l'affaire de R-QAG (tranche suivante).
 - Une question sans réponse a `date_reponse` vide (jamais une date inventée).
-- **Adresse publique** : l'adresse `questions.assemblee-nationale.fr/q{leg}/{uid}.htm` du
-  cahier n'apparaît dans aucune donnée relevée ; aucune adresse n'est vérifiable dans les
-  données : `source_url` reste vide, avec la raison, et l'identifiant de la question est servi
-  (on ne fabrique pas une adresse non vérifiée)."""
+- **Adresse publique** : `https://www.assemblee-nationale.fr/dyn/{leg}/questions/{uid}`, vérifiée
+  le 06/11/2026 (`QANR5L17QE5268` : page de la question n° 5268 ; un identifiant inventé répond
+  404) ; la vérification croisée (A2) en relit un échantillon chaque nuit."""
 
 NOM = "R-QUESTION-PERSONNE"
-VERSION = 1
+VERSION = 2
 DEPEND = ()
 SORTIES = ("question_personne",)
 DESCRIPTION = (
@@ -44,8 +43,9 @@ def appliquer(ctx):
                q.rubrique, q.tete_analyse, q.analyses, q.date_reponse,
                q.libelle_cloture AS cloture, q.date_cloture,
                q.auteur_groupe AS groupe_source, q.legislature, q.numero,
-               q.prov_url AS source_url,
-               CASE WHEN q.prov_url IS NULL THEN 'adresse_non_publiee_dans_les_donnees' END AS raison_source_url
+               coalesce(q.prov_url, 'https://www.assemblee-nationale.fr/dyn/' || q.legislature || '/questions/' || q.uid)
+                   AS source_url,
+               CASE WHEN q.legislature IS NULL AND q.prov_url IS NULL THEN 'legislature_inconnue' END AS raison_source_url
         FROM an_questions__question q
         WHERE q.auteur IS NOT NULL
         ORDER BY q.auteur, date, q.uid""")

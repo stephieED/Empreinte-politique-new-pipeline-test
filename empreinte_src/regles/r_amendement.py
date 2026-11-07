@@ -24,9 +24,11 @@ visent un document absent des dossiers : dossier non établi.
 **Banc de l'auteur au dépôt** : la position déclarée du groupe de l'auteur à la date de dépôt
 (appartenance à la date, R-APPARTENANCE) ; « non déclaré » en XVIIe (aucun groupe ne déclare).
 
-**Adresse publique** : la source ne donne qu'un chemin relatif (`document_uri`) sans hôte ;
-aucune adresse de page n'est vérifiable dans les données : `source_url` reste vide, avec la
-raison, et l'identifiant de l'amendement est servi.
+**Adresse publique** : la source ne donne qu'un chemin relatif (`document_uri`) sans hôte. La page
+`https://www.assemblee-nationale.fr/dyn/{leg}/amendements/{uid}` redirige vers celle de
+l'amendement (vérifié le 06/11/2026 : `AMANR5L17PO838901B1839P0D1N000028` → amendement n° 28 du
+texte 1839 ; un identifiant inventé répond 404) ; la vérification croisée (A2) en relit un
+échantillon chaque nuit.
 
 Sorties :
 - `amendement_canonique` : une ligne par amendement (copies dédoublonnées), `acteur` = auteur
@@ -35,7 +37,7 @@ Sorties :
   une personne citée deux fois dans la même liste ne signe qu'une fois."""
 
 NOM = "R-AMENDEMENT"
-VERSION = 1
+VERSION = 2
 DEPEND = ("R-MATIERE", "R-APPARTENANCE")
 SORTIES = ("amendement_canonique", "amendement_auteur")
 
@@ -159,8 +161,10 @@ def appliquer(ctx):
                     WHEN x.banc_groupe = 'non_declaree' THEN 'position_non_declaree_par_le_groupe' END AS raison_banc,
                x.organe_rapporteur, x.article_designation, x.mission, x.date_sort,
                x.sans_texte,
-               x.document_uri, NULL::VARCHAR AS source_url,
-               'adresse_non_publiee_dans_les_donnees' AS raison_source_url
+               x.document_uri,
+               'https://www.assemblee-nationale.fr/dyn/' || regexp_extract(x.uid, 'R5L([0-9]+)', 1) || '/amendements/' || x.uid
+                   AS source_url,
+               NULL::VARCHAR AS raison_source_url
         FROM x LEFT JOIN matiere m ON m.dossier = x.dossier_document
         ORDER BY x.uid""")
     ctx.ecrire("amendement_auteur", """

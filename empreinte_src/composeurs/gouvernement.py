@@ -303,6 +303,12 @@ def _composition(ctx, f, g, commun, limites):
               colonnes=list(sortie[0].keys()) if sortie else None,
               extra={"ordre": ORDRE_MEMBRES})
 
+    vagues = [{k: v for k, v in x.items() if k not in ("regle", "gouvernement")}
+              for x in _lignes(ctx, "SELECT * FROM vague WHERE gouvernement = ? ORDER BY vague", [org])] \
+        if _vue(ctx, "vague") else []
+    formation = [v for v in vagues if v.get("nature") == "formation"]
+    # L'effectif minimal se lit après la formation : avant, le Premier ministre est souvent seul.
+    fin_formation = max((v["fin"] for v in formation), default=None)
     # Effectif jour par jour (personnes distinctes en fonction), du début à la fin (ou au jour).
     effectif = {"min": None, "max": None}
     if lignes and g["debut"] <= fin_effective:
@@ -314,9 +320,10 @@ def _composition(ctx, f, g, commun, limites):
              AND j.j <= coalesce(m.fin, '9999-12-31')::DATE
             GROUP BY 1 ORDER BY 1""", [g["debut"], fin_effective, org])
         for cle, choix in (("min", min), ("max", max)):
-            v = choix(n for _, n in jours)
+            serie = [(d, n) for d, n in jours if cle == "max" or not fin_formation or d >= fin_formation] or jours
+            v = choix(n for _, n in serie)
             periodes, cour = [], None
-            for d, n in jours:
+            for d, n in serie:
                 if n == v:
                     if cour and cour["au"] == _veille(d):
                         cour["au"] = d
@@ -325,21 +332,20 @@ def _composition(ctx, f, g, commun, limites):
                         periodes.append(cour)
             effectif[cle] = {"valeur": v, "periodes": periodes}
 
-    vagues = _lignes(ctx, """SELECT vague, debut, fin, nb_nominations, nb_personnes
-                             FROM vague WHERE gouvernement = ? ORDER BY vague""", [org]) \
-        if _vue(ctx, "vague") else []
     entete = {
         "nb_membres": len({r["acteur"] for r in lignes}),
         "nb_portefeuilles": len(lignes),
         "effectif_minimal": effectif["min"], "effectif_maximal": effectif["max"],
-        "effectif_definition": "personnes distinctes en fonction le même jour",
+        "effectif_definition": ("personnes distinctes en fonction le même jour ; le minimum est lu à "
+                                "partir de la fin de la formation"
+                                + (f" ({_fr(fin_formation)})" if fin_formation else "")),
         "vagues": vagues, "nb_vagues": len(vagues) if _vue(ctx, "vague") else None,
         "vague_definition": "nominations d'un même gouvernement séparées de moins de 8 jours",
-        "remaniements": None,
-        "remaniements_raison": ("non établi : la règle des vagues compte les vagues de nominations "
-                                "sans dire laquelle est la formation du gouvernement (Premier ministre "
-                                "nommé seul, puis ses ministres) ; le nombre de remaniements n'est pas "
-                                "déduit"),
+        "remaniements": (sum(1 for v in vagues if v.get("nature") == "remaniement")
+                         if vagues and all(v.get("nature") for v in vagues) else None),
+        "remaniements_definition": ("vague, après la formation, où au moins un membre quitte le "
+                                    "gouvernement ou change de portefeuille ; une vague qui ne fait "
+                                    "qu'ajouter des membres est un complément (décision du 07/11/2026)"),
         "tutelle": {"etablie": len(ratt), "a_rattacher": len(a_ratt)},
         "au": g["fin"] or au,
     }
