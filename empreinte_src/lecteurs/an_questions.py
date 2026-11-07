@@ -154,6 +154,11 @@ def _question(q: dict) -> dict:
 def lire(m):
     doc = orjson.loads(m.octets)
     q = g(doc, "question")
+    # Archives de la XIVe : toutes les questions dans une enveloppe (`questionsGvt`,
+    # `questionsEcrites`, `questionsOralesSansDebat`…) qui contient la liste `question`.
+    if q is None and isinstance(doc, dict) and len(doc) == 1:
+        env = next(iter(doc.values()))
+        q = g(env, "question") if isinstance(env, dict) else None
     if q is None:
         raise ValueError(f"pas d'objet « question » : clés {sorted(doc)[:5] if isinstance(doc, dict) else type(doc).__name__}")
     # Un fichier par question en XVIIe ; une liste est tolérée (fichier unique d'une archive ancienne).
