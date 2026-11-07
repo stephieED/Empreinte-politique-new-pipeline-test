@@ -59,7 +59,8 @@ def cmd_collecter(a):
     debut = maintenant()
     e = Entrepot(a.entrepot, segment_max=params.get("segment_max_octets", 90 << 20),
                  morceau_max=params.get("morceau_blob_octets", 64 << 20))
-    t = Transport(params["user_agent"], dossier_tmp=a.tmp)
+    t = Transport(params["user_agent"], dossier_tmp=a.tmp,
+                  budget_s=params.get("budget_telechargement_s", 1800))
     if a.mode == "complet":
         for r in e._releves:            # relecture forcée : on oublie les ETag
             r["etag"] = r["last_modified"] = None

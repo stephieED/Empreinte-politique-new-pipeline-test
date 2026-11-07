@@ -53,7 +53,8 @@ class Transport:
     2 min, 10 min) ; les tests passent des pauses nulles."""
 
     def __init__(self, user_agent: str, pauses=(30, 120, 600), delai_s: float = 60.0,
-                 reprises_max: int = 40, dossier_tmp: str | None = None, pause_reprise_s: float = 2.0):
+                 reprises_max: int = 40, dossier_tmp: str | None = None, pause_reprise_s: float = 2.0,
+                 budget_s: float | None = 1800.0, reprises_vides_max: int = 3):
         self.session = requests.Session()
         self.session.headers["User-Agent"] = user_agent
         # Octets bruts : un encodage de transport fausserait la comparaison à Content-Length.
@@ -63,6 +64,17 @@ class Transport:
         self.reprises_max = reprises_max
         self.dossier_tmp = dossier_tmp
         self.pause_reprise_s = pause_reprise_s
+        # Budget de temps par fichier : au-delà, échec pour cette nuit (une archive close
+        # récalcitrante ne fait pas durer la nuit des heures ; elle est retentée la suivante).
+        self.budget_s = budget_s
+        # Reprises de suite qui n'apportent presque rien (moins d'un bloc) avant de repartir du début :
+        # mesuré le 07/11/2026, l'Assemblée sert mal une plage prise loin dans un gros fichier
+        # (206 puis rien), alors qu'un transfert depuis le début avance.
+        self.reprises_vides_max = reprises_vides_max
+        self._debut = time.monotonic()
+
+    def _hors_budget(self, en_plus: float = 0.0) -> bool:
+        return bool(self.budget_s) and time.monotonic() - self._debut + en_plus > self.budget_s
 
     # -- requêtes simples (listes, API) -------------------------------------------------
     def texte(self, url: str) -> tuple[int, str, dict]:
@@ -75,8 +87,11 @@ class Transport:
         rep = Reponse(url=url, issue="echec")
         debut = time.monotonic()
         derniere_erreur = ""
+        self._debut = debut
         for essai in range(len(self.pauses) + 1):
             if essai:
+                if self._hors_budget(self.pauses[essai - 1]):
+                    break
                 time.sleep(self.pauses[essai - 1])
             rep.tentatives += 1
             try:
@@ -89,6 +104,8 @@ class Transport:
                 derniere_erreur = f"{type(e).__name__}: {e}"
         rep.issue = "echec"
         rep.message = derniere_erreur or "échec sans message"
+        if self._hors_budget():
+            rep.message += f" ; budget de {int(self.budget_s)} s dépassé, nouvel essai à la prochaine nuit"
         rep.duree_s = time.monotonic() - debut
         return rep
 
@@ -117,10 +134,10 @@ class Transport:
         try:
             with os.fdopen(fd, "wb") as f:
                 rep.octets_recus += _copier(r, f)
-                reprises = 0
+                reprises = vides = 0
                 while attendu is not None and f.tell() < attendu:
                     # Transfert coupé. Reprise seulement si un validateur garantit la même version.
-                    if not (etag_recu or date_recue) or reprises >= self.reprises_max:
+                    if not (etag_recu or date_recue) or reprises >= self.reprises_max or self._hors_budget():
                         rep.message = (f"transfert coupé à {f.tell()} octets sur {attendu}"
                                        + ("" if (etag_recu or date_recue) else ", sans ETag pour reprendre")
                                        + (f" ; reprises : {', '.join(rep.journal_reprises[-12:])}"
@@ -142,6 +159,26 @@ class Transport:
                         n = _copier(rr, f)
                         rep.octets_recus += n
                         rep.journal_reprises.append(f"206 +{_taille_lisible(n)}")
+                        vides = vides + 1 if n < TAILLE_BLOC else 0
+                        if vides >= self.reprises_vides_max and f.tell() < attendu:
+                            # La plage n'avance plus : repartir du début, qui avance mieux.
+                            vides = 0
+                            try:
+                                rr = self.session.get(url, stream=True, timeout=self.delai_s)
+                            except requests.RequestException as e:
+                                rep.journal_reprises.append(f"coupure ({type(e).__name__})")
+                                continue
+                            if rr.status_code != 200:
+                                rr.close()
+                                continue
+                            rep.journal_reprises.append("départ du début")
+                            f.seek(0)
+                            f.truncate()
+                            rep.entetes = {k.lower(): v for k, v in rr.headers.items()}
+                            attendu = _entier(rep.entetes.get("content-length"))
+                            etag_recu = rep.entetes.get("etag")
+                            date_recue = rep.entetes.get("last-modified")
+                            rep.octets_recus += _copier(rr, f)
                     elif rr.status_code in (200, 206):
                         # Autre version servie, ou serveur qui ignore la plage : on repart de zéro
                         # avec la version entière.

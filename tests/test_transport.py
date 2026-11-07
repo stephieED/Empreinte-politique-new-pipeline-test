@@ -23,6 +23,7 @@ class Etat:
     couper_chaque = None      # couper chaque réponse (206 comprises) après ce nombre d'octets
     fermer_reprises = 0       # fermer la connexion sans répondre aux n prochaines reprises
     ignorer_plage = False     # serveur (ou relais) qui ignore Range : renvoie 200 entier
+    plage_vide = False        # 206 annoncé, puis rien (mesuré sur l'Assemblée, plage à 300 Mo)
 
 
 class Gestion(BaseHTTPRequestHandler):
@@ -49,6 +50,10 @@ class Gestion(BaseHTTPRequestHandler):
             if not Etat.sans_etag:
                 self.send_header("ETag", Etat.etag)
             self.end_headers()
+            if Etat.plage_vide:
+                self.wfile.flush()
+                self.connection.close()
+                return
             if Etat.couper_chaque:
                 self.wfile.write(corps[:Etat.couper_chaque])
                 self.wfile.flush()
@@ -90,6 +95,7 @@ def serveur():
     Etat.contenu, Etat.etag, Etat.couper_au = V1, '"v1"', None
     Etat.changer_apres_coupure, Etat.sans_etag, Etat.requetes = False, False, []
     Etat.couper_chaque, Etat.fermer_reprises, Etat.ignorer_plage = None, 0, False
+    Etat.plage_vide = False
     s = ThreadingHTTPServer(("127.0.0.1", 0), Gestion)
     threading.Thread(target=s.serve_forever, daemon=True).start()
     yield f"http://127.0.0.1:{s.server_port}/a.zip"
@@ -159,3 +165,20 @@ def test_echec_dit_ce_que_les_reprises_ont_recu(serveur, tmp_path):
     t = Transport("test", pauses=(), delai_s=5, dossier_tmp=str(tmp_path), reprises_max=3, pause_reprise_s=0)
     rep = t.telecharger(serveur)
     assert rep.issue == "echec" and "reprises : 206 +1 Ko, 206 +1 Ko, 206 +1 Ko" in rep.message
+
+
+def test_plages_vides_on_repart_du_debut(serveur, tmp_path):
+    """L'Assemblée répond 206 à une plage prise loin, puis n'envoie rien : après trois reprises
+    vides, on repart du début, qui avance (07/11/2026)."""
+    Etat.couper_au, Etat.plage_vide = 10 * 1024, True
+    rep = _t(tmp_path).telecharger(serveur)
+    assert rep.issue == "nouveau" and open(rep.chemin, "rb").read() == V1
+    assert rep.journal_reprises[-1] == "départ du début" and rep.tentatives == 1
+
+
+def test_budget_de_temps_par_fichier(serveur, tmp_path):
+    Etat.couper_chaque = 512
+    t = Transport("test", pauses=(0, 0), delai_s=5, dossier_tmp=str(tmp_path), pause_reprise_s=0.05,
+                  budget_s=0.3)
+    rep = t.telecharger(serveur)
+    assert rep.issue == "echec" and "budget de 0 s dépassé" in rep.message
