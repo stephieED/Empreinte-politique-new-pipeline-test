@@ -59,3 +59,16 @@ def test_lecteur_corrige_relit_tout_l_historique(tmp_path, extrait_agenda, pa_ag
     assert b["lues"] == 6
     t = pq.read_table(tmp_path / "z2" / "an_agenda__reunion.parquet").to_pylist()
     assert {r["lecteur"] for r in t} == {f"an_agenda@{an_agenda.VERSION}"}
+
+
+def test_point_collecte_mais_pas_encore_lu(tmp_path, extrait_agenda, pa_agenda):
+    """`lire: false` : l'archive est dans l'entrepôt, mais ne produit aucun fait tant que son
+    lecteur et ses fiches ne sont pas prêts (mise en service par étapes, 07/11/2026). Quand le
+    point passe à `lire: true`, ses versions sont lues à la nuit suivante."""
+    e = _ranger(tmp_path, pa_agenda, extrait_agenda)
+    cfg = {"points_acces": [{"id": "an-agenda-l17", "licence": "etalab-2.0", "lire": False}]}
+    b = Lecture(e, str(tmp_path / "z2"), cfg).executer(an_agenda)
+    assert b["lues"] == 0
+    assert pq.read_table(tmp_path / "z2" / "an_agenda__reunion.parquet").num_rows == 0
+    b = Lecture(e, str(tmp_path / "z2"), CFG).executer(an_agenda)
+    assert b["lues"] == 6
