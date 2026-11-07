@@ -770,9 +770,8 @@ def _amendements(ctx, f, acteur, perim, commun, idx) -> dict:
                        "document": "document", "organe": "commission"},
                   date="date_depot",
                   couverture=_couv("amendements", "complet", f"Amendements déposés en {annee} dont la "
-                                   "personne est l'auteur principal (copies dédoublonnées). Aucune "
-                                   "adresse publique vérifiable dans les données : l'identifiant est "
-                                   "servi.", len(ls), len(ls), pts, au=au),
+                                   "personne est l'auteur principal (copies dédoublonnées), avec l'adresse "
+                                   "de sa page sur le site de l'Assemblée.", len(ls), len(ls), pts, au=au),
                   colonnes=COLS_AMENDEMENTS,
                   extra={"annee": annee, "dossiers": titres, "ordre": "chronologique",
                          "aide_a_la_lecture": ["commission_libelle"]})
@@ -1093,8 +1092,7 @@ def _questions(ctx, f, acteur, perim, commun, idx) -> dict:
     rep = sum(1 for r in rows if r["date_reponse"])
     phrase = (f"Questions écrites, au gouvernement et orales sans débat dont la personne est l'auteur "
               f"({len(rows)}), avec réponse publiée pour {rep}. Une question sans réponse n'a pas de date "
-              "de réponse. La page publique d'une question n'est pas dans les données : l'identifiant est "
-              "servi. Le lien entre une question au gouvernement et sa prise de parole n'est pas encore "
+              "de réponse. Chaque question renvoie à sa page sur le site de l'Assemblée. Le lien entre une question au gouvernement et sa prise de parole n'est pas encore "
               "établi (règle R-QAG à venir).")
     cv = _couv_activite("questions", perim, phrase, rep, len(rows), pts, au)
     f.section("questions", rows, "question", ids={"acteur": "acteur", "question": "question",

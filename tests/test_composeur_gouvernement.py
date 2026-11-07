@@ -86,9 +86,9 @@ TABLES = {
     "mandat_ouvert_organe_clos": [{"mandat": "PM15999", "organe": "PO3"}],
     "vague": [
         {"gouvernement": "PO3", "vague": 1, "debut": "2024-09-06", "fin": "2024-09-06", "nb_nominations": 1,
-         "nb_personnes": 1},
+         "nb_personnes": 1, "nb_arrivees": 1, "nb_departs": 0, "nb_changements": 0, "nature": "formation"},
         {"gouvernement": "PO3", "vague": 2, "debut": "2024-09-21", "fin": "2024-09-21", "nb_nominations": 5,
-         "nb_personnes": 5}],
+         "nb_personnes": 5, "nb_arrivees": 5, "nb_departs": 0, "nb_changements": 0, "nature": "formation"}],
     "groupe": [
         {"organe": "PO900", "legislature": 17, "sigle": "EPR", "libelle": "Ensemble pour la République",
          "debut": "2024-07-18", "fin": None, "position_declaree": "non_declaree"},
@@ -249,9 +249,12 @@ def test_composition_ordre_protocolaire_et_tutelles(sortie):
     assert "ordre" in d
     entete = _lire(racine, "gouvernements/gamma/fiche.json.gz")["en_bref"]["composition"]
     assert entete["nb_membres"] == 6
-    assert entete["effectif_minimal"] == {"valeur": 1, "periodes": [{"du": "2024-09-06", "au": "2024-09-20"}]}
+    # Minimum lu après la formation (Premier ministre seul du 06 au 20/09, puis ses ministres) :
+    # 6, pas 1 (décision du 07/11/2026).
+    assert entete["effectif_minimal"] == {"valeur": 6, "periodes": [{"du": "2024-09-21", "au": "2024-12-13"}]}
     assert entete["effectif_maximal"]["valeur"] == 6
-    assert entete["nb_vagues"] == 2 and entete["remaniements"] is None and entete["remaniements_raison"]
+    assert entete["nb_vagues"] == 2 and entete["remaniements"] == 0 and entete["remaniements_definition"]
+    assert [v["nature"] for v in entete["vagues"]] == ["formation", "formation"]
     assert entete["tutelle"] == {"etablie": 2, "a_rattacher": 3}
     limites = _lire(racine, "gouvernements/gamma/fiche.json.gz")["limites"]
     assert any(l["famille"] == "composition" and l["mandats"] == ["PM15999"] for l in limites)
