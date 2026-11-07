@@ -120,7 +120,9 @@ def cmd_calculer(a):
     nouvelles_attributions = len(registre.attributions) - ligne_avant
     site = os.path.join(a.sortie, "site")
     shutil.rmtree(site, ignore_errors=True)
-    ecr = Ecrivain(site, f"g{gen:06d}")
+    pannes = {r["point_acces"]: r.get("panne_depuis") or r.get("debut")
+              for r in rapport.get("releves", []) if r.get("issue") in ("echec", "suspect")}
+    ecr = Ecrivain(site, f"g{gen:06d}", pannes=pannes)
     with mesures.etape("E5") as m:
         for c in composeurs():
             c.composer(ctx, ecr)

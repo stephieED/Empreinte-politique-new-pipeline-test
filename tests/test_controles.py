@@ -68,3 +68,31 @@ def test_c5_section_complete_avec_source_en_panne(tmp_path):
     c = Controles(ecr.racine)
     c.c5_couverture([{"point_acces": "an-dossiers-l17", "issue": "inchange"}])
     assert not c.anomalies
+
+
+def test_source_en_panne_la_section_le_dit_et_la_publication_continue(tmp_path):
+    """Scénario 2 de la commande : le Sénat ne répond plus ; la section « fonctions » qui en dépend
+    passe en « panne », datée, et C5 ne bloque pas (constaté le 07/11/2026 : export du Sénat de
+    444 octets, publication refusée faute de ce marquage)."""
+    import gzip
+    import json
+    import os
+    releve = {"point_acces": "senat-export", "issue": "suspect", "debut": "2026-11-07T06:55:26+00:00"}
+    ecr = Ecrivain(str(tmp_path), "g000003", pannes={"senat-export": "2026-11-07T06:55:26+00:00"})
+    f = ecr.fiche("candidat", "x", "X")
+    f.section("fonctions", [{"a": 1}], "fonction",
+              couverture={"famille": "fonctions", "statut": "complet", "detail": "Mandats.",
+                          "points_acces": ["an-amo30-l17", "senat-export"]})
+    f.section("votes", [{"a": 1}], "vote",
+              couverture={"famille": "votes", "statut": "complet", "points_acces": ["an-scrutins-l17"]})
+    ecr.clore()
+    with gzip.open(os.path.join(ecr.racine, "candidats", "x", "fonctions.json.gz")) as fi:
+        c = json.load(fi)["couverture"]
+    assert (c["statut"], c["statut_sans_panne"], c["points_en_panne"]) == ("panne", "complet", ["senat-export"])
+    assert c["panne_depuis"].startswith("2026-11-07") and "Source en panne depuis le 2026-11-07" in c["detail"]
+    with gzip.open(os.path.join(ecr.racine, "candidats", "x", "fiche.json.gz")) as fi:
+        entete = {x["section"]: x["statut"] for x in json.load(fi)["couverture"]}
+    assert entete == {"fonctions": "panne", "votes": "complet"}
+    ctrl = Controles(ecr.racine)
+    ctrl.c5_couverture([releve])
+    assert ctrl.bilan()["publication_autorisee"], ctrl.bilan()
