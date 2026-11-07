@@ -77,6 +77,7 @@ jobs:
       actions: read
     outputs:
       generation: ${{ steps.collecte.outputs.generation }}
+      acquis: ${{ steps.collecte.outputs.acquis }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -115,11 +116,14 @@ jobs:
             empreinte collecter --entrepot entrepot --mode "${{ needs.preparer.outputs.mode }}" \
               --rapport sortie/rapport.json --tmp "$RUNNER_TEMP" ${POINTS:+--points $POINTS}
           grep -E "Maximum resident|Elapsed" sortie/time-collecter.txt || true
-          echo "generation=$(python -c 'import json; print("%06d" % json.load(open("entrepot/manifeste.json"))["generation"])')" >> "$GITHUB_OUTPUT"
+          G=$(python -c 'import json; print("%06d" % json.load(open("entrepot/manifeste.json"))["generation"])')
+          echo "generation=$G" >> "$GITHUB_OUTPUT"
+          # Un essai n'écrit rien : son acquis porte un autre nom, que le rattrapage ne reprend jamais.
+          if [ "${{ needs.preparer.outputs.mode }}" = "essai" ]; then echo "acquis=essai-g$G"; else echo "acquis=acquis-g$G"; fi >> "$GITHUB_OUTPUT"
       - name: Remettre l'acquis à la tâche d'écriture
         uses: actions/upload-artifact@v4
         with:
-          name: acquis-g${{ steps.collecte.outputs.generation }}
+          name: ${{ steps.collecte.outputs.acquis }}
           path: |
             entrepot/
             sortie/
@@ -151,7 +155,7 @@ jobs:
         run: empreinte restaurer --entrepot entrepot --avec-blobs
       - name: Acquis de la nuit
         uses: actions/download-artifact@v4
-        with: { name: "acquis-g${{ needs.collecter.outputs.generation }}", path: . }
+        with: { name: "${{ needs.collecter.outputs.acquis }}", path: . }
       - name: Faits déjà lus (cache, accélérateur seulement)
         uses: actions/cache/restore@v4
         with:
@@ -199,7 +203,7 @@ jobs:
         with: { python-version: "3.12" }
       - run: pip install -q -e .
       - uses: actions/download-artifact@v4
-        with: { name: "acquis-g${{ needs.collecter.outputs.generation }}", path: . }
+        with: { name: "${{ needs.collecter.outputs.acquis }}", path: . }
       - name: Candidate (si le calcul a réussi)
         if: needs.calculer.result == 'success'
         uses: actions/download-artifact@v4
