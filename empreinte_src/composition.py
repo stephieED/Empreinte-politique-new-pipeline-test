@@ -20,7 +20,11 @@ Ce que le cadre garantit :
 - chaque ligne affichée devient un **fait publié** de l'export « fiche par fiche »
   (commande de réalisation, section 7) : fiche, section, type, identifiants, valeur, date, source ;
 - le manifeste dit, pour chaque fichier, son empreinte et ses poids brut et compressé (mesure
-  du poids téléchargé par fiche, commande, section 5).
+  du poids téléchargé par fiche, commande, section 5) ;
+- **une source en panne se voit** (doc. 2, 2.8, C5 ; commande, scénario 2) : une section dite
+  `complet` dont un point d'accès n'a pas pu être relevé cette nuit passe en `panne`, avec la date
+  du premier échec ; ses données restent celles du dernier relevé complet, et la publication
+  continue. Le composeur n'a rien à faire : l'Ecrivain reçoit la liste des pannes.
 """
 from __future__ import annotations
 
@@ -62,6 +66,7 @@ class Fiche:
         l'index léger des prises de parole, dont chaque ligne renvoie à son extrait) : ses lignes
         ne sont pas inscrites une seconde fois."""
         colonnes = colonnes or sorted({k for l in lignes for k in l})
+        couverture = self.ecr.marquer_panne(couverture)
         contenu = {"contrat": CONTRAT, "fiche": self.id, "section": nom,
                    "colonnes": colonnes, "lignes": [[l.get(c) for c in colonnes] for l in lignes],
                    "couverture": couverture or {}, **(extra or {})}
@@ -89,7 +94,7 @@ class Fiche:
 
 
 class Ecrivain:
-    def __init__(self, dossier: str, id_publication: str):
+    def __init__(self, dossier: str, id_publication: str, pannes: dict[str, str] | None = None):
         self.racine = os.path.join(dossier, "donnees", id_publication)
         self.id_publication = id_publication
         os.makedirs(self.racine, exist_ok=True)
@@ -98,6 +103,24 @@ class Ecrivain:
         self.fiches: list[dict] = []
         self.faits: list[dict] = []
         self._ouvertes: list[Fiche] = []
+        # {point d'accès en panne cette nuit: date du premier échec depuis le dernier relevé réussi}
+        self.pannes = dict(pannes or {})
+
+    def marquer_panne(self, couverture: dict | None) -> dict | None:
+        """Une couverture « complet » dont une source est en panne devient « panne », datée."""
+        if not couverture or couverture.get("statut") != "complet" or not self.pannes:
+            return couverture
+        touches = sorted(set(couverture.get("points_acces") or []) & set(self.pannes))
+        if not touches:
+            return couverture
+        depuis = min((self.pannes[p] for p in touches if self.pannes[p]), default=None)
+        c = dict(couverture)
+        c.update({"statut": "panne", "statut_sans_panne": "complet", "points_en_panne": touches,
+                  "panne_depuis": depuis,
+                  "detail": (c.get("detail") or "") + (" " if c.get("detail") else "")
+                  + f"Source en panne{' depuis le ' + depuis[:10] if depuis else ''} ("
+                  + ", ".join(touches) + ") : données du dernier relevé complet."})
+        return c
 
     def fiche(self, type_fiche: str, adresse: str, titre: str) -> Fiche:
         f = Fiche(self, type_fiche, adresse, titre)
