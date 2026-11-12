@@ -236,6 +236,16 @@ def _deport(x: dict) -> dict:
 def lire(m):
     doc = orjson.loads(m.octets)
     vide = {t: [] for t in TABLES}
+    # Archive AMO20 de la XIVe : tous les organes et acteurs dans un seul fichier.
+    if isinstance(doc.get("export"), dict):
+        ex = doc["export"]
+        out = {t: [] for t in TABLES}
+        for o in liste((ex.get("organes") or {}).get("organe")):
+            out["organe"].append(_organe(o))
+        for a in liste((ex.get("acteurs") or {}).get("acteur")):
+            for t, ls in _acteur(a).items():
+                out[t] += ls
+        return out
     if "acteur" in doc:
         return {**vide, **_acteur(doc["acteur"])}
     if "organe" in doc:

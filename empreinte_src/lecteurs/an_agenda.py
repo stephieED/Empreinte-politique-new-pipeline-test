@@ -28,7 +28,21 @@ TABLES = {
 
 
 def lire(m):
-    r = orjson.loads(m.octets)["reunion"]
+    """Un fichier par réunion (XVe → XVIIe), ou toutes les réunions dans un seul fichier
+    (archive de la XIVe : `{"reunions": {"reunion": [...]}}`)."""
+    doc = orjson.loads(m.octets)
+    if "reunion" in doc:
+        return _reunion(doc["reunion"])
+    if isinstance(doc.get("reunions"), dict):
+        out = {"reunion": [], "point_odj": []}
+        for r in liste(doc["reunions"].get("reunion")):
+            for t, ls in _reunion(r).items():
+                out[t] += ls
+        return out
+    raise ValueError(f"pas d'objet « reunion » : clés {sorted(doc)[:5]}")
+
+
+def _reunion(r):
     uid = r["uid"]
     ident = r.get("identifiants") or {}
     cdv = r.get("cycleDeVie") or {}

@@ -119,6 +119,9 @@ class Lecture:
         self.dossier = dossier_z2
         os.makedirs(dossier_z2, exist_ok=True)
         self.licences = {p["id"]: p.get("licence") for p in config["points_acces"]}
+        # Points collectés mais pas encore lus (`lire: false`) : leurs fichiers entrent dans
+        # l'entrepôt chaque nuit, sans encore produire de faits (mise en service par étapes).
+        self.non_lus = {p["id"] for p in config["points_acces"] if p.get("lire") is False}
         self.bilan: list[dict] = []
 
     def _chemin(self, lecteur, table):
@@ -138,7 +141,8 @@ class Lecture:
         jointures sont faites par DuckDB."""
         import duckdb
         versions = [r for r in self.e._index if r["type"] in mod.TYPES
-                    and (not points or r["point_acces"] in points)]
+                    and (not points or r["point_acces"] in points)
+                    and r["point_acces"] not in self.non_lus]
         if limite:
             versions = versions[:limite]
         deja = self._cache(mod)
