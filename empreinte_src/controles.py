@@ -36,6 +36,9 @@ CLES_INTERDITES = re.compile(
     r"(taux_?de_?presence|presence|participation_individuelle|score|classement|rang_personne|"
     r"cohesion|nb_divergences|total_divergences|taux_adoption|part_appliquant|indice_)", re.I)
 VALEURS_49_3_INTERDITES = {"49.3", "49-3", "art.49.3"}     # jamais une position de vote
+# C1 : faits dont l'identifiant servi est un numéro d'ordre (`sujet_id`), qui se décale quand un
+# sujet plus ancien change : leur identité est ce que le lecteur voit (12/11/2026).
+IDENTITE_PAR_CONTENU = {"parole_sujet": ("sujet", "type_sujet", "dossiers")}
 
 
 def _empreinte(controle: str, objets) -> str:
@@ -125,16 +128,44 @@ class Controles:
         # aucun identifiant se reconnaît à sa valeur, sans sa date de compte.
         from .composition import IDS
 
-        def cle(fichier):
+        def ids(fichier):
             cols = {r[0] for r in con.execute(f"DESCRIBE SELECT * FROM read_parquet('{fichier}')").fetchall()}
-            ids = [f"id_{k}" if f"id_{k}" in cols else "NULL::VARCHAR" for k in IDS]
-            return (f"fiche || '|' || type_fait || '|' || concat_ws('|', {', '.join(f'coalesce({i}, {chr(39)}{chr(39)})' for i in ids)})"
-                    f" || CASE WHEN {' AND '.join(f'{i} IS NULL' for i in ids)}"
-                    """ THEN '|' || json_merge_patch(valeur, '{"au": null, "date_reference": null}')::VARCHAR ELSE '' END""")
+            return [f"id_{k}" if f"id_{k}" in cols else "NULL::VARCHAR" for k in IDS]
+
+        def cle(fichier):
+            i = ids(fichier)
+            return (f"fiche || '|' || type_fait || '|' || "
+                    f"concat_ws('|', {', '.join(f'coalesce({x}, {chr(39)}{chr(39)})' for x in i)})")
+
+        def sans_id(fichier):
+            # Faits identifiés par leur contenu (pas d'identifiant de source, ou un numéro d'ordre
+            # qui se décale) : traités plus bas par leur descripteur.
+            return ("(" + " AND ".join(f"{x} IS NULL" for x in ids(fichier)) + ") OR type_fait IN ("
+                    + ", ".join(f"'{t}'" for t in IDENTITE_PAR_CONTENU) + ")")
         perdus = con.execute(f"""
-            WITH a AS (SELECT *, {cle(faits_avant)} AS cle FROM read_parquet('{faits_avant}')),
+            WITH a AS (SELECT *, {cle(faits_avant)} AS cle FROM read_parquet('{faits_avant}')
+                       WHERE NOT ({sans_id(faits_avant)})),
                  b AS (SELECT DISTINCT {cle(faits_apres)} AS cle FROM read_parquet('{faits_apres}'))
             SELECT a.fiche, a.section, a.type_fait, a.valeur FROM a ANTI JOIN b USING (cle)""").fetchall()
+        # Faits sans aucun identifiant (comptes par ministère et par nature, par exemple) : leur
+        # identité est leur valeur sans ses comptes ni ses dates, qui changent légitimement.
+        def descripteur(fiche, type_fait, valeur):
+            try:
+                v = json.loads(valeur)
+            except ValueError:
+                return (fiche, type_fait, valeur)
+            if isinstance(v, dict) and type_fait in IDENTITE_PAR_CONTENU:
+                v = {k: v.get(k) for k in IDENTITE_PAR_CONTENU[type_fait]}
+            elif isinstance(v, dict):
+                v = {k: x for k, x in v.items() if not (k in ("au", "du", "date_reference")
+                                                        or k.startswith(("nb_", "effectif")))}
+            return (fiche, type_fait, json.dumps(v, sort_keys=True, ensure_ascii=False))
+        sans_a = con.execute(f"SELECT fiche, section, type_fait, valeur FROM read_parquet('{faits_avant}') "
+                             f"WHERE {sans_id(faits_avant)}").fetchall()
+        apres_d = {descripteur(f, t, v) for f, _, t, v in con.execute(
+            f"SELECT fiche, section, type_fait, valeur FROM read_parquet('{faits_apres}') "
+            f"WHERE {sans_id(faits_apres)}").fetchall()}
+        perdus += [p for p in sans_a if descripteur(p[0], p[2], p[3]) not in apres_d]
         # Un fait qui disparaît parce que sa source a changé ou l'a retiré est expliqué : sa
         # valeur cite l'identifiant d'un fichier source modifié ou retiré cette nuit.
         non_expliques = [p for p in perdus
