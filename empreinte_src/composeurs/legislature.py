@@ -465,8 +465,11 @@ def _section_groupes(ctx, f, leg, au, lic):
             WHERE l.publiee AND m.affiche""")}
     for l in lignes:
         l["licence"] = lic.get(l["source_point"])
-        ad = lignee_de.get(l["groupe"]) if l["groupe"] else None
-        l["lien"] = f"lignee/{ad}" if ad else None
+        # Lien vers la lignée pour les groupes seulement : une ligne sans identifiant (non-inscrits)
+        # est reconnue par C1 à sa valeur, qui ne doit pas changer.
+        if l["groupe"]:
+            ad = lignee_de.get(l["groupe"])
+            l["lien"] = f"lignee/{ad}" if ad else None
     grp = [l for l in lignes if l["rattachement"] == "groupe"]
     declares = sum(1 for l in grp if l["position_declaree"] != "non_declaree")
     ecarts = [l["sigle"] for l in grp if l["effectif"] is not None and avec_hemicycle

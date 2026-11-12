@@ -37,9 +37,9 @@ TABLES = {
     "gouvernement_legislature": [{"gouvernement": "PO-G", "legislature": 17}],
     "membre_gouvernement": [{"gouvernement": "PO-G", "acteur": "PA7"}],
     "depute": [{"acteur": "PA1", "legislature": 17}, {"acteur": "PA9", "legislature": 17}],
-    "an_scrutins__scrutin": [{"uid": "VT1", "numero": 1, "date": "2025-01-30", "nombre_votants": 3, "pour": 2,
+    "an_scrutins__scrutin": [{"uid": "VT1", "legislature": "17", "numero": 1, "date": "2025-01-30", "nombre_votants": 3, "pour": 2,
                               "contre": 1, "abstentions": 0},
-                             {"uid": "VT2", "numero": 2, "date": "2025-02-01", "nombre_votants": 1, "pour": 1,
+                             {"uid": "VT2", "legislature": "17", "numero": 2, "date": "2025-02-01", "nombre_votants": 1, "pour": 1,
                               "contre": 0, "abstentions": 0}],
     # VT1 (30/01/2025) : PA2 a quitté le groupe le 01/01/2025, le groupe compte 1 membre.
     "an_scrutins__decompte_groupe": [{"scrutin": "VT1", "organe": "PO17S", "nombre_membres": 1},
@@ -217,3 +217,17 @@ def test_a2_verification_croisee(tmp_path):
     r = c.a2_verification_croisee(1, panne, nb_scrutins=5)
     assert r["ecarts"] == [] and len(r["non_verifies"]) == 2
     assert _an(c, "A2")[0]["titre"].startswith("Vérification croisée impossible")
+
+
+def test_a2_page_de_la_legislature_du_scrutin():
+    """Un scrutin de la XIVe est relu sur sa page de la XIVe, pas sur celle de la XVIIe (qui
+    porte le même numéro : écarts faux, essai du 12/11/2026)."""
+    from empreinte_src.verification import verifier
+    con = duckdb.connect()
+    con.execute("CREATE TABLE _ctl_fp AS SELECT 'VTANR5L14V34' AS id_scrutin")
+    con.execute("""CREATE TABLE an_scrutins__scrutin AS SELECT 'VTANR5L14V34' AS uid, '14' AS legislature,
+                   '34' AS numero, 3 AS nombre_votants, 2 AS pour, 1 AS contre, 0 AS abstentions""")
+    con.execute("CREATE TABLE an_scrutins__position_vote (scrutin VARCHAR, acteur VARCHAR, position VARCHAR)")
+    lues = []
+    verifier(con, 1, lambda url: lues.append(url) or PAGE, nb_scrutins=1)
+    assert lues == ["https://www.assemblee-nationale.fr/dyn/14/scrutins/34"]
