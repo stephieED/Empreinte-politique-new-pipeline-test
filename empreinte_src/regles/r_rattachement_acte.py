@@ -23,11 +23,19 @@ Pièges traités (cahier 3.6 ; mesures `autres-sources.md`, § 1) :
   un jour sans gouvernement publié (11 au 15/05/2012) donne « non établi ».
 
 Période couverte : un numéro du JO est **complet** quand chaque texte de son sommaire est lu.
-La période couverte va du premier au dernier numéro complet de la dernière suite continue
-(sans numéro incomplet entre eux) ; les numéros manquants dans la suite sont nommés."""
+Seuls comptent les numéros **livrés dans leur actualité** (au plus `ACTUALITE_JOURS` jours après
+leur date de publication) : un numéro ancien redélivré (un numéro de 1950, complet par hasard) ne
+fait pas remonter la période. Elle va du premier au dernier de ces numéros qui soit complet ; les
+numéros incomplets et les numéros manquants entre eux sont **nommés comme des trous**, sans
+réduire la période. Jusqu'au
+10/11/2026, la période s'arrêtait à la dernière suite continue de numéros complets : un seul
+numéro incomplet (vers le 09/11) l'a ramenée à deux jours, et les actes d'octobre du
+gouvernement Lecornu II ont disparu de sa fiche."""
+
+ACTUALITE_JOURS = 7
 
 NOM = "R-RATTACHEMENT-ACTE"
-VERSION = 1
+VERSION = 2
 DEPEND = ("R-GOUVERNEMENTS", "R-LOI-CITEE")
 SORTIES = ("acte_rattache", "couverture_jo", "couverture_jo_gouvernement")
 DESCRIPTION = (
@@ -72,25 +80,23 @@ def _decisions(ctx) -> str:
 
 def appliquer(ctx):
     # -- 1. Période couverte par les livraisons -------------------------------------------------
-    ctx.x("""CREATE OR REPLACE TEMP TABLE _numero_jo AS
+    ctx.x(f"""CREATE OR REPLACE TEMP TABLE _numero_jo AS
         WITH s AS (
             SELECT s.conteneur, any_value(s.date_publication) AS date_publication,
                    any_value(s.num_jo) AS num_jo, any_value(s.titre_jo) AS titre_jo,
-                   count(*) AS nb_textes, count(a.uid) AS nb_textes_lus
+                   count(*) AS nb_textes, count(a.uid) AS nb_textes_lus,
+                   min(strptime(substr(s.livraison, 1, 8), '%Y%m%d')::DATE) AS premiere_livraison
             FROM jo_actes__sommaire_jo s
             LEFT JOIN jo_actes__acte_reglementaire a ON a.uid = s.acte
             WHERE s.date_publication IS NOT NULL
             GROUP BY 1)
-        SELECT *, nb_textes_lus = nb_textes AS complet FROM s""")
+        SELECT *, nb_textes_lus = nb_textes AS complet,
+               date_diff('day', TRY_CAST(date_publication AS DATE), premiere_livraison) <= {ACTUALITE_JOURS}
+                   AS dans_son_actualite
+        FROM s""")
     ctx.x("""CREATE OR REPLACE TEMP TABLE _periode AS
-        WITH fin AS (SELECT max(date_publication) AS d FROM _numero_jo WHERE complet),
-        coupure AS (SELECT max(date_publication) AS d FROM _numero_jo, fin
-                    WHERE NOT complet AND date_publication < fin.d)
-        SELECT (SELECT min(date_publication) FROM _numero_jo, coupure, fin
-                WHERE complet AND date_publication > coalesce(coupure.d, '0000-00-00')
-                  AND date_publication <= fin.d) AS debut,
-               fin.d AS fin
-        FROM fin, coupure""")
+        SELECT min(date_publication) AS debut, max(date_publication) AS fin
+        FROM _numero_jo WHERE complet AND dans_son_actualite""")
     ctx.ecrire("couverture_jo", f"""
         WITH p AS (SELECT * FROM _periode),
         n AS (SELECT j.*, TRY_CAST(num_jo AS INTEGER) AS num, substr(date_publication, 1, 4) AS an

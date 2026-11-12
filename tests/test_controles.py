@@ -96,3 +96,30 @@ def test_source_en_panne_la_section_le_dit_et_la_publication_continue(tmp_path):
     ctrl = Controles(ecr.racine)
     ctrl.c5_couverture([releve])
     assert ctrl.bilan()["publication_autorisee"], ctrl.bilan()
+
+
+def test_c1_reconnait_un_fait_a_son_identite_pas_a_sa_valeur(tmp_path):
+    """08/11/2026 : les comptes datés (« au ») changeaient de valeur chaque nuit et passaient pour
+    perdus. 11/11/2026 : des actes réellement disparus. Le premier n'est pas une perte, le second
+    en est une."""
+    def fait(fiche, section, type_fait, valeur, **ids):
+        r = {"fiche": fiche, "section": section, "type_fait": type_fait, "valeur": valeur}
+        r.update({f"id_{k}": v for k, v in ids.items()})
+        return r
+    avant = [fait("candidat/x", "entete", "compte_candidat", '{"famille":"mandats","valeur":3,"au":"2026-11-07"}',
+                  acteur="PA1", autre="mandats"),
+             fait("gouvernement/g", "actes-2026-10", "acte", '{"acte":"JORFTEXT1"}', acte="JORFTEXT1"),
+             fait("gouvernement/g", "actes", "actes_compte", '{"nature":"DECRET","nb_actes":4,"au":"2026-11-07"}')]
+    apres = [fait("candidat/x", "entete", "compte_candidat", '{"famille":"mandats","valeur":3,"au":"2026-11-08"}',
+                  acteur="PA1", autre="mandats"),
+             fait("gouvernement/g", "actes", "actes_compte", '{"nature":"DECRET","nb_actes":4,"au":"2026-11-08"}')]
+    schema = pa.schema([(c, pa.string()) for c in ("fiche", "section", "type_fait", "valeur", "id_acteur",
+                                                    "id_acte", "id_autre")])
+    pa_ = str(tmp_path / "a.parquet")
+    pb = str(tmp_path / "b.parquet")
+    pq.write_table(pa.Table.from_pylist(avant, schema=schema), pa_)
+    pq.write_table(pa.Table.from_pylist(apres, schema=schema), pb)
+    c = Controles(str(tmp_path))
+    c.c1_c6_comparer(pa_, pb)
+    a = [x for x in c.anomalies if x["controle"] == "C1"]
+    assert len(a) == 1 and a[0]["nb_objets"] == 1 and "JORFTEXT1" in a[0]["exemples"][0]

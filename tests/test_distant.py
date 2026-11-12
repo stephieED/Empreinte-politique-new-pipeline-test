@@ -42,3 +42,16 @@ def test_entrepot_par_defaut(tmp_path, monkeypatch):
     (tmp_path / "f").write_bytes(b"x")
     distant._envoyer("o/d", str(tmp_path / "f"), "f")
     assert _envois(appels) == [("entrepot", "f")]
+
+
+def test_derniere_publication_reussie(monkeypatch):
+    """La base des contrôles de pertes est la dernière publication réussie, même si la nuit
+    précédente a été refusée (générations 5 et 7 absentes)."""
+    import json
+    noms = ["faits-g000004.parquet", "faits-publies-g000002.parquet", "faits-publies-g000006.parquet",
+            "faits-publies-g000004.parquet", "site-g000008.tar.gz"]
+
+    def faux_gh(*args, capture=True, check=True):
+        return subprocess.CompletedProcess(args, 0, json.dumps({"assets": [{"name": n} for n in noms]}), "")
+    monkeypatch.setattr(distant, "_gh", faux_gh)
+    assert distant.derniere_publication("o/d") == "faits-publies-g000006.parquet"

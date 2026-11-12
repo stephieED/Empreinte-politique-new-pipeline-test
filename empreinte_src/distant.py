@@ -175,3 +175,23 @@ def publier_site(depot: str, dossier_site: str, generation: int) -> list[dict]:
         with tarfile.open(archive, "w:gz") as t:
             t.add(dossier_site, arcname=f"site-g{generation:06d}")
         return [_envoyer(depot, archive, os.path.basename(archive), release="publication")]
+
+
+def derniere_publication(depot: str) -> str | None:
+    """Nom des faits publiés de la dernière publication réussie (release `export`), ou None."""
+    import re
+    r = _gh("release", "view", "export", "-R", depot, "--json", "assets", check=False)
+    if r.returncode != 0:
+        return None
+    noms = sorted(a["name"] for a in json.loads(r.stdout).get("assets", [])
+                  if re.fullmatch(r"faits-publies-g\d{6}\.parquet", a["name"]))
+    return noms[-1] if noms else None
+
+
+if __name__ == "__main__":
+    import argparse
+    p = argparse.ArgumentParser()
+    p.add_argument("commande", choices=["derniere-publication"])
+    p.add_argument("--depot", required=True)
+    a = p.parse_args()
+    print(derniere_publication(a.depot) or "")
