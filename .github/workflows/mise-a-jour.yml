@@ -162,12 +162,17 @@ jobs:
           path: z2
           key: z2-${{ github.run_id }}
           restore-keys: z2-
-      - name: Faits publiés la nuit précédente (pour le contrôle des pertes, C1)
+      - name: Faits de la dernière publication (pour les contrôles des pertes, C1 et C6)
         run: |
-          BASE=$(python -c 'import json; print("%06d" % json.load(open("entrepot/manifeste.json"))["base"])')
+          # La dernière publication réussie, pas la nuit précédente : une nuit refusée ne publie
+          # pas ses faits, et la comparer désactivait C1 et C6 la nuit suivante (09 et 11/11/2026).
           mkdir -p precedent
-          gh release download export -R "$GITHUB_REPOSITORY" -p "faits-publies-g${BASE}.parquet" -D precedent \
-            || echo "Pas de publication précédente : le contrôle des pertes ne s'applique pas cette nuit."
+          NOM=$(python -m empreinte_src.distant derniere-publication --depot "$GITHUB_REPOSITORY")
+          if [ -n "$NOM" ]; then
+            gh release download export -R "$GITHUB_REPOSITORY" -p "$NOM" -D precedent
+          else
+            echo "Aucune publication précédente : premier calcul, rien à comparer."
+          fi
       - name: Lire, relier, composer, contrôler, exporter (E3 à E6)
         env:
           EMPREINTE_DUCKDB_MEMOIRE: 4GB      # machine de GitHub : 16 Go (la valeur par défaut, 1 Go, vise la machine de développement)

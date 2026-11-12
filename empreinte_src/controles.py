@@ -118,10 +118,23 @@ class Controles:
         if not faits_avant or not os.path.exists(faits_avant):
             return
         con = duckdb.connect()
+        # Un fait se reconnaît à son identité (fiche, type, identifiants de source), pas à sa
+        # valeur : un compte daté « au 09/11 » qui devient « au 10/11 » est le même fait, modifié,
+        # pas un fait perdu (défaut constaté les 08 et 10/11/2026). Le fichier servi (section)
+        # n'en fait pas partie : les paquets sont redécoupés d'une nuit à l'autre. Un fait sans
+        # aucun identifiant se reconnaît à sa valeur, sans sa date de compte.
+        from .composition import IDS
+
+        def cle(fichier):
+            cols = {r[0] for r in con.execute(f"DESCRIBE SELECT * FROM read_parquet('{fichier}')").fetchall()}
+            ids = [f"id_{k}" if f"id_{k}" in cols else "NULL::VARCHAR" for k in IDS]
+            return (f"fiche || '|' || type_fait || '|' || concat_ws('|', {', '.join(f'coalesce({i}, {chr(39)}{chr(39)})' for i in ids)})"
+                    f" || CASE WHEN {' AND '.join(f'{i} IS NULL' for i in ids)}"
+                    """ THEN '|' || json_merge_patch(valeur, '{"au": null, "date_reference": null}')::VARCHAR ELSE '' END""")
         perdus = con.execute(f"""
-            SELECT a.fiche, a.section, a.type_fait, a.valeur FROM read_parquet('{faits_avant}') a
-            ANTI JOIN read_parquet('{faits_apres}') b
-              ON a.fiche = b.fiche AND a.section = b.section AND a.valeur = b.valeur""").fetchall()
+            WITH a AS (SELECT *, {cle(faits_avant)} AS cle FROM read_parquet('{faits_avant}')),
+                 b AS (SELECT DISTINCT {cle(faits_apres)} AS cle FROM read_parquet('{faits_apres}'))
+            SELECT a.fiche, a.section, a.type_fait, a.valeur FROM a ANTI JOIN b USING (cle)""").fetchall()
         # Un fait qui disparaît parce que sa source a changé ou l'a retiré est expliqué : sa
         # valeur cite l'identifiant d'un fichier source modifié ou retiré cette nuit.
         non_expliques = [p for p in perdus

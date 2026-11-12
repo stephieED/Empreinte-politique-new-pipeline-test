@@ -341,3 +341,23 @@ def test_formes_de_citation_d_une_loi(tmp_path):
         ("jorf:L3", "86-33", 1, "loi", None, None)]                      # son propre numéro exclu
     c = dict(ctx.x("SELECT id_jorf, cite_une_loi FROM acte_rattache"))
     assert c == {"L1": True, "L2": False, "L3": True, "L4": False, "L5": False}
+
+
+def test_numero_incomplet_au_milieu_ne_reduit_pas_la_periode(tmp_path):
+    """10/11/2026 : un numéro incomplet vers le 09/11 a ramené la période couverte à deux jours et
+    retiré les actes d'octobre de la fiche Lecornu II. Un numéro incomplet est un trou nommé ;
+    la période va du premier au dernier numéro complet livré dans son actualité."""
+    actes = [_acte("A33", "2026-10-06"), _acte("A34", "2026-10-07", livraison="20261007-002326"),
+             _acte("A36", "2026-10-09", livraison="20261009-003010")]
+    sommaires = (
+        _sommaire("C33", "2026-10-06", "0233", ["A33"], "20261006-002605")
+        # le n° 0234 du 07/10 a un texte non reçu : incomplet
+        + _sommaire("C34", "2026-10-07", "0234", ["A34", "ABSENT"], "20261007-002326")
+        + _sommaire("C36", "2026-10-09", "0236", ["A36"], "20261009-003010"))
+    _ecrire_z2(tmp_path / "z2", actes=actes, sommaires=sommaires)
+    ctx, _ = _relier(tmp_path / "z2", tmp_path / "z3")
+    (c,) = _lignes(ctx, "SELECT * FROM couverture_jo")
+    assert (c["premiere_publication"], c["derniere_publication"]) == ("2026-10-06", "2026-10-09")
+    assert c["nb_numeros_incomplets"] == 1
+    dans = dict(ctx.x("SELECT id_jorf, dans_periode_couverte FROM acte_rattache"))
+    assert dans == {"A33": True, "A34": True, "A36": True}
