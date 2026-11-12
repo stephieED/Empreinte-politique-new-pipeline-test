@@ -123,3 +123,26 @@ def test_c1_reconnait_un_fait_a_son_identite_pas_a_sa_valeur(tmp_path):
     c.c1_c6_comparer(pa_, pb)
     a = [x for x in c.anomalies if x["controle"] == "C1"]
     assert len(a) == 1 and a[0]["nb_objets"] == 1 and "JORFTEXT1" in a[0]["exemples"][0]
+
+
+def test_faits_publies_ecrits_au_fil_de_l_eau(tmp_path):
+    """Avec `chemin_faits`, l'Ecrivain ne garde en mémoire qu'un lot de faits : les autres sont déjà
+    dans le Parquet, et le fichier final est le même qu'en une fois (mémoire : ≈ 2 millions de faits
+    sur le périmètre complet)."""
+    chemin = str(tmp_path / "export" / "faits-publies.parquet")
+    ecr = Ecrivain(str(tmp_path / "site"), "p1", chemin_faits=chemin, lot_faits=2)
+    f = ecr.fiche("legislature", "17", "XVIIe législature")
+    lignes = [{"scrutin": f"VT{k}", "date": "2025-01-0" + str(k), "source_url": None} for k in range(1, 6)]
+    f.section("votes", lignes, "vote", ids={"scrutin": "scrutin"}, date="date")
+    assert len(ecr.faits) <= 2                                   # un lot au plus en mémoire
+    ecr.clore()
+    assert ecr.ecrire_faits_publies() == 5
+    t = pq.read_table(chemin).to_pylist()
+    assert [x["id_scrutin"] for x in t] == ["VT1", "VT2", "VT3", "VT4", "VT5"]
+    # Même contenu que l'écriture en une fois.
+    ecr2 = Ecrivain(str(tmp_path / "site2"), "p1")
+    ecr2.fiche("legislature", "17", "XVIIe législature").section("votes", lignes, "vote",
+                                                                ids={"scrutin": "scrutin"}, date="date")
+    ecr2.clore()
+    assert ecr2.ecrire_faits_publies(str(tmp_path / "une-fois.parquet")) == 5
+    assert pq.read_table(str(tmp_path / "une-fois.parquet")).to_pylist() == t

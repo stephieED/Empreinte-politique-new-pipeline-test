@@ -49,7 +49,12 @@ TABLES = {
                              {"amendement": "AM2", "acteur": "PA2", "date_depot": "2025-03-01", "alias": None},
                              {"amendement": "AM3", "acteur": "PA2", "date_depot": "2024-12-01", "alias": None}],
     "intervention_attribuee": [{"compte_rendu": "CR1", "id_syceron": "1", "acteur": "PA1", "date": "2025-01-30"},
-                               {"compte_rendu": "CR1", "id_syceron": "2", "acteur": None, "date": "2025-01-30"}],
+                               {"compte_rendu": "CR1", "id_syceron": "2", "acteur": None, "date": "2025-01-30"},
+                               {"compte_rendu": "CR1", "id_syceron": "3", "acteur": "PA1", "date": "2025-01-30"}],
+    # CR1#3 : interruption notée sans texte par la source, rien à servir.
+    "an_comptes_rendus__intervention": [{"compte_rendu": "CR1", "id_syceron": "1", "texte": "Bonjour."},
+                                        {"compte_rendu": "CR1", "id_syceron": "2", "texte": "(Applaudissements.)"},
+                                        {"compte_rendu": "CR1", "id_syceron": "3", "texte": None}],
     "parole_personne": [{"acteur": "PA1", "compte_rendu": "CR1", "id_syceron": "1", "date": "2025-01-30"}],
     "mandat_ouvert_organe_clos": [{"mandat": "PM9", "acteur": "PA7", "organe": "PO-G", "organe_fin": "2025-09-09"}],
     "legislature": [{"numero": 17, "debut": "2024-07-18", "fin": None}],
@@ -113,7 +118,7 @@ def test_c3_bilan_par_famille_et_objet_attendu_non_servi(tmp_path):
     c = _ctrl(tmp_path)
     b = {x["famille"]: x for x in c.c3_laisses_de_cote()}
     assert b["scrutins"]["ecartes"] == {"aucun_decompte_d_un_groupe_avec_fiche": 1}
-    assert b["prises_de_parole"]["ecartes"] == {"orateur_non_attribue": 1}
+    assert b["prises_de_parole"]["ecartes"] == {"orateur_non_attribue": 1, "paragraphe_sans_texte": 1}
     # AM2 : déposé après le départ de PA2 → écarté avec raison ; AM3 : PA2 membre, non servi → bloque.
     assert b["amendements"]["ecartes"] == {"auteur_hors_groupe_a_la_date": 1}
     assert b["amendements"]["exemples"] == ["AM3"]
@@ -162,7 +167,8 @@ def test_avertissements_sans_bloquer(tmp_path):
     assert _an(c, "A5")[0]["exemples"] == ["candidat / questions : vide sur les 2 fiches"]
     a6 = _an(c, "A6")[0]["exemples"]
     # Un décompte, jamais de nom : PA2 (aucune parole servie) n'est pas nommé.
-    assert "1 membres de groupes de la XVIIe sur 2 sans prise de parole servie" in a6
+    assert ("1 membres de groupes de la XVIIe législature sur 2 sans prise de parole servie pendant cette "
+            "législature") in a6
     assert not any("PA2" in x for x in a6)
     a7 = _an(c, "A7")[0]["exemples"]
     assert "filiation à trancher : grp:16:X → grp:17:PO17S" in a7

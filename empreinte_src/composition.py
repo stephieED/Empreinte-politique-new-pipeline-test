@@ -93,15 +93,31 @@ class Fiche:
                                              for k, v in self.sections.items()}})
 
 
+def _schema_faits():
+    import pyarrow as pa
+    return pa.schema([("fiche", pa.string()), ("section", pa.string()), ("type_fait", pa.string())]
+                     + [(f"id_{k}", pa.string()) for k in IDS]
+                     + [("valeur", pa.string()), ("date", pa.string()), ("source_url", pa.string())])
+
+
 class Ecrivain:
-    def __init__(self, dossier: str, id_publication: str, pannes: dict[str, str] | None = None):
+    """Écrit les fichiers servis et inscrit chaque fait publié.
+
+    Avec `chemin_faits`, les faits publiés sont écrits **au fil de l'eau** dans ce Parquet, par lots
+    de `lot_faits` lignes : la mémoire ne garde qu'un lot (≈ 2 millions de faits sur le périmètre
+    complet). Sans lui, ils restent dans `faits` (tests) jusqu'à `ecrire_faits_publies`."""
+
+    def __init__(self, dossier: str, id_publication: str, pannes: dict[str, str] | None = None,
+                 chemin_faits: str | None = None, lot_faits: int = 50_000):
         self.racine = os.path.join(dossier, "donnees", id_publication)
         self.id_publication = id_publication
         os.makedirs(self.racine, exist_ok=True)
         self.genere_le = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat()
         self.fichiers: dict[str, dict] = {}
         self.fiches: list[dict] = []
-        self.faits: list[dict] = []
+        self.faits: list[dict] = []          # lot en cours (tout, sans `chemin_faits`)
+        self.nb_faits = 0
+        self.chemin_faits, self.lot_faits, self._writer = chemin_faits, lot_faits, None
         self._ouvertes: list[Fiche] = []
         # {point d'accès en panne cette nuit: date du premier échec depuis le dernier relevé réussi}
         self.pannes = dict(pannes or {})
@@ -147,6 +163,19 @@ class Ecrivain:
         r["date"] = None if not date or ligne.get(date) is None else str(ligne.get(date))
         r["source_url"] = ligne.get(source) if source else None
         self.faits.append(r)
+        self.nb_faits += 1
+        if self.chemin_faits and len(self.faits) >= self.lot_faits:
+            self._vider_faits()
+
+    def _vider_faits(self):
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+        if self._writer is None:
+            os.makedirs(os.path.dirname(self.chemin_faits) or ".", exist_ok=True)
+            self._writer = pq.ParquetWriter(self.chemin_faits, _schema_faits(), compression="zstd")
+        if self.faits:
+            self._writer.write_table(pa.Table.from_pylist(self.faits, schema=_schema_faits()))
+        self.faits = []
 
     def clore(self) -> dict:
         for f in self._ouvertes:
@@ -163,15 +192,19 @@ class Ecrivain:
             json.dump(manifeste, f, ensure_ascii=False, indent=1)
         return manifeste
 
-    def ecrire_faits_publies(self, chemin_parquet: str) -> int:
+    def ecrire_faits_publies(self, chemin_parquet: str | None = None) -> int:
+        """Achève le fichier des faits publiés et rend leur nombre. Écrit au fil de l'eau : vide le
+        dernier lot et ferme le fichier. Sinon : écrit tous les faits gardés à `chemin_parquet`."""
         import pyarrow as pa
         import pyarrow.parquet as pq
-        schema = pa.schema([("fiche", pa.string()), ("section", pa.string()),
-                            ("type_fait", pa.string())]
-                           + [(f"id_{k}", pa.string()) for k in IDS]
-                           + [("valeur", pa.string()), ("date", pa.string()),
-                              ("source_url", pa.string())])
-        pq.write_table(pa.Table.from_pylist(self.faits, schema=schema), chemin_parquet,
+        if self.chemin_faits:
+            if chemin_parquet and os.path.abspath(chemin_parquet) != os.path.abspath(self.chemin_faits):
+                raise ValueError("faits publiés déjà écrits dans " + self.chemin_faits)
+            self._vider_faits()
+            self._writer.close()
+            self._writer = None
+            return self.nb_faits
+        pq.write_table(pa.Table.from_pylist(self.faits, schema=_schema_faits()), chemin_parquet,
                        compression="zstd")
         return len(self.faits)
 

@@ -230,6 +230,11 @@ class Controles:
                   "AND x.date_ref BETWEEN m.debut AND m.fin)")
         legs = [int(f.split("/")[1]) for f in self.fiches if f.startswith("legislature/")]
         legs_sql = ", ".join(map(str, legs)) or "NULL"
+        # Paragraphe publié sans texte (interruption notée sans paroles) : rien à servir.
+        sans_texte = ("""WHEN NOT EXISTS (SELECT 1 FROM an_comptes_rendus__intervention i
+                                          WHERE i.compte_rendu = x.compte_rendu AND i.id_syceron = x.id_syceron
+                                            AND coalesce(i.texte, '') <> '') THEN 'paragraphe_sans_texte'"""
+                      if self._a("an_comptes_rendus__intervention") else "")
         familles = [
             ("scrutins", ("an_scrutins__scrutin", "an_scrutins__decompte_groupe"),
              """SELECT DISTINCT uid AS id FROM an_scrutins__scrutin""",
@@ -247,6 +252,7 @@ class Controles:
              """SELECT compte_rendu || '#' || id_syceron AS id, acteur, date AS date_ref, compte_rendu,
                        id_syceron FROM intervention_attribuee""",
              f"""CASE WHEN x.acteur IS NULL THEN 'orateur_non_attribue'
+                      {sans_texte}
                       WHEN x.acteur IN (SELECT acteur FROM _ctl_cand) THEN NULL
                       WHEN {"EXISTS (SELECT 1 FROM parole_gouvernement p WHERE p.compte_rendu = x.compte_rendu AND p.id_syceron = x.id_syceron AND p.gouvernement IN (SELECT organe FROM _ctl_gouv))" if self._a("parole_gouvernement") else "false"} THEN NULL
                       WHEN NOT {membre} THEN 'orateur_hors_groupe_a_la_date' END""",
@@ -388,13 +394,22 @@ class Controles:
                 SELECT coalesce(per, acteur), raison_sortie FROM population
                 WHERE population = 'candidat' AND raison_sortie IS NOT NULL ORDER BY 1""")]
         if self._a("parole_personne"):
-            n, tot = self._x("""
-                WITH m AS (SELECT DISTINCT acteur FROM _ctl_lm WHERE legislature = 17)
-                SELECT count(*) FILTER (NOT EXISTS (SELECT 1 FROM _ctl_fp f WHERE f.id_acteur = m.acteur
-                                                    AND f.section LIKE 'paroles-textes%')), count(*) FROM m""")[0]
-            if n:
-                # Un décompte, jamais une liste de noms : ce serait un indice individuel.
-                objets.append(f"{n} membres de groupes de la XVIIe sur {tot} sans prise de parole servie")
+            from .perimetre import LEGISLATURES_PAROLES, nom_legislature
+            bornes = dict((n, (d, f)) for n, d, f in self._x("SELECT numero, debut, fin FROM legislature")) \
+                if self._a("legislature") else {}
+            for leg in LEGISLATURES_PAROLES:
+                d0, d1 = bornes.get(leg, (None, None))
+                n, tot = self._x("""
+                    WITH m AS (SELECT DISTINCT acteur FROM _ctl_lm WHERE legislature = ?)
+                    SELECT count(*) FILTER (NOT EXISTS (
+                               SELECT 1 FROM _ctl_fp f WHERE f.id_acteur = m.acteur
+                               AND f.section LIKE 'paroles-textes%'
+                               AND (f.date IS NULL OR f.date BETWEEN coalesce(?, '0000') AND coalesce(?, '9999')))),
+                           count(*) FROM m""", [leg, d0, d1])[0]
+                if n:
+                    # Un décompte, jamais une liste de noms : ce serait un indice individuel.
+                    objets.append(f"{n} membres de groupes de la {nom_legislature(leg)} sur {tot} "
+                                  "sans prise de parole servie pendant cette législature")
         self._avertir("A6", "Couverture insuffisante", objets)
 
     def a7_non_resolues(self, decisions: dict):

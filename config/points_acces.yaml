@@ -81,7 +81,8 @@ points_acces:
 
   # --- Assemblée nationale, XIVe à XVIe législature (archives closes, figées : relevées une fois,
   # puis « inchangé » chaque nuit). Décision du 07/11/2026 : périmètre de validation = cahier 4.1.
-  # `lire: false` : collectées dans l'entrepôt, pas encore lues (lecteurs et fiches à étendre).
+  # Lues et servies comme la XVIIe (module `perimetre`). Un point peut porter `lire: false` :
+  # collecté dans l'entrepôt sans être lu.
   # Les comptes rendus de la XIVe sont hors périmètre (cahier 4.1 : paroles XVe → XVIIe).
   - id: an-amo30-l16
     source: an
@@ -90,7 +91,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/16/amo/tous_acteurs_mandats_organes_xi_legislature/AMO30_tous_acteurs_tous_mandats_tous_organes_historique.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-scrutins-l16
     source: an
     type: scrutins
@@ -98,7 +98,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/16/loi/scrutins/Scrutins.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-dossiers-l16
     source: an
     type: dossiers
@@ -106,7 +105,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/16/loi/dossiers_legislatifs/Dossiers_Legislatifs.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-amendements-l16
     source: an
     type: amendements
@@ -114,7 +112,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/16/loi/amendements_div_legis/Amendements.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-syceron-l16
     source: an
     type: comptes_rendus
@@ -122,7 +119,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/16/vp/syceronbrut/syseron.xml.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-agenda-l16
     source: an
     type: agenda
@@ -130,7 +126,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/16/vp/reunions/Agenda.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-questions-ecrites-l16
     source: an
     type: questions_ecrites
@@ -138,7 +133,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/16/questions/questions_ecrites/Questions_ecrites.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-questions-gouvernement-l16
     source: an
     type: questions_gouvernement
@@ -146,7 +140,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/16/questions/questions_gouvernement/Questions_gouvernement.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-questions-orales-l16
     source: an
     type: questions_orales
@@ -154,7 +147,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/16/questions/questions_orales_sans_debat/Questions_orales_sans_debat.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-amo30-l15
     source: an
     type: acteurs_organes
@@ -162,7 +154,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/15/amo/tous_acteurs_mandats_organes_xi_legislature/AMO30_tous_acteurs_tous_mandats_tous_organes_historique.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-scrutins-l15
     source: an
     type: scrutins
@@ -170,7 +161,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/15/loi/scrutins/Scrutins_XV.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-dossiers-l15
     source: an
     type: dossiers
@@ -178,7 +168,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/15/loi/dossiers_legislatifs/Dossiers_Legislatifs_XV.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-amendements-l15
     source: an
     type: amendements
@@ -186,7 +175,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/15/loi/amendements_legis/Amendements_XV.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-syceron-l15
     source: an
     type: comptes_rendus
@@ -194,7 +182,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/15/vp/syceronbrut/syseron.xml.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-agenda-l15
     source: an
     type: agenda
@@ -202,7 +189,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/15/vp/reunions/Agenda_XV.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-questions-ecrites-l15
     source: an
     type: questions_ecrites
@@ -210,7 +196,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/15/questions/questions_ecrites/Questions_ecrites_XV.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-questions-gouvernement-l15
     source: an
     type: questions_gouvernement
@@ -218,7 +203,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/15/questions/questions_gouvernement/Questions_gouvernement.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-questions-orales-l15
     source: an
     type: questions_orales
@@ -226,7 +210,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/15/questions/questions_orales_sans_debat/Questions_orales_sans_debat.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-amo20-l14
     source: an
     type: acteurs_organes
@@ -234,7 +217,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/14/amo/deputes_senateurs_ministres_legislatures_XIV/AMO20_dep_sen_min_tous_mandats_et_organes_XIV.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-scrutins-l14
     source: an
     type: scrutins
@@ -242,7 +224,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/14/loi/scrutins/Scrutins_XIV.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-dossiers-l14
     source: an
     type: dossiers
@@ -250,7 +231,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/14/loi/dossiers_legislatifs/Dossiers_Legislatifs_XIV.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-amendements-l14
     source: an
     type: amendements
@@ -258,7 +238,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/14/loi/amendements_legis_XIV/Amendements_XIV.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-agenda-l14
     source: an
     type: agenda
@@ -266,7 +245,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/14/vp/reunions/Agenda_XIV.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-questions-ecrites-l14
     source: an
     type: questions_ecrites
@@ -274,7 +252,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/14/questions/questions_ecrites/Questions_ecrites_XIV.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-questions-gouvernement-l14
     source: an
     type: questions_gouvernement
@@ -282,7 +259,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/14/questions/questions_gouvernement/Questions_gouvernement_XIV.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
   - id: an-questions-orales-l14
     source: an
     type: questions_orales
@@ -290,7 +266,6 @@ points_acces:
     url: https://data.assemblee-nationale.fr/static/openData/repository/14/questions/questions_orales_sans_debat/Questions_orales_sans_debat_XIV.json.zip
     format: zip
     licence: etalab-2.0
-    lire: false
 
   # --- Sénat : export complet (un dump SQL), régénéré chaque nuit
   - id: senat-export

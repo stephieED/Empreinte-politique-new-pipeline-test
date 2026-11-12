@@ -7,8 +7,8 @@ Une ligne par (population, personne, fiche attendue) :
 | --- | --- | --- |
 | `candidat` | chaque candidature relevée (R-CANDIDATURES, R-IDENTITE) | `candidat/<adresse>` |
 | `membre_groupe` | chaque député membre d'un groupe affiché d'une lignée publiée (R-LIGNEE, R-APPARTENANCE) | `lignee/<adresse>`, section `membres` |
-| `membre_gouvernement` | chaque membre d'un gouvernement de la XVIIe (R-COMPOSITION) | `gouvernement/<adresse>`, section `composition` |
-| `depute_ni` | député de la XVIIe sans groupe pendant tout son mandat | aucune (ses votes et amendements restent dans le corpus) |
+| `membre_gouvernement` | chaque membre d'un gouvernement publié (R-COMPOSITION ; `perimetre.LEGISLATURES_GOUVERNEMENTS`) | `gouvernement/<adresse>`, section `composition` |
+| `depute_ni` | député d'une législature publiée (XIVe à XVIIe) sans groupe pendant tout son mandat de cette législature | aucune (ses votes et amendements restent dans le corpus) |
 
 Une personne ne sort d'une population que pour une **raison établie** (`raison_sortie`) :
 candidature retirée à la source, ou décision `perimetre` (`personne` : `per:…` ou `PA…`,
@@ -30,10 +30,12 @@ DESCRIPTION = (
     "raison établie : candidature retirée, ou décision publiée. Sinon, la publication est refusée et "
     "la personne est nommée.")
 
-LEGISLATURE_GOUVERNEMENTS = 17
+from ..perimetre import LEGISLATURES, LEGISLATURES_GOUVERNEMENTS
 
 
 def appliquer(ctx):
+    legs = ", ".join(str(n) for n in LEGISLATURES)
+    gouv = ", ".join(str(n) for n in LEGISLATURES_GOUVERNEMENTS)
     dec = ""
     if ctx.existe("decision_perimetre"):
         dec = "decision_perimetre"
@@ -58,12 +60,12 @@ def appliquer(ctx):
                    NULL, true, NULL
             FROM membre_gouvernement mg JOIN gouvernement g ON g.organe = mg.gouvernement
             WHERE mg.gouvernement IN (SELECT gouvernement FROM gouvernement_legislature
-                                      WHERE legislature = {LEGISLATURE_GOUVERNEMENTS})
+                                      WHERE legislature IN ({gouv}))
             UNION ALL
             SELECT DISTINCT 'depute_ni', NULL, d.acteur, NULL, NULL, NULL, true, NULL
-            FROM depute d WHERE d.legislature = {LEGISLATURE_GOUVERNEMENTS}
+            FROM depute d WHERE d.legislature IN ({legs})
               AND NOT EXISTS (SELECT 1 FROM appartenance a WHERE a.acteur = d.acteur
-                              AND a.legislature = {LEGISLATURE_GOUVERNEMENTS}))
+                              AND a.legislature = d.legislature))
         SELECT x.population, x.per, x.acteur, x.fiche_attendue, x.section_attendue,
                coalesce(x.raison_source, CASE WHEN {sortie} IS NOT NULL THEN 'decision' END) AS raison_sortie,
                {sortie} AS decision, x.publie, x.detail

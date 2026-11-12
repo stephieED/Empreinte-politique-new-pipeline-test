@@ -14,13 +14,13 @@ Fichiers de `lignees/<adresse>/` :
 | `fiche.json.gz` | en-tête : nom, suite des noms, période ; frise des maillons (organes, dates, position déclarée — `divergente` si deux organes d'un maillon en déclarent deux différentes —, membres, effectif, lien vers la législature quand sa fiche existe) ; filiations (les décomptes qui relient chaque maillon à son prédécesseur, ou qui montrent pourquoi la lignée commence là) ; couverture | tout de suite |
 | `effectifs.json.gz` | effectif jour par jour de chaque maillon, écrit aux seuls jours où il change | à la demande |
 | `membres.json.gz` | un point par personne et par maillon : arrivée, départ, périodes, d'où elle vient (au départ, déjà là au groupe précédent, revenue d'un groupe plus ancien, nouvelle), si elle reste au maillon suivant ; lien vers sa fiche quand elle est candidate | à la demande |
-| `paroles.json.gz` | XVIIe : débats (sujets) avec leurs prises de parole et leurs orateurs distincts, prises de parole par nature et par orateur, index léger | à la demande |
+| `paroles.json.gz` | XVe à XVIIe : débats (sujets) avec leurs prises de parole et leurs orateurs distincts, prises de parole par nature et par orateur, index léger | à la demande |
 | `paroles-textes-<aaaa>-s<n>[-<k>].json.gz` | extraits (300 caractères) et lien au paragraphe | au clic, ou pour un filtre |
-| `proposes.json.gz` | XVIIe : textes portés par les membres pendant leur appartenance (rôle, étape, matière) | à la demande |
-| `amendements.json.gz` | XVIIe : amendements distincts déposés par les membres pendant leur appartenance, par commission et par année ; irrecevables et signatures à part | à la demande |
+| `proposes.json.gz` | XIVe à XVIIe : textes portés par les membres pendant leur appartenance (rôle, étape, matière) | à la demande |
+| `amendements.json.gz` | XIVe à XVIIe : amendements distincts déposés par les membres pendant leur appartenance, par commission et par année ; irrecevables et signatures à part | à la demande |
 | `amendements-<annee>[-<k>].json.gz` | liste de l'année | au clic |
-| `votes-17.json.gz` | décompte publié de chaque scrutin pour le groupe (pour, contre, abstention, non-votants, membres), position majoritaire publiée et si elle est établie (Q30), partage du groupe | à la demande |
-| `avec-qui-17.json.gz` | les autres groupes de la législature, dans l'ordre de l'hémicycle : scrutins où les deux positions sont établies et ceux où elles coïncident, par nature de scrutin | à la demande |
+| `votes-<législature>.json.gz` | un fichier par législature du groupe : décompte publié de chaque scrutin pour le groupe (pour, contre, abstention, non-votants, membres), position majoritaire publiée et si elle est établie (Q30), partage du groupe | à la demande |
+| `avec-qui-<législature>.json.gz` | les autres groupes de la législature, dans l'ordre de l'hémicycle (législature en cours) ou des sigles (législature close, dont l'hémicycle n'est pas publié) : scrutins où les deux positions sont établies et ceux où elles coïncident, par nature de scrutin | à la demande |
 | `mots/<xx>.json.gz` | index de mots | au filtre par mot |
 
 Règles éditoriales (cahier, partie 2) : aucun score, aucun classement, aucun ratio — la fiche sert
@@ -29,16 +29,18 @@ une position majoritaire n'est servie que publiée par l'Assemblée et concordan
 décompte (Q30) ; les listes déclarent leur ordre (alphabétique, chronologique, hémicycle) ;
 chaque compte porte sa date (`au`), celle de la fin du maillon quand il est clos.
 
-Périmètre de l'essai : l'activité (paroles, textes, amendements, votes) n'est collectée que pour
-la XVIIe ; pour les maillons de la XIVe à la XVIe, chaque section le dit (`non_collecte`).
+Périmètre (cahier 4.1, module `perimetre`) : textes, amendements et votes de la XIVe à la XVIIe ;
+prises de parole de la XVe à la XVIIe — pour un maillon de la XIVe, la section le dit
+(`hors_perimetre`).
 """
 from __future__ import annotations
 
 import datetime as dt
 from collections import defaultdict
 
-from .candidat import (LEGISLATURES_PUBLIEES, LONGUEUR_EXTRAIT, IndexMots, _couv, _decouper,
-                       _ecrire_mots, _fr, _lignes, _semestre, _taille, _vue)
+from ..perimetre import LEGISLATURES, LEGISLATURES_PAROLES, PAROLES_DEPUIS, points
+from .candidat import (LONGUEUR_EXTRAIT, IndexMots, _couv, _decouper, _ecrire_mots, _fr, _lignes,
+                       _semestre, _taille, _vue)
 from .gouvernement import _identites
 
 NOM = "lignee"
@@ -47,14 +49,16 @@ DEPEND = ("R-LIGNEE", "R-FILIATION", "R-CONTINUITE-GROUPE", "R-APPARTENANCE", "R
           "R-LEGISLATURES", "R-NATURE-SCRUTIN", "R-DERNIERE-LECTURE", "R-LIEN-SCRUTIN-DOSSIER",
           "R-PAROLE-PERSONNE", "R-TEXTE-PORTE", "R-AMENDEMENT", "R-IDENTITE")
 
-LEGISLATURE_ACTIVITE = 17
+# Licence des données de l'Assemblée (la même pour toutes ses archives) : lue sur l'archive courante.
 PA_AMO, PA_SCRUTINS, PA_DOSSIERS = "an-amo30-l17", "an-scrutins-l17", "an-dossiers-l17"
 PA_AMENDEMENTS, PA_SYCERON = "an-amendements-l17", "an-syceron-l17"
 POSITIONS = ("pour", "contre", "abstention")
 
 LIMITES = [
-    "Activité (paroles, textes, amendements, votes) collectée pour la XVIIe législature seulement "
-    "dans cet essai ; les groupes de la XIVe à la XVIe n'ont ici que leurs membres et leurs effectifs.",
+    "Textes, amendements et votes de la XIVe à la XVIIe législature ; prises de parole en séance à "
+    "partir de la XVe (cahier 4.1) : un groupe de la XIVe n'a pas de prises de parole servies.",
+    "L'hémicycle d'une législature close n'est pas publié par l'Assemblée : pour ces législatures, les "
+    "autres groupes sont rangés par sigle, sans place médiane.",
     "Les groupes de la XIIe et de la XIIIe servent au calcul des filiations ; ils ne sont pas affichés.",
     "Effectifs et membres d'après les mandats de groupe publiés par l'Assemblée (apparentés compris).",
 ]
@@ -66,9 +70,10 @@ def _au(fin, au):
 
 
 def _hors_perimetre(famille, maillon, points, au) -> dict:
-    return _couv(famille, "non_collecte", f"Activité de la {_romain(maillon['legislature'])} législature "
-                 "non collectée dans cet essai (périmètre : XVIIe).", points=points, au=au,
-                 maillon=maillon["maillon"], raison="hors_perimetre_essai")
+    return _couv(famille, "hors_perimetre", f"Prises de parole de la {_romain(maillon['legislature'])} "
+                 f"législature hors du périmètre : elles sont publiées à partir de la {_romain(PAROLES_DEPUIS)} "
+                 "(cahier 4.1).", points=points, au=au, maillon=maillon["maillon"],
+                 raison="paroles_avant_la_xve")
 
 
 def _romain(n: int) -> str:
@@ -144,13 +149,15 @@ def _composer_une(ctx, ecr, l, commun):
     effectifs = _effectifs(f, maillons, commun)
     frise = _frise(ctx, l, maillons, membres, effectifs, commun)
     filiations = _filiations(ctx, l, maillons, commun)
-    m17 = next((m for m in maillons if m["legislature"] == LEGISLATURE_ACTIVITE), None)
-    anciens = [m for m in maillons if m["legislature"] != LEGISLATURE_ACTIVITE]
-    _paroles(ctx, f, l, m17, anciens, commun, idx)
-    _proposes(ctx, f, l, m17, anciens, commun, idx)
-    _amendements(ctx, f, l, m17, anciens, commun)
-    _votes(ctx, f, l, m17, commun, idx)
-    _avec_qui(ctx, f, l, m17, commun)
+    actifs = [m for m in maillons if m["legislature"] in LEGISLATURES]
+    parole = [m for m in actifs if m["legislature"] in LEGISLATURES_PAROLES]
+    _paroles(ctx, f, l, parole, [m for m in actifs if m not in parole], commun, idx)
+    _proposes(ctx, f, l, actifs, [], commun, idx)
+    _amendements(ctx, f, l, actifs, [], commun)
+    for leg in sorted({m["legislature"] for m in actifs}):
+        ms = [m for m in actifs if m["legislature"] == leg]
+        _votes(ctx, f, l, ms, leg, commun, idx)
+        _avec_qui(ctx, f, l, ms, leg, commun)
     noms = []
     for m in maillons:
         for lib in m["libelles"]:
@@ -202,7 +209,7 @@ def _frise(ctx, l, maillons, membres, effectifs, commun):
             if d <= quand:
                 n = e
         leg = m["legislature"]
-        lien = f"legislature/{leg}" if leg in LEGISLATURES_PUBLIEES and leg in commun["legs"] else None
+        lien = f"legislature/{leg}" if leg in LEGISLATURES and leg in commun["legs"] else None
         out.append({"maillon": m["maillon"], "legislature": leg, "sigle": m["sigle"], "libelle": m["libelle"],
                     "debut": m["debut"], "fin": m["fin"], "position_maillon": m["position_maillon"],
                     "organes": list(m["organes"]), "sigles": list(m["sigles"]), "libelles": list(m["libelles"]),
@@ -210,7 +217,7 @@ def _frise(ctx, l, maillons, membres, effectifs, commun):
                     "premier_organe": m["organes"][0],
                     "membres": len(membres.get(m["maillon"], ())),
                     "effectif": n, "effectif_au": quand if n is not None else None,
-                    "lien": lien, "raison_lien": None if lien else "législature sans fiche publiée dans l'essai",
+                    "lien": lien, "raison_lien": None if lien else "législature sans fiche publiée",
                     "source_url": pos.get(m["organes"][-1], (None, None))[1],
                     "licence": commun["lic"].get(PA_AMO)})
     return out
@@ -360,12 +367,24 @@ def _couv_anciens(anciens, famille, points, au):
     return [_hors_perimetre(famille, m, points, au) for m in anciens]
 
 
-def _jointure(table, col_date, l, m17, a="x"):
-    """Lignes de `table` (alias `a`) d'un membre du maillon XVIIe à une date de son appartenance.
+def _jointure(table, col_date, l, ms, a="x"):
+    """Lignes de `table` (alias `a`) d'un membre d'un des maillons `ms` à une date de son appartenance.
     Les identifiants viennent des tables de règles (`lig:…`, `grp:…`), jamais d'une source libre."""
+    liste = ", ".join(f"'{m['maillon']}'" for m in ms)
     return (f"""FROM {table} {a} JOIN _lm m{a} ON m{a}.acteur = {a}.acteur AND m{a}.lignee = '{l["lignee"]}'
-                AND m{a}.maillon = '{m17["maillon"]}'
+                AND m{a}.maillon IN ({liste})
                 AND {a}.{col_date} BETWEEN m{a}.debut AND coalesce(m{a}.fin, '9999-12-31')""")
+
+
+def _legs(ms) -> list[int]:
+    return sorted({m["legislature"] for m in ms})
+
+
+def _au_maillons(ms, au):
+    """Date des comptes de maillons : la fin du dernier s'ils sont tous clos, sinon la référence."""
+    if any(not m["fin"] for m in ms):
+        return au
+    return _au(max(m["fin"] for m in ms), au)
 
 
 def _garder(rows, cols):
@@ -381,14 +400,14 @@ COLS_SUJETS = ["sujet_id", "sujet", "sujet_libelle", "type_sujet", "dossier", "t
                "prises_de_parole", "orateurs_distincts", "premiere_date", "derniere_date"]
 
 
-def _paroles(ctx, f, l, m17, anciens, commun, idx):
-    au, pts = commun["au"], [PA_SYCERON]
+def _paroles(ctx, f, l, ms, anciens, commun, idx):
+    au, pts = commun["au"], points("syceron", _legs(ms) or LEGISLATURES_PAROLES)
     lic = commun["lic"].get(PA_SYCERON)
     if not _vue(ctx, "parole_personne"):
         f.section("paroles", [], "parole_lignee", couverture=_absente("paroles", pts, au, ["parole_personne"]))
         return
-    rows = _lignes(ctx, "SELECT x.* " + _jointure("parole_personne", "date", l, m17)
-                   + " ORDER BY x.date, x.compte_rendu, x.ordre_absolu_seance, x.id_syceron") if m17 else []
+    rows = _lignes(ctx, "SELECT x.* " + _jointure("parole_personne", "date", l, ms)
+                   + " ORDER BY x.date, x.compte_rendu, x.ordre_absolu_seance, x.id_syceron") if ms else []
     ident = commun["identites"]
     sujets: dict[tuple, dict] = {}
     orateurs: dict[tuple, set] = defaultdict(set)
@@ -437,7 +456,7 @@ def _paroles(ctx, f, l, m17, anciens, commun, idx):
         x.pop("_tri")
     debat = sum(1 for r in rows if not r["preside"])
     sans_s = sum(1 for r in rows if r["statut_sujet"] != "etabli")
-    statut = "complet" if m17 else "non_collecte"
+    statut = "complet" if ms else "hors_perimetre"
     cv = _couv("paroles", statut, f"Paragraphes du compte rendu de séance attribués aux membres pendant leur "
                f"appartenance au groupe : {debat} prises de parole et {len(rows) - debat} paragraphes de "
                f"présidence de séance, comptés à part. {sans_s} sans intitulé publié. Commissions non lues.",
@@ -447,7 +466,7 @@ def _paroles(ctx, f, l, m17, anciens, commun, idx):
     f.section("paroles", _garder(rows, COLS_PAROLES), None,
               ids={"acteur": "acteur", "compte_rendu": "compte_rendu", "autre": "id_syceron"}, date="date",
               couverture=cv, colonnes=COLS_PAROLES,
-              extra={"ordre": "chronologique", "maillon": m17["maillon"] if m17 else None,
+              extra={"ordre": "chronologique", "maillons": [m["maillon"] for m in ms],
                      "sujets": {"colonnes": COLS_SUJETS, "ordre": "chronologique (première prise de parole)",
                                 "lignes": [[s[c] for c in COLS_SUJETS] for s in liste]},
                      "par_nature": dict(sorted(par_nature.items())),
@@ -463,15 +482,15 @@ COLS_TEXTES = ["dossier", "document", "titre", "role", "qualite_rapporteur", "na
                "matiere_libelle", "acteur", "nom", "source_url", "licence"]
 
 
-def _proposes(ctx, f, l, m17, anciens, commun, idx):
-    au, pts = commun["au"], [PA_DOSSIERS]
+def _proposes(ctx, f, l, ms, anciens, commun, idx):
+    au, pts = commun["au"], points("dossiers", _legs(ms))
     if not _vue(ctx, "texte_porte"):
         f.section("proposes", [], "texte_porte_lignee", couverture=_absente("textes", pts, au, ["texte_porte"]))
         return
     rows = _lignes(ctx, """WITH x AS (SELECT *, coalesce(date_role, date_depot) AS date FROM texte_porte
                                       WHERE publiable AND role <> 'initiative_gouvernementale')
-                           SELECT x.* """ + _jointure("x", "date", l, m17)
-                   + " ORDER BY x.date, x.dossier, x.role, x.acteur") if m17 else []
+                           SELECT x.* """ + _jointure("x", "date", l, ms)
+                   + " ORDER BY x.date, x.dossier, x.role, x.acteur") if ms else []
     ident = commun["identites"]
     for k, t in enumerate(rows):
         t["titre"] = t["titre"] or commun["titres"].get(t["dossier"])
@@ -486,7 +505,7 @@ def _proposes(ctx, f, l, m17, anciens, commun, idx):
     agregats = [{"role": r, "etape_atteinte": e, "matiere": m, "matiere_libelle": ml, "dossiers_distincts": len(s)}
                 for (r, e, m, ml), s in sorted(agr.items(), key=lambda kv: tuple(str(x) for x in kv[0]))]
     mat = sum(1 for t in rows if t["matiere_statut"] in ("assemblee", "senat_seulement"))
-    cv = _couv("textes", "complet" if m17 else "non_collecte",
+    cv = _couv("textes", "complet" if ms else "non_collecte",
                f"Textes portés par les membres pendant leur appartenance (auteur, cosignataire, rapporteur), "
                f"publiés à partir de leur examen en commission : {len(rows)} rôles sur "
                f"{len({t['dossier'] for t in rows})} dossiers distincts. Matière établie pour {mat} sur {len(rows)}.",
@@ -511,22 +530,22 @@ COLS_AGREGATS = ["commission", "commission_libelle", "annee", "nb_amendements", 
                  "nb_irrecevables_40", "nb_irrecevables_45", "nb_signatures_cosignataire", "au"]
 
 
-def _amendements(ctx, f, l, m17, anciens, commun):
-    au, pts = commun["au"], [PA_AMENDEMENTS]
+def _amendements(ctx, f, l, ms, anciens, commun):
+    au, pts = commun["au"], points("amendements", _legs(ms))
     lic = commun["lic"].get(PA_AMENDEMENTS)
     if not _vue(ctx, "amendement_canonique"):
         f.section("amendements", [], "amendements_lignee",
                   couverture=_absente("amendements", pts, au, ["amendement_canonique"]))
         return
-    rows = _lignes(ctx, "SELECT x.* " + _jointure("amendement_canonique", "date_depot", l, m17)
-                   + " ORDER BY x.date_depot, x.amendement") if m17 else []
+    rows = _lignes(ctx, "SELECT x.* " + _jointure("amendement_canonique", "date_depot", l, ms)
+                   + " ORDER BY x.date_depot, x.amendement") if ms else []
     # Signatures : amendements cosignés par un membre pendant son appartenance, dont l'auteur
     # principal n'est pas membre du groupe à cette date (sinon l'amendement est déjà compté).
     sig = _lignes(ctx, f"""SELECT DISTINCT x.amendement, x.date_depot, x.commission
-                           {_jointure("amendement_auteur", "date_depot", l, m17)}
+                           {_jointure("amendement_auteur", "date_depot", l, ms)}
                            WHERE x.role = 'cosignataire' AND x.amendement NOT IN
-                                 (SELECT y.amendement {_jointure("amendement_canonique", "date_depot", l, m17, "y")})""") \
-        if m17 and _vue(ctx, "amendement_auteur") else []
+                                 (SELECT y.amendement {_jointure("amendement_canonique", "date_depot", l, ms, "y")})""") \
+        if ms and _vue(ctx, "amendement_auteur") else []
     ident = commun["identites"]
     lib = {}
     for r in rows:
@@ -576,7 +595,7 @@ def _amendements(ctx, f, l, m17, anciens, commun):
         agregats.append(x)
     hors = sum(1 for r in rows if r["famille_sort"] not in ("irrecevable_40", "irrecevable_45"))
     com = sum(1 for r in rows if r["commission"])
-    cv = _couv("amendements", "complet" if m17 else "non_collecte",
+    cv = _couv("amendements", "complet" if ms else "non_collecte",
                f"Amendements distincts dont un membre est l'auteur principal, déposés pendant son "
                f"appartenance : {hors}, plus {len(rows) - hors} irrecevables (articles 40 et 45) comptés à "
                f"part ; {len(sig)} amendements d'autres auteurs cosignés par des membres, comptés à part. "
@@ -618,11 +637,12 @@ def _positions_groupes(ctx):
         FROM d""")
 
 
-def _votes(ctx, f, l, m17, commun, idx):
-    au, pts = commun["au"], [PA_SCRUTINS]
-    if not m17:
+def _votes(ctx, f, l, ms, leg, commun, idx):
+    pts = points("scrutins", [leg])
+    if not ms:
         return
-    nom = f"votes-{LEGISLATURE_ACTIVITE}"
+    au = _au_maillons(ms, commun["au"])
+    nom = f"votes-{leg}"
     if not (_vue(ctx, "an_scrutins__decompte_groupe") and _vue(ctx, "scrutin_classe")):
         f.section(nom, [], "vote_groupe", couverture=_absente("votes", pts, au, ["scrutin_classe"]))
         return
@@ -641,7 +661,7 @@ def _votes(ctx, f, l, m17, commun, idx):
                p.nv AS non_votants, p.membres, s.source_url
         FROM _lg_pos p JOIN scrutin_classe s USING (scrutin) LEFT JOIN groupe g ON g.organe = p.organe
         WHERE p.organe IN (SELECT unnest(?::VARCHAR[])) AND s.legislature = ?
-        ORDER BY s.date, s.numero, p.organe""", [list(m17["organes"]), LEGISLATURE_ACTIVITE])
+        ORDER BY s.date, s.numero, p.organe""", [[o for m in ms for o in m["organes"]], leg])
     for k, r in enumerate(rows):
         r["titre_dossier"] = commun["titres"].get(r["dossier"])
         r["licence"] = commun["lic"].get(PA_SCRUTINS)
@@ -650,7 +670,7 @@ def _votes(ctx, f, l, m17, commun, idx):
                         else "pour_et_contre" if r["pour"] and r["contre"] else "position_et_abstention")
         idx.ajouter(nom, k, r["intitule"], r["titre_dossier"])
     etab = sum(1 for r in rows if r["position_groupe"])
-    n_scr = ctx.un("SELECT count(*) FROM scrutin_classe WHERE legislature = ?", [LEGISLATURE_ACTIVITE])
+    n_scr = ctx.un("SELECT count(*) FROM scrutin_classe WHERE legislature = ?", [leg])
     f.section(nom, rows, "vote_groupe", ids={"scrutin": "scrutin", "organe": "groupe", "dossier": "dossier"},
               date="date",
               couverture=_couv("votes", "complet", f"Décompte publié par l'Assemblée pour le groupe sur {len(rows)} "
@@ -672,11 +692,12 @@ COLS_AVEC_QUI = ["maillon", "groupe_sigle", "groupe_libelle", "lien", "place_med
                  "scrutins_compares", "scrutins_coincidents", "au"]
 
 
-def _avec_qui(ctx, f, l, m17, commun):
-    au, pts = commun["au"], [PA_SCRUTINS, PA_AMO]
-    if not m17:
+def _avec_qui(ctx, f, l, ms, leg, commun):
+    pts = points("scrutins", [leg]) + [PA_AMO]
+    if not ms:
         return
-    nom = f"avec-qui-{LEGISLATURE_ACTIVITE}"
+    au = _au_maillons(ms, commun["au"])
+    nom = f"avec-qui-{leg}"
     if not (_vue(ctx, "an_scrutins__decompte_groupe") and _vue(ctx, "scrutin_classe")):
         f.section(nom, [], "avec_qui", couverture=_absente("votes", pts, au, ["scrutin_classe"]))
         return
@@ -688,20 +709,20 @@ def _avec_qui(ctx, f, l, m17, commun):
         med = {m: v for m, v in ctx.x("""
             SELECT lm.maillon, median(TRY_CAST(h.siege AS INTEGER))
             FROM hemicycle h JOIN (SELECT maillon, unnest(organes) AS organe FROM lignee_maillon) lm
-              ON lm.organe = h.groupe WHERE h.legislature = ? GROUP BY 1""", [LEGISLATURE_ACTIVITE])}
+              ON lm.organe = h.groupe WHERE h.legislature = ? GROUP BY 1""", [leg])}
     rows = _lignes(ctx, """
         WITH p AS (SELECT p.scrutin, lm.maillon, p.pub FROM _lg_pos p
                    JOIN (SELECT maillon, legislature, unnest(organes) AS organe FROM lignee_maillon) lm
                      ON lm.organe = p.organe
                    WHERE p.raison IS NULL AND lm.legislature = ?),
-        moi AS (SELECT * FROM p WHERE maillon = ?)
+        moi AS (SELECT * FROM p WHERE maillon IN (SELECT unnest(?::VARCHAR[])))
         SELECT o.maillon, s.nature, count(*) AS scrutins_compares,
                count(*) FILTER (o.pub = moi.pub) AS scrutins_coincidents
         FROM moi JOIN p o ON o.scrutin = moi.scrutin AND o.maillon <> moi.maillon
         JOIN scrutin_classe s ON s.scrutin = moi.scrutin
-        GROUP BY 1, 2""", [LEGISLATURE_ACTIVITE, m17["maillon"]])
+        GROUP BY 1, 2""", [leg, [m["maillon"] for m in ms]])
     info = {m: (lig, s, lb) for m, lig, s, lb in ctx.x(
-        "SELECT maillon, lignee, sigle, libelle FROM lignee_maillon WHERE legislature = ?", [LEGISLATURE_ACTIVITE])}
+        "SELECT maillon, lignee, sigle, libelle FROM lignee_maillon WHERE legislature = ?", [leg])}
     for r in rows:
         lig, s, lb = info.get(r["maillon"], (None, None, None))
         ad = commun["adresses"].get(lig)
@@ -709,14 +730,20 @@ def _avec_qui(ctx, f, l, m17, commun):
                   "place_mediane": med.get(r["maillon"]), "au": au})
     rows.sort(key=lambda r: (r["place_mediane"] is None, r["place_mediane"] or 0, r["groupe_sigle"] or "",
                              r["nature"] or ""))
+    phrase = ("Pour chaque autre groupe de la législature et chaque nature de scrutin : nombre de scrutins "
+              "où les positions majoritaires des deux groupes sont établies, et nombre de ceux où elles "
+              "coïncident. Aucune part n'est calculée.")
+    if med:
+        couv = _couv("votes", "complet", phrase, sum(1 for r in rows if r["place_mediane"] is not None),
+                     len(rows), pts, au=au)
+        ordre = "hémicycle (place médiane des membres siégeant le jour de constat ; groupes clos à la fin)"
+    else:
+        # Législature close : l'Assemblée ne publie que l'hémicycle en cours. Rien n'est déduit.
+        couv = _couv("votes", "complet", phrase + " L'hémicycle de cette législature n'est pas publié : "
+                     "groupes rangés par sigle, sans place médiane.", len(rows), len(rows), pts, au=au)
+        ordre = "alphabétique (sigle) : hémicycle non publié pour une législature close"
     f.section(nom, rows, "avec_qui", ids={"autre": "maillon"}, date="au", source=None,
-              couverture=_couv("votes", "complet", "Pour chaque autre groupe de la législature et chaque nature de "
-                               "scrutin : nombre de scrutins où les positions majoritaires des deux groupes sont "
-                               "établies, et nombre de ceux où elles coïncident. Aucune part n'est calculée.",
-                               sum(1 for r in rows if r["place_mediane"] is not None), len(rows), pts, au=au),
-              colonnes=COLS_AVEC_QUI,
-              extra={"ordre": "hémicycle (place médiane des membres siégeant le jour de constat ; groupes clos "
-                              "à la fin)", "au": au})
+              couverture=couv, colonnes=COLS_AVEC_QUI, extra={"ordre": ordre, "au": au})
 
 
 def _mots(ecr, f, idx, au):

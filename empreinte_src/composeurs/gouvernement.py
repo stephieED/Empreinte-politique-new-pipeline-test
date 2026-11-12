@@ -32,15 +32,17 @@ import re
 import unicodedata
 from collections import defaultdict
 
+from ..perimetre import LEGISLATURES, LEGISLATURES_GOUVERNEMENTS, PAROLES_DEPUIS
+
 NOM = "gouvernement"
 VERSION = 1
 DEPEND = ("R-GOUVERNEMENTS", "R-LEGISLATURES", "R-COMPOSITION", "R-VAGUE", "R-APPARTENANCE",
           "R-DEPOT-GOUVERNEMENT", "R-MATIERE", "R-SORT-FINAL", "R-49-3",
           "R-PAROLES-GOUVERNEMENT", "R-RATTACHEMENT-ACTE", "R-LOI-CITEE")
 
-LEGISLATURE = 17
+LEGISLATURES_GOUV = LEGISLATURES_GOUVERNEMENTS   # gouvernements publiés (module `perimetre`)
 # Fiches publiées par les composeurs de cette tranche : seules cibles possibles d'un lien (C2).
-LEGISLATURES_PUBLIEES = {17}
+LEGISLATURES_PUBLIEES = set(LEGISLATURES)
 LONGUEUR_EXTRAIT = 300
 # Poids brut visé d'un fichier d'extraits : un clic sur un sujet ne charge que son paquet (≈ 60 Ko
 # compressés) ; un sujet plus lourd (loi de finances) est réparti sur plusieurs paquets consécutifs.
@@ -131,7 +133,8 @@ def composer(ctx, ecr):
         SELECT organe, nom, adresse, debut, fin, en_cours, rang, source_url FROM gouvernement
         ORDER BY debut""")
     publies = {r[0] for r in ctx.x(
-        "SELECT DISTINCT gouvernement FROM gouvernement_legislature WHERE legislature = ?", [LEGISLATURE])}
+        "SELECT DISTINCT gouvernement FROM gouvernement_legislature WHERE legislature IN "
+        "(SELECT unnest(?::INTEGER[]))", [list(LEGISLATURES_GOUV)])}
     adresses = {g["organe"]: g["adresse"] for g in gouvs if g["organe"] in publies}
     noms = _identites(ctx)
     commun = {"au": au, "noms": noms, "adresses": adresses, "gouvs": gouvs,
@@ -167,11 +170,14 @@ def _composer_un(ctx, ecr, g, precedent, suivant, commun):
         if r["legislature"] in LEGISLATURES_PUBLIEES:
             x["lien"] = f"legislature/{r['legislature']}"
         legislatures.append(x)
-    debut_l17 = next((x["debut"] for x in legislatures if x["numero"] == LEGISLATURE), g["debut"])
+    # Début de ce qui est lu (cahier 4.1) : dossiers depuis la XIVe, comptes rendus depuis la XVe.
+    debuts = dict(ctx.x("SELECT numero, debut FROM legislature")) if _vue(ctx, "legislature") else {}
+    debut_dossiers = debuts.get(min(LEGISLATURES)) or g["debut"]
+    debut_paroles = debuts.get(PAROLES_DEPUIS) or g["debut"]
 
     composition = _composition(ctx, f, g, commun, limites)
-    paroles = _paroles(ctx, f, g, commun, composition["nb_membres"], debut_l17, limites)
-    projets, e493 = _deposes(ctx, f, g, commun, debut_l17)
+    paroles = _paroles(ctx, f, g, commun, composition["nb_membres"], debut_paroles, limites)
+    projets, e493 = _deposes(ctx, f, g, commun, debut_dossiers)
     actes = _actes(ctx, f, g, commun)
     _budgets(f)
 
@@ -385,7 +391,7 @@ def _majorite(ctx, g, fin_effective, commun):
 
 # -- sur quoi ils ont pris la parole --------------------------------------------------------
 
-def _paroles(ctx, f, g, commun, nb_membres, debut_l17, limites):
+def _paroles(ctx, f, g, commun, nb_membres, debut_lu, limites):
     org, au = g["organe"], commun["au"]
     pts = _points(ctx, "an_comptes_rendus__intervention", PA_SYCERON)
     if not _vue(ctx, "parole_gouvernement"):
@@ -473,7 +479,7 @@ def _paroles(ctx, f, g, commun, nb_membres, debut_l17, limites):
     intervenus = sorted({r["acteur"] for r in rows}, key=tri_nom)
     personnes = {a: noms.get(a, {}).get("nom") for a in intervenus}
 
-    # Couverture : comptes rendus lus pour la XVIIe ; avant, non collectés (essai).
+    # Couverture : comptes rendus lus à partir de la XVe (cahier 4.1) ; avant, hors périmètre.
     sans_intitule = sum(1 for r in rows if r["statut_sujet"] != "etabli")
     ecrite = sum(1 for r in rows if r["qualite_source"] == "compte_rendu")
     phrase_q = (f"Prises de parole des membres pendant leur fonction, en qualité de membre du "
@@ -483,12 +489,12 @@ def _paroles(ctx, f, g, commun, nb_membres, debut_l17, limites):
     if sans_intitule:
         phrase_q += (f" {sans_intitule} prises de parole sans intitulé publié sont comptées sous "
                      f"« Intitulé non publié ».")
-    if g["debut"] < debut_l17:
-        couv = _couv("paroles", "non_collecte",
-                     f"Comptes rendus lus pour la XVIIe législature seulement (à partir du "
-                     f"{_fr(debut_l17)}) ; ceux de la XVIe, du {_fr(g['debut'])} au "
-                     f"{_fr(_veille(debut_l17))}, ne sont pas collectés dans l'essai. " + phrase_q,
-                     _jours(debut_l17, g["fin"] or au), _jours(g["debut"], g["fin"] or au), pts, au=au)
+    if g["debut"] < debut_lu:
+        couv = _couv("paroles", "hors_perimetre",
+                     f"Comptes rendus lus à partir de la XVe législature (le {_fr(debut_lu)}, cahier "
+                     f"4.1) ; ceux du {_fr(g['debut'])} au {_fr(_veille(debut_lu))} sont hors du "
+                     "périmètre. " + phrase_q,
+                     _jours(debut_lu, g["fin"] or au), _jours(g["debut"], g["fin"] or au), pts, au=au)
     else:
         couv = _couv("paroles", "complet", phrase_q, len(intervenus), nb_membres, pts, au=au)
     f.section("paroles", index, type_fait="parole_sujet",
@@ -514,7 +520,7 @@ def _paroles(ctx, f, g, commun, nb_membres, debut_l17, limites):
 
 # -- ce qu'il a fait déposer ----------------------------------------------------------------
 
-def _deposes(ctx, f, g, commun, debut_l17):
+def _deposes(ctx, f, g, commun, debut_lu):
     org, au = g["organe"], commun["au"]
     pts = _points(ctx, "an_dossiers__dossier", PA_DOSSIERS)
     lic = _licence_unique(ctx, "an_dossiers__dossier")
@@ -550,12 +556,12 @@ def _deposes(ctx, f, g, commun, debut_l17):
     phrase = ("Projets de loi reconnus au texte du premier dépôt (PRJL), rattachés au gouvernement en "
               "fonction ce jour-là. La matière est la commission saisie au fond (aide à la lecture). "
               "Le ministère porteur n'est pas encore établi (règle à venir).")
-    if g["debut"] < debut_l17:
-        couv = _couv("textes", "non_collecte",
-                     f"Seuls les dossiers de l'archive de la XVIIe législature sont lus : les projets "
-                     f"déposés du {_fr(g['debut'])} au {_fr(_veille(debut_l17))} n'y figurent que s'ils "
-                     f"ont continué en XVIIe. " + phrase,
-                     _jours(debut_l17, g["fin"] or au), _jours(g["debut"], g["fin"] or au), pts, au=au)
+    if g["debut"] < debut_lu:
+        couv = _couv("textes", "hors_perimetre",
+                     f"Dossiers législatifs lus à partir de la XIVe législature (le {_fr(debut_lu)}, "
+                     f"cahier 4.1) : les projets déposés du {_fr(g['debut'])} au "
+                     f"{_fr(_veille(debut_lu))} n'y figurent que s'ils ont continué ensuite. " + phrase,
+                     _jours(debut_lu, g["fin"] or au), _jours(g["debut"], g["fin"] or au), pts, au=au)
     else:
         couv = _couv("textes", "complet", phrase, n, n, pts, au=au)
     cols = ["dossier", "document", "titre_dossier", "date_depot", "chambre_depot", "procedure_libelle",
@@ -584,7 +590,7 @@ def _deposes(ctx, f, g, commun, debut_l17):
         r["licence"] = lic
     nb_eng = len({r["acte"] for r in e_rows})
     nb_textes = len({r["dossier"] for r in e_rows if r["procedure_code"] != "13"})
-    c49 = _couv("procedure_49_3", "complet" if g["debut"] >= debut_l17 else "non_collecte",
+    c49 = _couv("procedure_49_3", "complet" if g["debut"] >= debut_lu else "hors_perimetre",
                 "Engagements de responsabilité (article 49, alinéa 3) lus dans les dossiers législatifs, "
                 "rattachés au gouvernement en fonction à leur date. Un même engagement figure dans le "
                 "dossier du texte et dans le dossier « Engagement de la responsabilité du Gouvernement ». "

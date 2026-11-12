@@ -1,7 +1,9 @@
 """Composeur « gouvernement » (cahier 4.4) sur de petites tables Z3 écrites à la main.
 
 Quatre gouvernements : Alpha (XVIe seulement : pas de fiche), Beta (XVIe puis XVIIe), Gamma (XVIIe,
-clos), Delta II (XVIIe, en cours, seul couvert en partie par le Journal officiel)."""
+clos), Delta II (XVIIe, en cours, seul couvert en partie par le Journal officiel). Les législatures
+sont celles de la source (XIVe à XVIIe) : Beta est entier dans le périmètre (dossiers depuis la XIVe,
+comptes rendus depuis la XVe)."""
 import gzip
 import json
 import os
@@ -47,6 +49,11 @@ def _acte(uid, date, gouv, dans, ministere="Ministère de la culture", nature="A
 
 
 TABLES = {
+    "legislature": [
+        {"numero": 14, "organe": "PO644420", "debut": "2012-06-20", "fin": "2017-06-20", "en_cours": False},
+        {"numero": 15, "organe": "PO717460", "debut": "2017-06-21", "fin": "2022-06-21", "en_cours": False},
+        {"numero": 16, "organe": "PO800538", "debut": "2022-06-22", "fin": "2024-06-09", "en_cours": False},
+        {"numero": 17, "organe": "PO838901", "debut": "2024-07-18", "fin": None, "en_cours": True}],
     "gouvernement": [
         {"organe": "PO1", "nom": "Alpha", "adresse": "alpha", "debut": "2022-05-17", "fin": "2024-01-09",
          "en_cours": False, "rang": 1, "source_url": None},
@@ -203,14 +210,14 @@ def test_une_fiche_par_gouvernement_de_la_xviie_et_liens_publies(sortie):
     assert "lien" not in frise["precedent"] and frise["precedent"]["nom"] == "Alpha"   # pas de fiche
     assert frise["suivant"]["lien"] == "gouvernement/gamma"
     legs = beta["en_bref"]["legislatures"]
-    assert [l.get("lien") for l in legs] == [None, "legislature/17"]
+    assert [l.get("lien") for l in legs] == ["legislature/16", "legislature/17"]   # XIVe à XVIIe publiées
     delta = _lire(racine, "gouvernements/delta-ii/fiche.json.gz")
     assert delta["en_bref"]["frise"]["suivant"] is None
     assert delta["gouvernement"]["en_cours"] and delta["gouvernement"]["duree_au"] == AU
     assert delta["gouvernement"]["duree_jours"] == 392
     # C2 et C4 passent : liens seulement vers des fiches publiées, aucune donnée interdite.
     c = Controles(racine)
-    c.c2_liens({f["fiche"] for f in man["fiches"]} | {"legislature/17"})
+    c.c2_liens({f["fiche"] for f in man["fiches"]} | {"legislature/16", "legislature/17"})
     c.c4_interdits()
     assert c.bilan()["publication_autorisee"], c.bilan()
 
@@ -298,10 +305,9 @@ def test_deposes_et_49_3_fait_de_procedure(sortie):
 def test_zero_hors_couverture_complete_reste_null(sortie):
     _, _, racine = sortie
     b = _lire(racine, "gouvernements/beta/fiche.json.gz")["en_bref"]
-    # Beta commence en XVIe (comptes rendus et dossiers non collectés) : 0 n'est pas un vrai zéro.
-    assert b["paroles"]["nb_prises_de_parole"] is None and b["paroles"]["couverture"] == "non_collecte"
-    assert b["procedure_49_3"]["nb_engagements"] is None
-    assert b["projets_de_loi"]["deposes"] is None
+    # Beta commence en XVIe, dans le périmètre : ses zéros sont de vrais zéros.
+    assert b["paroles"]["nb_prises_de_parole"] == 0 and b["paroles"]["couverture"] == "complet"
+    assert b["projets_de_loi"]["deposes"] == 0 and b["projets_de_loi"]["couverture"] == "complet"
     # Delta II, entièrement en XVIIe : 0 projet est un vrai zéro.
     d = _lire(racine, "gouvernements/delta-ii/fiche.json.gz")["en_bref"]
     assert d["projets_de_loi"]["deposes"] == 0 and d["projets_de_loi"]["couverture"] == "complet"
@@ -384,3 +390,15 @@ def test_tables_absentes_couverture_le_dit(tmp_path):
     assert fiche["en_bref"]["composition"]["nb_vagues"] is None
     p = _lire(racine, "gouvernements/gamma/paroles.json.gz")
     assert p["couverture"]["statut"] == "en_cours"
+
+
+def test_avant_le_perimetre_aucun_zero(tmp_path, monkeypatch):
+    """Un gouvernement qui commence avant le début des comptes rendus lus (cahier 4.1 : XVe) : ses
+    paroles sont « hors périmètre », sans compte (pas même 0). Simulé en faisant commencer les
+    paroles à la XVIIe."""
+    monkeypatch.setattr(composeur, "PAROLES_DEPUIS", 17)
+    _, _, racine = _composer(tmp_path)
+    b = _lire(racine, "gouvernements/beta/fiche.json.gz")["en_bref"]
+    assert b["paroles"]["nb_prises_de_parole"] is None and b["paroles"]["couverture"] == "hors_perimetre"
+    g = _lire(racine, "gouvernements/gamma/fiche.json.gz")["en_bref"]
+    assert g["paroles"]["couverture"] == "complet"

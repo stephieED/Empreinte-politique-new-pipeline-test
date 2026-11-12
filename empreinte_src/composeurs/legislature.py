@@ -28,14 +28,16 @@ from __future__ import annotations
 
 import datetime as dt
 
+from ..perimetre import LEGISLATURES, LEGISLATURES_GOUVERNEMENTS
+
 NOM = "legislature"
 VERSION = 1
 DEPEND = ("R-LEGISLATURES", "R-GOUVERNEMENTS", "R-DEPUTES", "R-APPARTENANCE", "R-HEMICYCLE",
           "R-LOIS", "R-49-3", "R-NATURE-SCRUTIN", "R-ORDRE-DU-JOUR", "R-MATIERE", "R-ETAPE",
           "R-SORT-FINAL")
 
-# Périmètre d'essai : la seule XVIIe (commande de réalisation).
-PERIMETRE = (17,)
+# Législatures publiées : XIVe à XVIIe (cahier 4.1 ; module `perimetre`).
+PERIMETRE = LEGISLATURES
 
 COLS_HEMICYCLE = ["siege", "acteur", "prenom", "nom", "groupe", "groupe_sigle", "groupe_libelle",
                   "rattachement", "raison_rattachement", "raison_siege", "mandat", "date",
@@ -78,9 +80,9 @@ LIMITES = [
     {"sujet": "terme_legal", "statut": "non_collecte",
      "detail": "Le terme légal de la législature n'est pas publié par la source de l'Assemblée : "
                "la frise s'arrête à la date de référence."},
-    {"sujet": "lignees", "statut": "hors_perimetre",
-     "detail": "Les groupes ne renvoient pas encore vers leur lignée : les fiches de lignée ne "
-               "sont pas publiées dans le périmètre d'essai."},
+    {"sujet": "hemicycle_legislature_close", "statut": "trou_source",
+     "detail": "L'Assemblée ne publie le siège de chaque député que pour la législature en cours : "
+               "pour une législature close, ni l'hémicycle ni la place des groupes ne sont servis."},
     {"sujet": "articles_de_la_periode", "statut": "hors_perimetre",
      "detail": "Les articles du site sur la période ne sont pas composés dans cette tranche."},
 ]
@@ -202,7 +204,7 @@ def composer_legislature(ctx, ecr, leg: dict):
 
     gouvs = _gouvernements(ctx, numero, au, lic)
     entete["gouvernements"] = {
-        "colonnes": ["gouvernement", "nom", "lien", "debut", "fin", "debut_gouvernement",
+        "colonnes": ["gouvernement", "nom", "lien", "raison_lien", "debut", "fin", "debut_gouvernement",
                      "fin_gouvernement", "duree_jours", "au", "en_cours", "source_point",
                      "source_uid", "licence"],
         "ordre": "chronologique",
@@ -211,7 +213,8 @@ def composer_legislature(ctx, ecr, leg: dict):
                                          for g in gouvs]
     comptes = _compteurs(ctx, leg, au, lic, gouvs)
     entete["compteurs"] = comptes
-    entete["limites"] = LIMITES
+    entete["limites"] = [x for x in LIMITES
+                         if not (leg["en_cours"] and x["sujet"] == "hemicycle_legislature_close")]
     f.entete(entete)
     # Les lignes de l'en-tête sont affichées : elles sont des faits publiés comme les autres.
     for g in gouvs:
@@ -238,8 +241,13 @@ def composer_legislature(ctx, ecr, leg: dict):
 def _gouvernements(ctx, numero, au, lic) -> list[dict]:
     if _manquantes(ctx, "gouvernement", "gouvernement_legislature"):
         return []
-    rows = _lignes(ctx, """
-        SELECT g.organe AS gouvernement, g.nom, 'gouvernement/' || g.adresse AS lien,
+    # Lien seulement vers un gouvernement qui a sa fiche (module `perimetre`, C2).
+    gouv = ", ".join(str(n) for n in LEGISLATURES_GOUVERNEMENTS)
+    rows = _lignes(ctx, f"""
+        SELECT g.organe AS gouvernement, g.nom,
+               CASE WHEN g.organe IN (SELECT gouvernement FROM gouvernement_legislature
+                                      WHERE legislature IN ({gouv}))
+                    THEN 'gouvernement/' || g.adresse END AS lien,
                gl.debut, gl.fin, g.debut AS debut_gouvernement, g.fin AS fin_gouvernement,
                date_diff('day', gl.debut::DATE, least(coalesce(gl.fin, ?), ?)::DATE) AS duree_jours,
                ? AS au, g.en_cours, o.prov_point AS source_point, o.prov_uid AS source_uid,
@@ -250,6 +258,7 @@ def _gouvernements(ctx, numero, au, lic) -> list[dict]:
         ORDER BY gl.debut""", [au, au, au, numero, au])
     for r in rows:
         r["licence"] = lic.get(r["source_point"])
+        r["raison_lien"] = None if r["lien"] else "gouvernement sans fiche publiée"
     return rows
 
 
@@ -419,21 +428,24 @@ def _section_groupes(ctx, f, leg, au, lic):
         f.section("groupes", [], "effectif_groupe", couverture=_absente(manque, points))
         return
     numero = leg["numero"]
+    # Jour de constat : celui de l'hémicycle (législature en cours) ; pour une législature close,
+    # dont l'hémicycle n'est pas publié, le dernier jour de la législature.
     jour = ctx.un("SELECT any_value(date) FROM hemicycle WHERE legislature = ?", [numero]) or au
+    avec_hemicycle = bool(ctx.un("SELECT count(*) FROM hemicycle WHERE legislature = ?", [numero]))
     lignes = _lignes(ctx, """
         SELECT g.organe AS groupe, g.sigle, g.libelle, g.debut, g.fin, g.position_declaree,
                CASE WHEN g.fin IS NULL OR g.fin >= ? THEN e.effectif END AS effectif,
                CASE WHEN g.fin IS NULL OR g.fin >= ? THEN ? END AS au,
                CASE WHEN g.fin < ? THEN ef.effectif END AS effectif_a_la_fin,
-               (SELECT count(*) FROM hemicycle h WHERE h.groupe = g.organe AND h.legislature = ?)
-                   AS sieges_dans_l_hemicycle,
+               CASE WHEN ? THEN (SELECT count(*) FROM hemicycle h WHERE h.groupe = g.organe
+                                 AND h.legislature = ?) END AS sieges_dans_l_hemicycle,
                'groupe' AS rattachement, o.prov_point AS source_point, o.prov_uid AS source_uid
         FROM groupe g
         LEFT JOIN effectif_groupe e ON e.groupe = g.organe AND e.date = ?
         LEFT JOIN effectif_groupe ef ON ef.groupe = g.organe AND ef.date = g.fin
         LEFT JOIN an_acteurs__organe o ON o.uid = g.organe
         WHERE g.legislature = ? AND g.debut <= ?
-        ORDER BY g.sigle, g.debut""", [jour, jour, jour, jour, numero, jour, numero, au])
+        ORDER BY g.sigle, g.debut""", [jour, jour, jour, jour, avec_hemicycle, numero, jour, numero, au])
     # Non-inscrits et rattachement non établi : pas des groupes, comptés à part (s'il y en a).
     for ratt, libelle in (("non_inscrit", "Non-inscrits"), ("non_etabli", "Groupe non établi")):
         n = ctx.un("SELECT count(*) FROM hemicycle WHERE legislature = ? AND rattachement = ?",
@@ -445,15 +457,26 @@ def _section_groupes(ctx, f, leg, au, lic):
                            "effectif_a_la_fin": None, "sieges_dans_l_hemicycle": n,
                            "rattachement": ratt, "source_point": points[0] if points else None,
                            "source_uid": None})
+    # Lien de chaque groupe vers la fiche de sa lignée (R-LIGNEE), quand elle est publiée.
+    lignee_de = {}
+    if not _manquantes(ctx, "lignee", "lignee_maillon"):
+        lignee_de = {o: a for o, a in ctx.x("""
+            SELECT unnest(m.organes), l.adresse FROM lignee_maillon m JOIN lignee l USING (lignee)
+            WHERE l.publiee AND m.affiche""")}
     for l in lignes:
         l["licence"] = lic.get(l["source_point"])
+        ad = lignee_de.get(l["groupe"]) if l["groupe"] else None
+        l["lien"] = f"lignee/{ad}" if ad else None
     grp = [l for l in lignes if l["rattachement"] == "groupe"]
     declares = sum(1 for l in grp if l["position_declaree"] != "non_declaree")
-    ecarts = [l["sigle"] for l in grp if l["effectif"] is not None
+    ecarts = [l["sigle"] for l in grp if l["effectif"] is not None and avec_hemicycle
               and l["effectif"] != l["sieges_dans_l_hemicycle"]]
     detail = (f"Effectif de chaque groupe le {_date_fr(jour)}, apparentés compris. Position "
               f"déclarée par {_fr(declares)} groupe(s) sur {_fr(len(grp))} : sans déclaration, "
               "« non déclarée », jamais déduite.")
+    if not avec_hemicycle:
+        detail += (" L'hémicycle de cette législature close n'est pas publié : les sièges ne sont pas "
+                   "servis, et les non-inscrits ne sont pas comptés ici.")
     if ecarts:
         detail += " Effectif et sièges diffèrent pour : " + ", ".join(ecarts) + "."
     f.section("groupes", lignes, "effectif_groupe", ids={"organe": "groupe"}, date="au",
@@ -491,7 +514,16 @@ def _section_ordre_du_jour(ctx, f, leg, au, lic):
     for l in lignes:
         par_annee.setdefault((l["date"] or "sans-date")[:4], []).append(l)
     if not par_annee:
-        par_annee["vide"] = []
+        # Aucune séance publique pour cette législature : la source ne la publie pas (l'archive
+        # « Agenda XIV » ne contient que des réunions de groupes et de délégations, datées de
+        # 2017-2018). Un trou de la source, jamais un « 0 séance » complet.
+        f.section("ordre-du-jour-vide", [], "point_ordre_du_jour",
+                  couverture={"statut": "trou_source", "numerateur": None, "denominateur": None,
+                              "detail": f"L'agenda publié par l'Assemblée ne contient aucune séance "
+                                        f"publique de la {_nom(leg['numero'])} : son ordre du jour "
+                                        "n'est pas servi.", "points_acces": points},
+                  colonnes=COLS_ODJ, extra={"ordre": "chronologique", "annee": None, "au": au})
+        return
     for annee, ls in sorted(par_annee.items()):
         conf = [l for l in ls if l["rang"] is not None and l["statut_seance"] == "confirmee"
                 and l["statut_point"] == "confirme"]

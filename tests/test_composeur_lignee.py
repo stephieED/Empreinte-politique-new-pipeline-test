@@ -188,7 +188,7 @@ def test_une_fiche_par_lignee_publiee_et_controles(sortie):
     ecr, man, racine = sortie
     assert [f["fiche"] for f in man["fiches"]] == ["lignee/rassemblement", "lignee/socialistes"]
     c = Controles(racine)
-    c.c2_liens({f["fiche"] for f in man["fiches"]} | {"legislature/17", "candidat/dora-candidate"})
+    c.c2_liens({f["fiche"] for f in man["fiches"]} | {"legislature/16", "legislature/17", "candidat/dora-candidate"})
     c.c4_interdits()
     assert c.bilan()["publication_autorisee"], c.bilan()
 
@@ -204,11 +204,12 @@ def test_entete_frise_et_filiations(sortie):
     # Maillon clos : effectif à sa fin ; en cours : à la date de référence. Membres : personnes distinctes.
     assert (m[0]["effectif"], m[0]["effectif_au"], m[0]["membres"]) == (1, "2024-06-09", 2)
     assert (m[1]["effectif"], m[1]["effectif_au"], m[1]["membres"]) == (2, AU, 3)
-    assert m[0]["lien"] is None and m[0]["raison_lien"] and m[1]["lien"] == "legislature/17"
+    assert m[0]["lien"] == "legislature/16" and m[1]["lien"] == "legislature/17"     # XIVe à XVIIe publiées
     fil = _rows(f["filiations"])
     assert [(x["maillon"], x["verdict"]) for x in fil] == [("grp:16:PO16A", "pas_suite"), ("grp:17:PO17S", "suite")]
     assert (fil[1]["reelus"], fil[1]["anciens_deputes"], fil[1]["communs"]) == (3, 3, 3)
-    assert {c["section"] for c in f["couverture"]} >= {"membres", "effectifs", "paroles", "votes-17", "avec-qui-17"}
+    assert {c["section"] for c in f["couverture"]} >= {"membres", "effectifs", "paroles", "votes-16", "avec-qui-16",
+                                                       "votes-17", "avec-qui-17"}
 
 
 def test_membres_provenance_et_candidat(sortie):
@@ -242,8 +243,9 @@ def test_paroles_pendant_l_appartenance_et_index_non_compte_deux_fois(sortie):
     suj = _rows(p["sujets"])
     assert (suj[0]["prises_de_parole"], suj[0]["orateurs_distincts"]) == (2, 2)   # présidence à part
     assert {x["acteur"]: x["paragraphes_de_presidence"] for x in _rows(p["orateurs"])}["PA4"] == 1
-    # Les maillons hors périmètre le disent.
-    assert p["couverture"]["maillons_hors_perimetre"][0]["statut"] == "non_collecte"
+    # XVIe et XVIIe : dans le périmètre des paroles (XVe à XVIIe), aucun maillon hors périmètre.
+    assert p["couverture"]["maillons_hors_perimetre"] == []
+    assert p["maillons"] == ["grp:16:PO16A", "grp:17:PO17S"]
     sections = {x["section"] for x in ecr.faits if x["fiche"] == "lignee/socialistes"}
     assert "paroles" not in sections and any(s.startswith("paroles-textes-") for s in sections)
     textes = [x for x in ecr.faits if x["fiche"] == "lignee/socialistes" and x["section"].startswith("paroles-textes")]
@@ -284,15 +286,32 @@ def test_avec_qui_decomptes_sans_part_ordre_hemicycle(sortie):
     assert not any(c.startswith(("part", "ratio", "taux")) for c in d["colonnes"])
 
 
-def test_lignee_sans_activite_hors_xviie(tmp_path):
-    """Une lignée close avant la XVIIe : membres et effectifs, et des sections d'activité qui
-    disent « non collecté », jamais un zéro présenté comme complet."""
+def test_lignee_close_avant_la_xviie(tmp_path):
+    """Une lignée close avant la XVIIe (XVIe seule) : son activité est dans le périmètre (XIVe à
+    XVIIe) ; votes et « avec qui » de sa législature, comptés à la fin du maillon ; groupes rangés
+    par sigle (l'hémicycle d'une législature close n'est pas publié)."""
     t = {k: v for k, v in TABLES.items()}
     t["lignee"] = [dict(TABLES["lignee"][0], fin="2024-06-09", en_cours=False)]
     t["lignee_maillon"] = [TABLES["lignee_maillon"][0]]
     ecr, man, racine = _composer(tmp_path, t)
     f = _lire(racine, "lignees/socialistes/fiche.json.gz")
-    assert set(f["sections"]) == {"effectifs", "membres", "paroles", "proposes", "amendements"}
+    assert set(f["sections"]) == {"effectifs", "membres", "paroles", "proposes", "amendements", "votes-16",
+                                  "avec-qui-16"}
     for nom in ("paroles", "proposes", "amendements"):
         c = _lire(racine, f"lignees/socialistes/{nom}.json.gz")["couverture"]
-        assert c["statut"] == "non_collecte" and c["maillons_hors_perimetre"][0]["statut"] == "non_collecte"
+        assert c["statut"] == "complet" and not c.get("maillons_hors_perimetre"), nom
+    aq = _lire(racine, "lignees/socialistes/avec-qui-16.json.gz")
+    assert aq["au"] == "2024-06-09" and aq["ordre"].startswith("alphabétique")
+
+
+def test_paroles_avant_le_perimetre_aucun_zero(tmp_path, monkeypatch):
+    """Un maillon d'une législature sans paroles lues (XIVe, cahier 4.1) : « hors périmètre », sans
+    compte. Simulé en faisant commencer les paroles à la XVIIe."""
+    monkeypatch.setattr(composeur, "LEGISLATURES_PAROLES", (17,))
+    t = {k: v for k, v in TABLES.items()}
+    t["lignee"] = [dict(TABLES["lignee"][0], fin="2024-06-09", en_cours=False)]
+    t["lignee_maillon"] = [TABLES["lignee_maillon"][0]]
+    ecr, man, racine = _composer(tmp_path, t)
+    c = _lire(racine, "lignees/socialistes/paroles.json.gz")["couverture"]
+    assert c["statut"] == "hors_perimetre" and c["maillons_hors_perimetre"][0]["raison"] == "paroles_avant_la_xve"
+    assert not any(x["section"].startswith("paroles-textes") for x in ecr.faits)

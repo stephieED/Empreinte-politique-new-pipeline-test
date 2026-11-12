@@ -119,10 +119,13 @@ def ctx(tmp_path):
         {"numero": 17, "organe": "PO838901", "debut": "2024-07-01", "fin": None,
          "en_cours": True, "mode_fin": "en_cours", "source_url": None, "regle": "R-LEGISLATURES@1"}])
     vue(c, "gouvernement", [gouv("PO847639", "Barnier", "2024-09-06", "2024-12-13"),
-                            gouv("PO873634", "Lecornu II", "2025-10-11", None)])
+                            gouv("PO873634", "Lecornu II", "2025-10-11", None),
+                            gouv("PO839000", "Attal", "2024-01-09", "2024-09-05")])
     vue(c, "gouvernement_legislature", [
         {"gouvernement": "PO847639", "legislature": 17, "debut": "2024-09-06", "fin": "2024-12-13", "regle": "R-GOUVERNEMENTS@1"},
-        {"gouvernement": "PO873634", "legislature": 17, "debut": "2025-10-11", "fin": None, "regle": "R-GOUVERNEMENTS@1"}])
+        {"gouvernement": "PO873634", "legislature": 17, "debut": "2025-10-11", "fin": None, "regle": "R-GOUVERNEMENTS@1"},
+        # Attal ne traverse ici que la XVIe : pas de fiche (gouvernements de la XVIIe seulement, pour l'instant).
+        {"gouvernement": "PO839000", "legislature": 16, "debut": "2024-01-09", "fin": "2024-06-09", "regle": "R-GOUVERNEMENTS@1"}])
     dep = lambda a, m, debut, fin=None, s_du=None, s_au=None: {
         "acteur": a, "legislature": 17, "mandat": m, "debut": debut, "fin": fin,
         "suspendu_du": s_du, "suspendu_au": s_au, "regle": "R-DEPUTES@1"}
@@ -142,11 +145,13 @@ def ctx(tmp_path):
                                         "libelle": sigle, "debut": debut, "fin": fin,
                                         "position_declaree": "non_declaree", "regle": "R-APPARTENANCE@1"}
     vue(c, "groupe", [grp("PO845401", "RN", "2024-07-18", None), grp("PO845419", "SOC", "2024-07-18", None),
-                      grp("PO845520", "AD", "2024-07-18", "2024-09-11")])
+                      grp("PO845520", "AD", "2024-07-18", "2024-09-11"),
+                      {**grp("PO800484", "RE", "2022-06-28", "2024-06-09"), "legislature": 16}])
     vue(c, "effectif_groupe", [
         {"groupe": "PO845401", "date": REF, "effectif": 2, "legislature": 17, "regle": "R-HEMICYCLE@1"},
         {"groupe": "PO845419", "date": REF, "effectif": 1, "legislature": 17, "regle": "R-HEMICYCLE@1"},
-        {"groupe": "PO845520", "date": "2024-09-11", "effectif": 3, "legislature": 17, "regle": "R-HEMICYCLE@1"}])
+        {"groupe": "PO845520", "date": "2024-09-11", "effectif": 3, "legislature": 17, "regle": "R-HEMICYCLE@1"},
+        {"groupe": "PO800484", "date": "2024-06-09", "effectif": 169, "legislature": 16, "regle": "R-HEMICYCLE@1"}])
     vue(c, "loi", [
         {"numero_loi": "2026-103", "dossier": "D-PLF", "date_promulgation": "2026-02-19", "legislature": 17, "regle": "R-LOIS@1"},
         {"numero_loi": "2024-1", "dossier": "D-OLD", "date_promulgation": "2024-11-10", "legislature": 17, "regle": "R-LOIS@1"},
@@ -185,14 +190,14 @@ def ctx(tmp_path):
     return c
 
 
-def composer(ctx, tmp_path):
+def composer(ctx, tmp_path, numero=17):
     ecr = Ecrivain(str(tmp_path / "site"), "essai")
     comp.composer(ctx, ecr)
     man = ecr.clore()
     racine = os.path.join(str(tmp_path / "site"), "donnees", "essai")
 
     def lire(nom):
-        with gzip.open(os.path.join(racine, "legislatures", "17", nom + ".json.gz")) as f:
+        with gzip.open(os.path.join(racine, "legislatures", str(numero), nom + ".json.gz")) as f:
             return json.load(f)
     return ecr, man, racine, lire
 
@@ -210,7 +215,7 @@ def test_contrat_et_dependances():
 
 def test_fichiers_et_entete(ctx, tmp_path):
     ecr, man, racine, lire = composer(ctx, tmp_path)
-    assert [f["fiche"] for f in man["fiches"]] == ["legislature/17"]      # XVIe hors périmètre
+    assert [f["fiche"] for f in man["fiches"]] == ["legislature/16", "legislature/17"]   # XIVe à XVIIe
     fichiers = {k.split("/")[-1] for k in man["fichiers"] if k.startswith("legislatures/17/")}
     assert fichiers == {"fiche.json.gz", "hemicycle.json.gz", "groupes.json.gz",
                         "ordre-du-jour-2025.json.gz", "ordre-du-jour-2026.json.gz",
@@ -236,6 +241,7 @@ def test_fichiers_et_entete(ctx, tmp_path):
     assert c["textes_adoptes_49_3"]["engagements_distincts"] == 1
     assert {l["sujet"] for l in f["limites"]} >= {"senat", "commissions", "nuage_de_mots",
                                                    "place_mediane"}
+    assert "hemicycle_legislature_close" not in {l["sujet"] for l in f["limites"]}
     assert f["licences"] == ["etalab-2.0"]
 
 
@@ -300,8 +306,8 @@ def test_couverture_faits_et_controles(ctx, tmp_path):
     assert {c["section"] for c in f["couverture"]} == set(f["sections"])
     n_lignes = sum(s["lignes"] for s in f["sections"].values())
     entete = len(lignes(f["gouvernements"])) + len(f["compteurs"])
-    assert len(ecr.faits) == n_lignes + entete
-    assert all(x["fiche"] == "legislature/17" for x in ecr.faits)
+    assert len([x for x in ecr.faits if x["fiche"] == "legislature/17"]) == n_lignes + entete
+    assert {x["fiche"] for x in ecr.faits} == {"legislature/16", "legislature/17"}
     ctrl = Controles(racine)
     ctrl.c4_interdits()
     ctrl.c2_liens({"legislature/17", "gouvernement/barnier", "gouvernement/lecornu-ii"})
@@ -320,3 +326,26 @@ def test_sortie_de_regle_absente(ctx, tmp_path):
     assert "hemicycle" in h["couverture"]["detail"]
     assert lire("ordre-du-jour")["couverture"]["statut"] == "non_relu"
     assert lire("groupes")["couverture"]["statut"] == "non_relu"
+
+
+def test_legislature_close_sans_hemicycle(ctx, tmp_path):
+    """XVIe, close : comptes à sa fin ; l'hémicycle n'est pas publié pour une législature close,
+    donc ni sièges ni écart effectif/sièges, et la limite le dit. Chaque groupe renvoie à sa lignée
+    quand elle est publiée."""
+    ecr, man, racine, lire = composer(ctx, tmp_path, numero=16)
+    f = lire("fiche")
+    assert f["titre"] == "XVIe législature" and f["au"] == "2024-06-09"
+    assert "hemicycle_legislature_close" in {l["sujet"] for l in f["limites"]}
+    assert lire("hemicycle")["couverture"]["statut"] == "borne_historique"
+    # Aucune séance de la XVIe dans l'agenda du jeu d'essai : un trou de la source, pas « 0, complet ».
+    odj = lire("ordre-du-jour-vide")["couverture"]
+    assert odj["statut"] == "trou_source" and odj["numerateur"] is None
+    g = lignes(f["gouvernements"])
+    assert [(x["nom"], x["lien"], x["raison_lien"]) for x in g] == [("Attal", None, "gouvernement sans fiche publiée")]
+    g = lignes(lire("groupes"))
+    assert [(x["sigle"], x["effectif"], x["au"], x["sieges_dans_l_hemicycle"]) for x in g] == \
+        [("RE", 169, "2024-06-09", None)]                    # effectif au dernier jour de la législature
+    cv = lire("groupes")["couverture"]
+    assert cv["statut"] == "complet" and "hémicycle de cette législature close" in cv["detail"]
+    assert all(x["fiche"] != "legislature/16" or x["date"] is None or x["date"] <= "2024-06-09"
+               for x in ecr.faits)

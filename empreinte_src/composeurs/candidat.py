@@ -10,7 +10,7 @@ Fichiers de `candidats/<adresse>/` :
 
 | fichier | ce que voit le lecteur | chargé |
 | --- | --- | --- |
-| `fiche.json.gz` | en-tête (nom, profession, groupe actuel, naissance, source), candidature, en bref (frise de carrière par institution, liens vers `legislature/17` et les gouvernements de la XVIIe ; compteurs par institution, datés), périodes de position, limites, couverture de chaque section, tranches de l'index de mots | tout de suite |
+| `fiche.json.gz` | en-tête (nom, profession, groupe actuel, naissance, source), candidature, en bref (frise de carrière par institution, liens vers `legislature/<14 à 17>` et les gouvernements publiés ; compteurs par institution, datés), périodes de position, limites, couverture de chaque section, tranches de l'index de mots | tout de suite |
 | `fonctions.json.gz` | fonctions par famille, avec leur durée | à la demande |
 | `fonctions-periodes.json.gz` | détail : un mandat d'organe de la source par ligne | au clic |
 | `proposes.json.gz` | textes portés publiables (rôle, nature, étape, sort, matière) | à la demande |
@@ -35,9 +35,11 @@ bande des divergences ne porte **aucun total** (règle 7) : une seule liste, cha
 `diverge`, et aucun compte de divergences n'est servi ; une donnée manquante reste `null`
 (un compte nul n'est servi que si la lecture est complète) ; chaque compte porte sa date (`au`).
 
-Périmètre : l'activité (textes, amendements, votes, paroles, questions) n'est lue que pour la
-XVIIe législature ; toute activité antérieure est « hors périmètre d'essai », dite comme telle.
-Les mandats et fonctions viennent de l'archive des acteurs (depuis le 19/06/2002).
+Périmètre (cahier 4.1, module `perimetre`) : textes, amendements, votes et questions de la XIVe à
+la XVIIe législature (depuis le 20/06/2012) ; prises de parole de la XVe à la XVIIe (depuis le
+21/06/2017). Une activité antérieure est « hors périmètre », dite comme telle, et rien n'est
+compté pour elle. Les mandats et fonctions viennent de l'archive des acteurs (depuis le
+19/06/2002).
 """
 from __future__ import annotations
 
@@ -48,14 +50,15 @@ import re
 import unicodedata
 from collections import defaultdict
 
+from ..perimetre import LEGISLATURES, LEGISLATURES_GOUVERNEMENTS, PAROLES_DEPUIS, plage, point, points
+
 NOM = "candidat"
 VERSION = 1
 DEPEND = ("R-CANDIDATURES", "R-IDENTITE", "R-CARRIERE", "R-FONCTIONS", "R-TEXTE-PORTE",
           "R-AMENDEMENT", "R-VOTE-PERSONNE", "R-PERIODE", "R-DIVERGENCE", "R-PAROLE-PERSONNE",
           "R-QUESTION-PERSONNE", "R-LEGISLATURES", "R-GOUVERNEMENTS", "R-APPARTENANCE")
 
-LEGISLATURE = 17                 # périmètre d'essai de l'activité
-LEGISLATURES_PUBLIEES = {17}     # fiches de législature publiées (seules cibles de lien, C2)
+LEGISLATURES_PUBLIEES = set(LEGISLATURES)   # fiches de législature publiées (seules cibles de lien, C2)
 LONGUEUR_EXTRAIT = 300
 # Poids brut visé d'un fichier de textes (exposés, extraits) : un clic ne charge que son paquet.
 PAQUET = 300_000
@@ -259,7 +262,8 @@ def _commun(ctx, au) -> dict:
     publies_g = set()
     if _vue(ctx, "gouvernement_legislature"):
         publies_g = {r[0] for r in ctx.x("SELECT DISTINCT gouvernement FROM gouvernement_legislature "
-                                         "WHERE legislature = ?", [LEGISLATURE])}
+                                         "WHERE legislature IN (SELECT unnest(?::INTEGER[]))",
+                                         [list(LEGISLATURES_GOUVERNEMENTS)])}
     legs = {r["numero"]: r for r in _lignes(ctx, "SELECT numero, debut, fin FROM legislature")} \
         if _vue(ctx, "legislature") else {}
     fiches = {f"legislature/{n}" for n in legs if n in LEGISLATURES_PUBLIEES}
@@ -269,7 +273,12 @@ def _commun(ctx, au) -> dict:
     titres = {}
     if _vue(ctx, "an_dossiers__dossier"):
         titres = {u: t for u, t in ctx.x("SELECT uid, any_value(titre) FROM an_dossiers__dossier GROUP BY 1")}
-    debut17 = legs.get(LEGISLATURE, {}).get("debut")
+    # Début de l'activité lue : la première législature du périmètre ; les paroles, à partir de la XVe.
+    # (Si la source ne connaît pas l'une d'elles, la plus ancienne connue : le texte servi dit la date.)
+    debut_activite = min((legs[n]["debut"] for n in LEGISLATURES if n in legs and legs[n]["debut"]),
+                         default=None)
+    debut_paroles = min((legs[n]["debut"] for n in LEGISLATURES if n >= PAROLES_DEPUIS and n in legs
+                         and legs[n]["debut"]), default=None)
     # Exposés des amendements des candidats publiés (les seuls lus : 220 millions de caractères
     # pour toute l'archive).
     if not _vue(ctx, "amendement_canonique") or not _vue(ctx, "an_amendements__amendement"):
@@ -291,7 +300,8 @@ def _commun(ctx, au) -> dict:
             WHERE l.publiee AND m.affiche""")}
     fiches |= {f"lignee/{a}" for a in lignee_de.values()}
     return {"au": au, "lic": lic, "gouvs": gouvs, "publies_g": publies_g, "fiches": fiches,
-            "groupes": groupes, "titres": titres, "debut17": debut17, "legs": legs,
+            "groupes": groupes, "titres": titres, "debut_activite": debut_activite,
+            "debut_paroles": debut_paroles, "legs": legs,
             "lignee_de": lignee_de}
 
 
@@ -308,7 +318,11 @@ def _composer_un(ctx, ecr, c, ident, commun):
            if ident and ident.get("source_nom") != "wikipedia" else None) or c["nom"]
     f = ecr.fiche("candidat", c["adresse"], titre=nom)
     acteur = c["acteur"] if c["acteur"] and c["acteur_connu_an"] else None
-    perim = _perimetre(ctx, c, acteur, commun)
+    perim = _perimetre(ctx, c, acteur, commun, commun["debut_activite"],
+                       f"de la {plage()} législature")
+    perim_paroles = _perimetre(ctx, c, acteur, commun, commun["debut_paroles"],
+                               f"de la {plage(n for n in LEGISLATURES if n >= PAROLES_DEPUIS)} législature",
+                               "Prises de parole en séance")
     idx = IndexMots()
     limites: list[dict] = []
 
@@ -319,13 +333,16 @@ def _composer_un(ctx, ecr, c, ident, commun):
     amend = _amendements(ctx, f, acteur, perim, commun, idx)
     votes = _votes(ctx, f, acteur, perim, commun, idx)
     div = _divergences(ctx, f, acteur, perim, commun)
-    paroles = _paroles(ctx, f, acteur, perim, commun, idx)
+    paroles = _paroles(ctx, f, acteur, perim_paroles, commun, idx)
     questions = _questions(ctx, f, acteur, perim, commun, idx)
     mots_info = _ecrire_mots(ecr, f, idx, au)
 
     # Limites de la fiche (section « Ce qu'on n'a pas pu lire »), en plus des couvertures.
     limites.append({"famille": "activite", "statut": perim["statut"], "detail": perim["detail"],
                     "raison": perim["raison"], "au": au})
+    if perim_paroles["statut"] != perim["statut"]:
+        limites.append({"famille": "paroles", "statut": perim_paroles["statut"],
+                        "detail": perim_paroles["detail"], "raison": perim_paroles["raison"], "au": au})
     for inst in ("assemblee_avant_2002", "parlement_europeen", "local", "senat"):
         x = couv_car.get(inst)
         if inst == "senat" and not c["matricule_senat"]:
@@ -338,11 +355,12 @@ def _composer_un(ctx, ecr, c, ident, commun):
                         "detail": "L'activité au Sénat (votes, amendements, débats, questions) n'est "
                                   "pas collectée dans l'essai : seuls les mandats et fonctions de "
                                   "sénateur sont lus.", "au": au})
-    if periodes and all(p["banc"] == "non_declaree" for p in periodes if p["legislature"] == LEGISLATURE):
+    dans = [p for p in periodes if p["legislature"] in LEGISLATURES]
+    if dans and all(p["banc"] == "non_declaree" for p in dans):
         limites.append({"famille": "banc", "statut": "relu_aucun",
-                        "detail": "Aucun groupe de la XVIIe législature ne déclare sa position "
-                                  "(majorité, minorité, opposition) : le banc est « non déclaré », "
-                                  "jamais déduit.", "au": au})
+                        "detail": "Aucun des groupes de la personne ne déclare sa position (majorité, "
+                                  "minorité, opposition) : le banc est « non déclaré », jamais déduit.",
+                        "au": au})
     limites.append({"famille": "europe", "statut": "non_collecte",
                     "detail": "Volet européen (votes, rapports, paroles au Parlement européen) non "
                               "collecté dans l'essai.", "au": au})
@@ -497,7 +515,7 @@ def _periodes(ctx, f, acteur, commun) -> list[dict]:
         g = commun["gouvs"].get(p["gouvernement"])
         p["gouvernement_nom"] = g["nom"] if g else None
         p["lien"] = _lien_gouv(p["gouvernement"], commun)
-        p["dans_le_perimetre"] = p["legislature"] == LEGISLATURE
+        p["dans_le_perimetre"] = p["legislature"] in LEGISLATURES
         p["raisons_banc"] = list(p["raisons_banc"] or [])
         p["acteur"] = acteur
         out.append(p)
@@ -506,17 +524,18 @@ def _periodes(ctx, f, acteur, commun) -> list[dict]:
     return out
 
 
-def _perimetre(ctx, c, acteur, commun) -> dict:
-    """Couverture de l'activité de la personne (textes, amendements, votes, paroles, questions)."""
-    au, d17 = commun["au"], commun["debut17"]
+def _perimetre(ctx, c, acteur, commun, depuis, plage_txt, quoi="Activité") -> dict:
+    """Couverture de l'activité de la personne lue depuis `depuis` (textes, amendements, votes,
+    questions : début de la XIVe ; paroles : début de la XVe)."""
+    au = commun["au"]
     pts = [PA_AMO]
+    vide = {"jours_dans_le_perimetre": None, "jours_total": None, "points_acces": pts, "depuis": depuis}
     if not c["acteur"]:
         if c["matricule_senat"]:
             return {"statut": "hors_perimetre", "raison": "aucun_identifiant_assemblee",
                     "detail": "Aucun identifiant de l'Assemblée nationale n'est déclaré pour cette "
                               "personne : l'activité de l'Assemblée ne la concerne pas. Son activité "
-                              "de sénateur n'est pas collectée dans l'essai.",
-                    "jours_xviie": None, "jours_total": None, "points_acces": pts}
+                              "de sénateur n'est pas collectée.", **vide}
         detail = {
             "aucun_article": "La liste de Wikipédia ne lie aucun article à ce nom : aucun identifiant "
                              "parlementaire n'est connu, et rien n'est rattaché par le nom. Il n'y a "
@@ -528,13 +547,12 @@ def _perimetre(ctx, c, acteur, commun) -> dict:
                                  "nationale ni du Sénat. Il n'y a donc ni vote, ni amendement, ni prise "
                                  "de parole à publier.")
         return {"statut": "hors_perimetre", "raison": "aucun_identifiant_parlementaire",
-                "detail": detail, "jours_xviie": None, "jours_total": None, "points_acces": pts}
+                "detail": detail, **vide}
     if not acteur:
         return {"statut": "trou_source", "raison": "identifiant_absent_de_la_source",
                 "detail": f"L'identifiant déclaré par Wikidata ({c['acteur']}) est absent de l'archive "
-                          "de l'Assemblée : aucune activité n'est lue.",
-                "jours_xviie": None, "jours_total": None, "points_acces": pts}
-    # Jours où la personne siège ou est au gouvernement (carrière), depuis 2002 et en XVIIe.
+                          "de l'Assemblée : aucune activité n'est lue.", **vide}
+    # Jours où la personne siège ou est au gouvernement (carrière), depuis 2002 et dans le périmètre.
     iv = []
     if _vue(ctx, "carriere"):
         for d0, d1 in ctx.x("""SELECT debut, fin FROM carriere WHERE per = ? AND etat = 'en_fonction'
@@ -542,35 +560,38 @@ def _perimetre(ctx, c, acteur, commun) -> dict:
             iv.append((_jour(d0), _jour(d1) if d1 else _jour(au)))
     fin = _jour(au)
     total = _jours_union(iv, jusqu_a=fin)
-    j17 = _jours_union(iv, depuis=_jour(d17), jusqu_a=fin) if d17 else None
-    anterieur = any(d0 < _jour(d17) for d0, _ in iv) if d17 else False
-    base = (f"Activité lue pour la XVIIe législature seulement (depuis le {_fr(d17)}) : votes, "
-            "amendements, textes, prises de parole et questions de l'Assemblée nationale.")
+    dans = _jours_union(iv, depuis=_jour(depuis), jusqu_a=fin) if depuis else None
+    anterieur = any(d0 < _jour(depuis) for d0, _ in iv) if depuis else False
+    base = (f"{quoi} lue{'s' if quoi != 'Activité' else ''} {plage_txt} (depuis le {_fr(depuis)}), "
+            "à l'Assemblée nationale.")
+    if quoi == "Activité":
+        base = (f"Activité lue {plage_txt} (depuis le {_fr(depuis)}) : votes, amendements, textes et "
+                "questions de l'Assemblée nationale.")
     if anterieur:
-        detail = (base + f" Mandats et fonctions antérieurs ({total - (j17 or 0)} jours depuis le "
-                  f"19/06/2002) : leur activité est hors du périmètre d'essai.")
-        if not j17:
-            detail += " Aucun mandat ni fonction pendant la XVIIe : rien n'est compté pour elle."
-        return {"statut": "hors_perimetre", "raison": "activite_anterieure_a_la_xviie", "detail": detail,
-                "jours_xviie": j17, "jours_total": total, "points_acces": pts,
-                "statut_comptes_xviie": "complet" if j17 else "hors_perimetre"}
-    return {"statut": "complet", "raison": None, "detail": base, "jours_xviie": j17,
-            "jours_total": total, "points_acces": pts, "statut_comptes_xviie": "complet"}
+        detail = (base + f" Mandats et fonctions antérieurs ({total - (dans or 0)} jours depuis le "
+                  "19/06/2002) : leur activité est hors du périmètre, rien n'est compté pour eux.")
+        if not dans:
+            detail += f" Aucun mandat ni fonction depuis le {_fr(depuis)} : rien n'est compté."
+        return {"statut": "hors_perimetre", "raison": "activite_anterieure_au_perimetre", "detail": detail,
+                "jours_dans_le_perimetre": dans, "jours_total": total, "points_acces": pts,
+                "depuis": depuis, "statut_comptes": "complet" if dans else "hors_perimetre"}
+    return {"statut": "complet", "raison": None, "detail": base, "jours_dans_le_perimetre": dans,
+            "jours_total": total, "points_acces": pts, "depuis": depuis, "statut_comptes": "complet"}
 
 
 def _st(perim) -> str:
-    """Statut des comptes d'activité, pris sur le seul périmètre de la XVIIe : complet si la
-    personne a siégé ou été au gouvernement pendant la XVIIe ; sinon aucun compte (pas même 0)."""
-    return perim.get("statut_comptes_xviie") or perim["statut"]
+    """Statut des comptes d'activité, pris sur le seul périmètre : complet si la personne a siégé ou
+    été au gouvernement depuis son début ; sinon aucun compte (pas même 0)."""
+    return perim.get("statut_comptes") or perim["statut"]
 
 
 def _couv_activite(famille, perim, phrase, n, d, points, au, **extra):
     """Couverture d'une section d'activité : le statut est celui du périmètre de la personne
-    (complet, hors périmètre d'essai avant la XVIIe, aucun identifiant parlementaire…) ; la phrase
-    et les chiffres disent ce qui est établi dans la XVIIe."""
+    (complet, hors périmètre pour une activité antérieure, aucun identifiant parlementaire…) ; la
+    phrase et les chiffres disent ce qui est établi dans le périmètre."""
     statut = perim["statut"]
     detail = (perim["detail"] + " " + phrase).strip() if statut != "complet" else phrase
-    return _couv(famille, statut, detail, n, d, points, au=au, perimetre="XVIIe législature",
+    return _couv(famille, statut, detail, n, d, points, au=au, perimetre=f"depuis le {_fr(perim.get('depuis'))}",
                  raison=perim["raison"], **extra)
 
 
@@ -647,15 +668,15 @@ COLS_TEXTES = ["dossier", "document", "titre", "role", "qualite_rapporteur", "na
 
 
 def _proposes(ctx, f, acteur, perim, commun, idx) -> dict:
-    au, d17 = commun["au"], commun["debut17"]
-    pts = [PA_DOSSIERS]
+    au, d0 = commun["au"], commun["debut_activite"]
+    pts = points("dossiers")
     if not _vue(ctx, "texte_porte"):
         f.section("proposes", [], "texte_porte", couverture=_absente("textes", ["texte_porte"], pts, au))
         return {"publies": None, "statut": "non_relu"}
     toutes = _lignes(ctx, "SELECT * FROM texte_porte WHERE acteur = ? ORDER BY date_depot, dossier, role",
                      [acteur]) if acteur else []
-    avant = [t for t in toutes if (t["date_role"] or t["date_depot"] or "") < (d17 or "")]
-    dans = [t for t in toutes if (t["date_role"] or t["date_depot"] or "") >= (d17 or "")]
+    avant = [t for t in toutes if (t["date_role"] or t["date_depot"] or "") < (d0 or "")]
+    dans = [t for t in toutes if (t["date_role"] or t["date_depot"] or "") >= (d0 or "")]
     lignes = [t for t in dans if t["publiable"]]
     for t in lignes:
         t["licence"] = commun["lic"].get(PA_DOSSIERS)
@@ -678,11 +699,11 @@ def _proposes(ctx, f, acteur, perim, commun, idx) -> dict:
               f"{ecartes.get('etape_non_etablie', 0)} à l'étape non établie. Matière établie pour "
               f"{mat} sur {len(lignes)}.")
     if avant:
-        phrase += (f" {len(avant)} textes portés antérieurs à la XVIIe, présents dans l'archive, "
-                   "sont écartés (hors périmètre d'essai).")
+        phrase += (f" {len(avant)} textes portés antérieurs au {_fr(d0)}, présents dans l'archive, "
+                   "sont écartés (hors périmètre).")
     cv = _couv_activite("textes", perim, phrase, mat, len(lignes), pts, au,
                         selection={"publies": len(lignes), "ecartes": dict(sorted(ecartes.items())),
-                                   "anterieurs_a_la_xviie": len(avant)})
+                                   "anterieurs_au_perimetre": len(avant)})
     f.section("proposes", lignes, "texte_porte",
               ids={"acteur": "acteur", "dossier": "dossier", "document": "document", "organe": "matiere"},
               date="date_depot", couverture=cv, colonnes=COLS_TEXTES,
@@ -715,7 +736,7 @@ COLS_AGREGATS = ["commission", "commission_libelle", "annee", "nb_amendements", 
 
 def _amendements(ctx, f, acteur, perim, commun, idx) -> dict:
     au = commun["au"]
-    pts = [PA_AMENDEMENTS]
+    pts = points("amendements")
     lic = commun["lic"].get(PA_AMENDEMENTS)
     if not _vue(ctx, "amendement_canonique"):
         f.section("amendements", [], "amendements_compte",
@@ -854,7 +875,7 @@ COLS_VOTES = ["scrutin", "numero", "date", "dossier", "titre_dossier", "intitule
 
 def _votes(ctx, f, acteur, perim, commun, idx) -> dict:
     au = commun["au"]
-    pts = [PA_SCRUTINS, PA_DOSSIERS]
+    pts = points("scrutins") + points("dossiers")
     lic = commun["lic"].get(PA_SCRUTINS)
     if not _vue(ctx, "vote_personne"):
         cv = _absente("votes", ["vote_personne"], pts, au)
@@ -863,7 +884,7 @@ def _votes(ctx, f, acteur, perim, commun, idx) -> dict:
         return {"positions": None, "motions": None, "statut": "non_relu"}
     rows = _lignes(ctx, """SELECT *, par_49_3 AS dossier_par_49_3 FROM vote_personne
                            WHERE acteur = ? AND date >= ? ORDER BY date, scrutin""",
-                   [acteur, commun["debut17"] or ""]) if acteur else []
+                   [acteur, commun["debut_activite"] or ""]) if acteur else []
     for r in rows:
         r["licence"] = lic
         r["groupe_sigle"] = (commun["groupes"].get(r["groupe"]) or {}).get("sigle")
@@ -895,7 +916,7 @@ def _votes(ctx, f, acteur, perim, commun, idx) -> dict:
               extra=extra)
     cvm = _couv_activite("votes", perim, f"Motions de censure mises aux voix ({len(mot)} positions "
                          "nommées) : présentées à part, jamais comptées parmi les positions sur un texte.",
-                         len(mot), len(mot), [PA_SCRUTINS], au)
+                         len(mot), len(mot), points("scrutins"), au)
     f.section("votes-motions", mot, "position_motion", ids=ids, date="date", couverture=cvm,
               colonnes=COLS_VOTES + ["dossiers"], extra={"ordre": "chronologique", "au": au})
     st = _st(perim)
@@ -909,7 +930,7 @@ COLS_DIVERGENCES = ["scrutin", "date", "dossier", "titre_dossier", "position", "
                     "periode", "acteur", "source_url", "licence"]
 
 
-def _exclusions(ctx, acteur, debut17) -> dict:
+def _exclusions(ctx, acteur, depuis) -> dict:
     """Positions en dernière lecture écartées de la comparaison, par raison (mêmes conditions que
     R-DIVERGENCE, qui ne sert que les comparaisons retenues)."""
     from ..regles.r_divergence import LEGISLATURES_AVEC_FICHE, POSITIONS
@@ -941,23 +962,23 @@ def _exclusions(ctx, acteur, debut17) -> dict:
                END AS raison, count(*)
         FROM v LEFT JOIN groupe g ON g.organe = v.groupe AND g.legislature IN ({legs}) {avec_fiche}
         LEFT JOIN dg ON dg.scrutin = v.scrutin AND dg.groupe = v.groupe
-        GROUP BY 1""", [acteur, debut17 or ""])
+        GROUP BY 1""", [acteur, depuis or ""])
     return {r: n for r, n in rows if r is not None}
 
 
 def _divergences(ctx, f, acteur, perim, commun) -> dict:
     au = commun["au"]
-    pts = [PA_SCRUTINS, PA_AMO]
+    pts = points("scrutins") + [PA_AMO]
     if not _vue(ctx, "divergence"):
         f.section("divergences", [], "comparaison_groupe",
                   couverture=_absente("divergences", ["divergence"], pts, au))
         return {"comparaisons": None, "statut": "non_relu"}
     rows = _lignes(ctx, """SELECT * FROM divergence WHERE acteur = ? AND date >= ?
-                           ORDER BY date, scrutin""", [acteur, commun["debut17"] or ""]) if acteur else []
+                           ORDER BY date, scrutin""", [acteur, commun["debut_activite"] or ""]) if acteur else []
     for r in rows:
         r["licence"] = commun["lic"].get(PA_SCRUTINS)
         r["titre_dossier"] = r["titre_dossier"] or commun["titres"].get(r["dossier"])
-    exclus = _exclusions(ctx, acteur, commun["debut17"]) if acteur else {}
+    exclus = _exclusions(ctx, acteur, commun["debut_activite"]) if acteur else {}
     total = len(rows) + sum(exclus.values())
     contre = exclus.get("position_publiee_contredite_par_le_decompte", 0)
     groupe_non_etabli = sum(exclus.get(k, 0) for k in (
@@ -973,7 +994,7 @@ def _divergences(ctx, f, acteur, perim, commun) -> dict:
     cv = _couv_activite("divergences", perim, phrase, len(rows), total, pts, au,
                         ecartes=[{"raison": k, "positions": v} for k, v in sorted(exclus.items())],
                         regle_de_selection="5 conditions du cahier 4.2 ; groupes ayant une fiche : "
-                                           "ceux de la XVIIe législature")
+                                           f"ceux des lignées publiées ({plage()} législature)")
     f.section("divergences", rows, "comparaison_groupe",
               ids={"acteur": "acteur", "scrutin": "scrutin", "dossier": "dossier", "organe": "groupe",
                    "autre": "periode"},
@@ -1001,14 +1022,14 @@ COLS_SUJETS = ["sujet_id", "sujet", "sujet_libelle", "type_sujet", "creneau", "s
 
 def _paroles(ctx, f, acteur, perim, commun, idx) -> dict:
     au = commun["au"]
-    pts = [PA_SYCERON]
+    pts = points("syceron")
     lic = commun["lic"].get(PA_SYCERON)
     if not _vue(ctx, "parole_personne"):
         f.section("paroles", [], "parole_index", couverture=_absente("paroles", ["parole_personne"], pts, au))
         return {"paroles": None, "presidences": None, "statut": "non_relu"}
     rows = _lignes(ctx, """SELECT * FROM parole_personne WHERE acteur = ? AND date >= ?
                            ORDER BY date, compte_rendu, ordre_absolu_seance, id_syceron""",
-                   [acteur, commun["debut17"] or ""]) if acteur else []
+                   [acteur, commun["debut_paroles"] or ""]) if acteur else []
     sujets: dict[tuple, dict] = {}
     for r in rows:
         k = (r["type_sujet"], r["sujet"], r["creneau"])
@@ -1069,6 +1090,17 @@ def _paroles(ctx, f, acteur, perim, commun, idx) -> dict:
     return {"paroles": _compte(len(debat), st), "presidences": _compte(len(pres), st), "statut": st}
 
 
+FAMILLES_QUESTIONS = {"QE": "questions-ecrites", "QG": "questions-gouvernement",
+                      "QOSD": "questions-orales"}
+
+
+def _entier(x):
+    try:
+        return int(x)
+    except (TypeError, ValueError):
+        return None
+
+
 COLS_QUESTIONS = ["question", "type", "type_code", "numero", "legislature", "date", "date_nature",
                   "ministere", "ministere_libelle", "ministere_attributaire_libelle", "rubrique",
                   "tete_analyse", "analyses", "date_reponse", "cloture", "date_cloture", "acteur",
@@ -1077,15 +1109,18 @@ COLS_QUESTIONS = ["question", "type", "type_code", "numero", "legislature", "dat
 
 def _questions(ctx, f, acteur, perim, commun, idx) -> dict:
     au = commun["au"]
-    pts = list(PA_QUESTIONS)
+    pts = [p for fam in FAMILLES_QUESTIONS.values() for p in points(fam)]
     if not _vue(ctx, "question_personne"):
         f.section("questions", [], "question", couverture=_absente("questions", ["question_personne"], pts, au))
         return {"par_type": None, "statut": "non_relu"}
-    rows = _lignes(ctx, """SELECT * FROM question_personne WHERE acteur = ?
-                           ORDER BY date NULLS LAST, question""", [acteur]) if acteur else []
-    pt = {"QE": PA_QUESTIONS[0], "QG": PA_QUESTIONS[1], "QOSD": PA_QUESTIONS[2]}
+    legs = ", ".join(str(n) for n in LEGISLATURES)
+    rows = _lignes(ctx, f"""SELECT * FROM question_personne WHERE acteur = ?
+                            AND TRY_CAST(legislature AS INTEGER) IN ({legs})
+                            ORDER BY date NULLS LAST, question""", [acteur]) if acteur else []
     for k, r in enumerate(rows):
-        r["source_point"] = pt.get(r["type_code"])
+        fam = FAMILLES_QUESTIONS.get(r["type_code"])
+        leg = _entier(r["legislature"])
+        r["source_point"] = point(fam, leg) if fam and leg else None
         r["licence"] = commun["lic"].get(r["source_point"])
         r["analyses"] = list(r["analyses"]) if r["analyses"] is not None else None
         idx.ajouter("questions", k, r["tete_analyse"], r["analyses"], r["rubrique"])
@@ -1168,35 +1203,36 @@ def _compteurs(c, acteur, perim, carriere, couv_car, fonctions, proposes, amend,
     for inst in ("parlement_europeen", "local"):
         ajouter(inst, "mandats", None, "non_collecte", LIBELLE_INSTITUTION[inst] + " : non collecté dans l'essai",
                 [])
-    xv = "XVIIe législature"
+    xv = f"{plage()} législature"
+    xvp = f"{plage(n for n in LEGISLATURES if n >= PAROLES_DEPUIS)} législature"
     ajouter("assemblee", "textes_portes_publies", proposes.get("publies"), proposes["statut"],
-            "textes portés publiés (à partir de l'examen en commission), tous rôles", [PA_DOSSIERS], xv,
+            "textes portés publiés (à partir de l'examen en commission), tous rôles", points("dossiers"), xv,
             par_role=proposes.get("par_role"))
     ajouter("assemblee", "amendements_auteur_principal", amend.get("auteur"), amend["statut"],
             "amendements dont la personne est l'auteur principal, hors irrecevables 40 et 45 ; aucun taux "
-            "d'adoption", [PA_AMENDEMENTS], xv)
+            "d'adoption", points("amendements"), xv)
     ajouter("assemblee", "irrecevables_article_40", amend.get("irrecevables_40"), amend["statut"],
             "amendements de la personne irrecevables au titre de l'article 40 (comptés à part)",
-            [PA_AMENDEMENTS], xv)
+            points("amendements"), xv)
     ajouter("assemblee", "irrecevables_article_45", amend.get("irrecevables_45"), amend["statut"],
             "amendements de la personne irrecevables au titre de l'article 45 (comptés à part)",
-            [PA_AMENDEMENTS], xv)
+            points("amendements"), xv)
     ajouter("assemblee", "signatures_cosignataire", amend.get("signatures"), amend["statut"],
-            "signatures comme cosignataire d'amendements d'autres auteurs", [PA_AMENDEMENTS], xv)
+            "signatures comme cosignataire d'amendements d'autres auteurs", points("amendements"), xv)
     ajouter("assemblee", "positions_textes", votes.get("positions"), votes["statut"],
             "textes sur lesquels la position de la personne est publiée (dernière lecture, ensemble)",
-            [PA_SCRUTINS], xv)
+            points("scrutins"), xv)
     ajouter("assemblee", "motions_de_censure", votes.get("motions"), votes["statut"],
-            "motions de censure sur lesquelles la position de la personne est publiée", [PA_SCRUTINS], xv)
+            "motions de censure sur lesquelles la position de la personne est publiée", points("scrutins"), xv)
     ajouter("assemblee", "scrutins_compares_au_groupe", div.get("comparaisons"), div["statut"],
             "scrutins où sa position est placée à côté de celle de son groupe (jamais de total des "
-            "divergences)", [PA_SCRUTINS], xv)
+            "divergences)", points("scrutins"), xv)
     ajouter("assemblee", "prises_de_parole", paroles.get("paroles"), paroles["statut"],
-            "paragraphes de compte rendu de séance attribués, hors présidence de séance", [PA_SYCERON], xv)
+            "paragraphes de compte rendu de séance attribués, hors présidence de séance", points("syceron"), xvp)
     ajouter("assemblee", "presidence_de_seance", paroles.get("presidences"), paroles["statut"],
-            "paragraphes prononcés en présidant la séance", [PA_SYCERON], xv)
+            "paragraphes prononcés en présidant la séance", points("syceron"), xvp)
     for t, lib in (("ecrite", "questions écrites"), ("au_gouvernement", "questions au gouvernement"),
                    ("orale_sans_debat", "questions orales sans débat")):
         ajouter("assemblee", f"questions_{t}", (questions.get("par_type") or {}).get(t), questions["statut"],
-                lib, list(PA_QUESTIONS), xv)
+                lib, [p for fam in FAMILLES_QUESTIONS.values() for p in points(fam)], xv)
     return out
