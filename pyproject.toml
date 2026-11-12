@@ -8,6 +8,7 @@ dependencies = [
   "duckdb==2.0.0",
   "pyarrow==26.0.1",
   "orjson==3.13.0",
+  "ijson==3.6.0",
   "zstandard==0.25.0",
   "requests==2.34.2",
   "lxml==6.1.3",
