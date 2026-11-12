@@ -21,12 +21,47 @@ def _envois(appels):
 
 def test_export_dans_la_release_export(tmp_path, monkeypatch):
     appels = _espion(monkeypatch)
-    for n in ("faits.parquet", "faits.csv.gz", "faits-publies.parquet"):
+    for n in ("faits.parquet", "faits-publies.parquet"):
         (tmp_path / n).write_bytes(b"x")
     r = distant.publier_export("o/d", str(tmp_path), 3)
-    assert _envois(appels) == [("export", "faits-g000003.parquet"), ("export", "faits-g000003.csv.gz"),
-                               ("export", "faits-publies-g000003.parquet")]
+    assert _envois(appels) == [("export", "faits-g000003.parquet"), ("export", "faits-publies-g000003.parquet")]
     assert {x["release"] for x in r} == {"export"}
+
+
+def test_export_de_tous_les_faits_derniere_nuit_seulement(tmp_path, monkeypatch):
+    """Décision du 12/11/2026 : l'export de tous les faits lus n'est gardé que pour la dernière nuit
+    (Parquet seul) ; les faits publiés de chaque nuit restent tous."""
+    import json
+    appels = []
+    actifs = ["faits-g000006.parquet", "faits-g000006.csv.gz", "faits-g000008.parquet", "faits-g000008.csv.gz",
+              "faits-publies-g000006.parquet", "faits-publies-g000008.parquet", "faits-g000009.parquet"]
+
+    def faux_gh(*args, capture=True, check=True):
+        appels.append(args)
+        sortie = json.dumps({"assets": [{"name": n} for n in actifs]}) if "--json" in args else ""
+        return subprocess.CompletedProcess(args, 0, sortie, "")
+    monkeypatch.setattr(distant, "_gh", faux_gh)
+    for n in ("faits.parquet", "faits-publies.parquet"):
+        (tmp_path / n).write_bytes(b"x")
+    distant.publier_export("o/d", str(tmp_path), 9)
+    retires = sorted(a[3] for a in appels if a[:2] == ("release", "delete-asset"))
+    assert retires == ["faits-g000006.csv.gz", "faits-g000006.parquet", "faits-g000008.csv.gz",
+                       "faits-g000008.parquet"]
+    assert all(a[2] == "export" for a in appels if a[:2] == ("release", "delete-asset"))
+
+
+def test_export_echoue_rien_n_est_retire(tmp_path, monkeypatch):
+    appels = []
+
+    def faux_gh(*args, capture=True, check=True):
+        appels.append(args)
+        rc = 1 if args[:2] == ("release", "upload") else 0
+        return subprocess.CompletedProcess(args, rc, "", "refusé")
+    monkeypatch.setattr(distant, "_gh", faux_gh)
+    monkeypatch.setattr(distant.time, "sleep", lambda s: None)
+    (tmp_path / "faits.parquet").write_bytes(b"x")
+    distant.publier_export("o/d", str(tmp_path), 9)
+    assert not any(a[:2] == ("release", "delete-asset") for a in appels)
 
 
 def test_site_dans_la_release_publication(tmp_path, monkeypatch):
