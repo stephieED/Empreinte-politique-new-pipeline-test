@@ -26,7 +26,9 @@ Adresse publique : l'adresse `questions.assemblee-nationale.fr/q{leg}/{uid}.htm`
 import orjson
 import pyarrow as pa
 
-from ..lecture import est_nil, liste, pa_id, val
+from ..lecture import en_flux, est_nil, liste, pa_id, val
+
+SEUIL_FLUX = 32 << 20     # au-delà, un fichier unique de questions est lu en flux
 
 NOM = "an_questions"
 VERSION = 1
@@ -152,6 +154,13 @@ def _question(q: dict) -> dict:
 
 
 def lire(m):
+    # Archives de la XIVe : toutes les questions dans un seul fichier (questions écrites : 575 Mo,
+    # relevé le 07/11/2026) ; lues en flux, par lots, pour borner la mémoire.
+    tete = m.octets[:120].decode("utf-8", "replace")
+    if len(m.octets) > SEUIL_FLUX and tete.lstrip().startswith('{"questions'):
+        cle = tete.split('"')[1]
+        return ({"question": [_question(x) for x in lot]}
+                for lot in en_flux(m.octets, f"{cle}.question.item"))
     doc = orjson.loads(m.octets)
     q = g(doc, "question")
     # Archives de la XIVe : toutes les questions dans une enveloppe (`questionsGvt`,

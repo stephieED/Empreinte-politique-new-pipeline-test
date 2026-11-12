@@ -37,7 +37,7 @@ Sorties :
   une personne citée deux fois dans la même liste ne signe qu'une fois."""
 
 NOM = "R-AMENDEMENT"
-VERSION = 2
+VERSION = 3
 DEPEND = ("R-MATIERE", "R-APPARTENANCE")
 SORTIES = ("amendement_canonique", "amendement_auteur")
 
@@ -54,6 +54,7 @@ SORTS = [
     ("IR", "*", "irrecevable", "irrecevable_40"),               # « Irrecevable 40 » : charge, gage, crédits…
     ("IRRAIF", "*", "irrecevable", "irrecevable_40"),           # « Autre irrecevabilité 40 »
     ("IRR45", "*", "irrecevable", "irrecevable_45"),            # cavalier, entonnoir (article 45)
+    ("IRRXIV", "*", "irrecevable", "irrecevable_article_non_precise"),   # XIVe : l'article n'est pas publié
     ("IRR%", "*", "irrecevable", "irrecevable_autre"),          # doublon, hors champ, articles 37, 38, 41…
     ("ET", "*", "en_traitement", "en_cours"),
     ("AC", "*", "a_discuter", "en_cours"),

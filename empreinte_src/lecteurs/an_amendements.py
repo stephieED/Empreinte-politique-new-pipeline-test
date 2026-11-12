@@ -29,7 +29,7 @@ import re
 import orjson
 import pyarrow as pa
 
-from ..lecture import liste, pa_id, val
+from ..lecture import en_flux, liste, pa_id, val
 
 NOM = "an_amendements"
 VERSION = 1
@@ -108,8 +108,77 @@ def _dossier_du_chemin(chemin: str):
     return None             # json/incorrect_data/… : l'archive ne range pas l'amendement
 
 
+# Archive de la XIVe : un seul fichier de 677 Mo (167 420 amendements, relevé le 07/11/2026),
+# `{"textesEtAmendements": {"texteleg": [{…, "amendements": {"amendement": [...]}}]}}`, et un
+# schéma plus ancien, ramené ici au schéma courant avant lecture (_depuis_xiv).
+_ENVELOPPE_XIV = b'"textesEtAmendements"'
+
+# État et sort de la XIVe (texte) → (code d'état, sous-état) du schéma courant, que lit la table
+# des sorts de R-AMENDEMENT. La XIVe ne dit pas si une irrecevabilité relève de l'article 40 ou
+# 45 : code à part, jamais deviné.
+_ETATS_XIV = {"Discuté": "DI", "Retiré": "RT", "A discuter": "AC", "En traitement": "ET",
+              "Irrecevable": "IRRXIV"}
+
+
+def _depuis_xiv(a: dict) -> tuple[dict, str | None]:
+    """Amendement au schéma de la XIVe → schéma courant ; rend aussi l'organe d'examen."""
+    ident = _d(a.get("identifiant"))
+    sais = _d(ident.get("saisine"))
+    sig = _d(a.get("signataires"))
+    aut = _d(sig.get("auteur"))
+    pft = _d(a.get("pointeurFragmentTexte"))
+    corps = _d(a.get("corps"))
+    sort = a.get("sort")
+    sort_seance = _s(sort.get("sortEnSeance")) if isinstance(sort, dict) else _s(sort)
+    etat = _s(a.get("etat"))
+    code = _ETATS_XIV.get(etat)
+    if etat == "Discuté" and sort_seance and sort_seance.startswith("Irrecevable"):
+        code = "IRR" + "".join(c for c in sort_seance if c.isdigit())       # « Irrecevable Art 41c »
+    cdv = {"dateDepot": a.get("dateDepot"), "datePublication": a.get("dateDistribution"),
+           "dateSort": sort.get("dateSaisie") if isinstance(sort, dict) else None,
+           "sort": sort_seance,
+           "etatDesTraitements": {"etat": {"code": code, "libelle": etat},
+                                  "sousEtat": {"code": None, "libelle": sort_seance if code == "DI" else None}}}
+    courant = {
+        "uid": a.get("uid"), "legislature": ident.get("legislature"),
+        "identification": {"numeroLong": a.get("numeroLong"), "numeroOrdreDepot": ident.get("numero"),
+                           "numeroRect": ident.get("numRect")},
+        "texteLegislatifRef": sais.get("refTexteLegislatif"),
+        "amendementParentRef": a.get("amendementParent"),
+        "signataires": {"auteur": {"typeAuteur": aut.get("typeAuteur"), "acteurRef": aut.get("acteurRef"),
+                                   "groupePolitiqueRef": aut.get("groupePolitiqueRef"),
+                                   "auteurRapporteurOrganeRef": aut.get("organeRef")},
+                        "cosignataires": sig.get("cosignataires"), "libelle": sig.get("texteAffichable")},
+        "pointeurFragmentTexte": {"division": pft.get("division"), "missionVisee": pft.get("missionVisee"),
+                                  "amendementStandard": {"alinea": pft.get("alinea")}},
+        "corps": {"contenuAuteur": {"dispositif": corps.get("dispositif"),
+                                    "exposeSommaire": corps.get("exposeSommaire"),
+                                    "annexeExposeSommaire": corps.get("annexeExposeSommaire")}},
+        "cycleDeVie": cdv, "seanceDiscussionRef": a.get("seanceDiscussion"),
+        "article99": a.get("article99"), "loiReference": a.get("loiReference"),
+        "representations": a.get("representations"),
+    }
+    return courant, _s(sais.get("organeExamen"))
+
+
 def lire(m):
-    a = orjson.loads(m.octets)["amendement"]
+    if _ENVELOPPE_XIV in m.octets[:200]:
+        return _lire_xiv(m)
+    return _amendement(orjson.loads(m.octets)["amendement"], m)
+
+
+def _lire_xiv(m):
+    for textes in en_flux(m.octets, "textesEtAmendements.texteleg.item", taille_lot=50):
+        lot = {"amendement": [], "signature": []}
+        for t in textes:
+            for a in liste(_d(t.get("amendements")).get("amendement")):
+                courant, organe = _depuis_xiv(a)
+                for k, v in _amendement(courant, m, organe).items():
+                    lot[k] += v
+        yield lot
+
+
+def _amendement(a, m, organe_examen: str | None = None):
     uid = a["uid"]
     ident = _d(a.get("identification"))
     sig = _d(a.get("signataires"))
@@ -140,7 +209,7 @@ def lire(m):
         "numero_ordre_depot": _s(ident.get("numeroOrdreDepot")),
         "numero_rect": _s(ident.get("numeroRect")),
         "prefixe_organe_examen": _s(ident.get("prefixeOrganeExamen")),
-        "examen": examen, "organe_examen": o.group(1) if o else None,
+        "examen": examen, "organe_examen": o.group(1) if o else organe_examen,
         "document": _s(a.get("texteLegislatifRef")),
         "amendement_parent": _s(a.get("amendementParentRef")),
         "article_titre": _s(div.get("titre")),

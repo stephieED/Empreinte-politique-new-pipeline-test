@@ -58,6 +58,20 @@ class MembreLu:
 
 # -- aides pour les pièges communs des archives (cahier 3.1) --------------------------------
 
+def en_flux(octets: bytes, chemin: str, taille_lot: int = 2000):
+    """Objets d'une liste JSON lue en flux (`chemin` au format ijson, `….item`), par lots."""
+    import io
+    import ijson
+    lot = []
+    for o in ijson.items(io.BytesIO(octets), chemin, use_float=True):
+        lot.append(o)
+        if len(lot) >= taille_lot:
+            yield lot
+            lot = []
+    if lot:
+        yield lot
+
+
 def liste(x) -> list:
     """« Un objet seul est un dictionnaire, plusieurs sont une liste » ; None -> []."""
     if x is None or est_nil(x):
@@ -173,29 +187,34 @@ class Lecture:
                     m = MembreLu(r["point_acces"], r["source"], r["type"], r["uid"], r["chemin"],
                                  r["version"], r["empreinte"], octets,
                                  self.licences.get(r["point_acces"]))
+                    # Un lecteur rend un dictionnaire {table: lignes}, ou, pour un membre énorme
+                    # (archive de la XIVe en un seul fichier de 677 Mo), un générateur de tels
+                    # dictionnaires : chaque lot est écrit à mesure, la mémoire reste bornée.
                     try:
                         res = mod.lire(m)
+                        lots = [res] if isinstance(res, dict) else res
+                        for lot in lots:
+                            for t, rows in lot.items():
+                                for x in rows:
+                                    x.setdefault("prov_url", None)
+                                    x.update(prov_source=r["source"], prov_point=r["point_acces"],
+                                             prov_uid=r["uid"], prov_version=r["version"],
+                                             prov_empreinte=r["empreinte"],
+                                             lecteur=f"{mod.NOM}@{mod.VERSION}", licence=m.licence,
+                                             prov_vu_du=None, prov_vu_jusqu_au=None, prov_etat=None)
+                                sortie[t].extend(rows)
+                                nb_sortie += len(rows)
+                            # On vide le tampon au-delà de 100 000 lignes ou de 64 Mo d'octets lus
+                            # (des textes longs, comme les questions, pèsent plus que leur nombre).
+                            if nb_sortie >= 100_000 or octets_tampon >= 64 << 20:
+                                vider()
+                                nb_sortie, octets_tampon = 0, 0
                     except Exception as e:
                         illisibles += 1
                         if len(exemples) < 5:
                             exemples.append(f"{r['uid']}: {type(e).__name__}: {e} | "
                                             + " / ".join(traceback.format_exc(limit=3).splitlines()[-3:]))
                         continue
-                    for t, rows in res.items():
-                        for x in rows:
-                            x.setdefault("prov_url", None)
-                            x.update(prov_source=r["source"], prov_point=r["point_acces"],
-                                     prov_uid=r["uid"], prov_version=r["version"],
-                                     prov_empreinte=r["empreinte"],
-                                     lecteur=f"{mod.NOM}@{mod.VERSION}", licence=m.licence,
-                                     prov_vu_du=None, prov_vu_jusqu_au=None, prov_etat=None)
-                        sortie[t].extend(rows)
-                        nb_sortie += len(rows)
-                    # On vide le tampon au-delà de 100 000 lignes ou de 64 Mo d'octets lus
-                    # (des textes longs, comme les questions, pèsent plus que leur nombre).
-                    if nb_sortie >= 100_000 or octets_tampon >= 64 << 20:
-                        vider()
-                        nb_sortie, octets_tampon = 0, 0
             vider()
         finally:
             for w in ecrivains.values():
