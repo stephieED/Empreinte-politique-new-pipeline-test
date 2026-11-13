@@ -745,3 +745,20 @@ part) : les blocs Mermaid restent tels quels dans le Markdown.
 
 Les écarts entre un schéma et le texte de la spécification ne sont pas tranchés ici : la
 spécification fait foi, et les écarts relevés sont listés dans la PR.
+
+## Mandats de député antérieurs à 2002, depuis Sycomore (13/11/2026)
+
+Branche `etape-2-sycomore`. Décision Q36 du 13/11/2026 (« Oui, les faits seulement »).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Point `sycomore-fiches` (format `sycomore_fiches`, module `collecte_sycomore`) : identifiants Sycomore déclarés par Wikidata (P1045) pour les éléments de la liste (réponse gardée à l'octet, CC0), puis chaque fiche, dont seuls les **faits** sont gardés (JSON : nom, mandats avec chambre, régime, législature, dates, département, groupe ; version de l'extracteur) ; la page n'est pas gardée ; une requête toutes les 2,1 s ; pas de `robots.txt` sur www2.assemblee-nationale.fr (404) | cahier 2.2 et 3.11 : « tous droits réservés », des faits seulement ; conséquence : une erreur d'extraction se corrige en relevant de nouveau, pas en relisant l'entrepôt (P2 impossible sans droit de garder la page) | 1 (1.3.2, 1.7.4), 2 (2.2) |
+| Lecteur `sycomore` : `identifiant_sycomore`, `mandat_sycomore` | — | 1 (1.4) |
+| R-CARRIERE v4 : institution `assemblee_avant_2002`, mandats de député antérieurs au 19/06/2002 (ceux d'après viennent de l'archive des acteurs : jamais deux fois) ; couverture `complet`, `relu_aucun` (fiche lue, aucun mandat avant 2002), `aucun_identifiant`, ou `hors_source` (non collecté) | cahier 4.2 | 1 (1.5.1, 1.5.5) |
+
+Mesures (13/11/2026) : relevé réel 53 s, 17 fiches (711 Ko reçus, faits seulement rangés) ;
+mandats d'avant 2002 pour Retailleau (Vendée, 27/11/1994 → 21/04/1997), Dupont-Aignan (Essonne,
+01/06/1997 → 18/06/2002) et Royal, retirée (Deux-Sèvres, 1988 → 1997, trois mandats) ; raccord exact
+avec l'archive des acteurs (19/06/2002) ; 14 fiches lues sans mandat avant 2002 ; 27 candidats sans
+fiche Sycomore déclarée.
+

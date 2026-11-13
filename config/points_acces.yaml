@@ -452,3 +452,17 @@ points_acces:
     uid: elus-sortants-maires
     taille_min: 2000000
     licence: etalab-2.0        # maires sortants (2020-2026)
+
+  # --- Sycomore (www2.assemblee-nationale.fr, « tous droits réservés ») : mandats de député des
+  # candidats, pour ceux d'avant le 19/06/2002 que l'archive des acteurs ne donne pas (cahier 3.11
+  # et 4.2 ; décision Q36 du 13/11/2026 : « Oui, les faits seulement »). Identifiant Sycomore
+  # déclaré par Wikidata (P1045) pour les éléments de la liste ; le relevé n'extrait que les faits
+  # (mandats, dates, département, groupe) et ne garde pas la page. Voir empreinte_src/collecte_sycomore.py.
+  - id: sycomore-fiches
+    source: sycomore
+    type: fiches_sycomore
+    url: https://www2.assemblee-nationale.fr/sycomore/fiche
+    format: sycomore_fiches
+    decisions: decisions
+    licence: null                 # tous droits réservés : des faits seulement, hors licence des données (cahier 2.2)
+    faits_seulement: true
