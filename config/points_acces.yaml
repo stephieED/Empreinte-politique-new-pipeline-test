@@ -10,6 +10,7 @@ parametres:
   segment_max_octets: 94371840    # Q25 : 90 Mo
   morceau_blob_octets: 67108864   # un fichier membre plus gros est rangé en morceaux de 64 Mo
   budget_telechargement_s: 1800   # 30 min par fichier, reprises comprises ; au-delà, nouvel essai la nuit suivante
+  duree_collecte_max_s: 16200     # 270 min : la collecte se termine avant la limite de la tâche (330 min) et dépose son acquis (#38)
   verification_croisee: 20        # Q14 : scrutins relus sur les pages publiques (2 faits chacun, A2) ; 0 pour ne pas relire
 
 points_acces:
@@ -111,6 +112,7 @@ points_acces:
     legislature: 16
     url: https://data.assemblee-nationale.fr/static/openData/repository/16/loi/amendements_div_legis/Amendements.json.zip
     format: zip
+    budget_s: 7200     # relevé dédié seulement (--points) : archive close trop grosse pour 30 min (13/11/2026, #32)
     licence: etalab-2.0
   - id: an-syceron-l16
     source: an
@@ -174,6 +176,7 @@ points_acces:
     legislature: 15
     url: https://data.assemblee-nationale.fr/static/openData/repository/15/loi/amendements_legis/Amendements_XV.json.zip
     format: zip
+    budget_s: 7200     # relevé dédié seulement (--points) : archive close trop grosse pour 30 min (13/11/2026, #32)
     licence: etalab-2.0
   - id: an-syceron-l15
     source: an
