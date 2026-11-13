@@ -46,6 +46,12 @@ IDENTITE_PAR_CONTENU = {"parole_sujet": ("sujet", "type_sujet", "dossiers")}
 DECOMPTES_VERIFIES_UN_PAR_UN = {"amendements_compte", "amendements_compte_lignee"}
 
 
+# Champs de la valeur qui distinguent plusieurs faits publiés sous une même identité (A9) : un
+# compte de candidat par institution, un effectif de maillon par date, une ligne par rôle…
+DISCRIMINANTS_A9 = ("institution", "nature", "date", "legislature", "role", "annee", "commission",
+                    "periode", "debut", "famille", "quoi")
+
+
 def _vide(v) -> bool:
     return v is None or v == "" or v == [] or v == {}
 
@@ -159,12 +165,21 @@ class Controles:
         de 6 à 0, un champ qui se vide, ne sont pas des pertes pour lui. A9 les compte, à part, sans
         bloquer : pour les faits présents les deux nuits (même identité), chaque feuille de la
         valeur qui passe d'un nombre non nul à 0 ou à rien, ou d'une valeur non vide à rien (absente,
-        nulle, chaîne ou liste vide). Avertissement par (type de fait, champ) au-delà de 1 % des faits
-        du type **ou** de 50 faits ; décomptes et identifiants seulement."""
+        nulle, chaîne ou liste vide). Avertissement par (type de fait, champ) ; décomptes et
+        identifiants seulement.
+
+        Rouverte le 13/11/2026 (décision « Nombre à 0 : toujours ») : un nombre qui passe à 0 ou à
+        rien est signalé même seul (un candidat dont les 165 positions tombent à 0) ; le seuil (1 %
+        des faits du type ou 50 faits) ne vaut plus que pour les autres champs vidés. Plusieurs
+        faits sous une même identité (un compte par institution d'un candidat, un effectif par date
+        d'un maillon) s'apparient en ajoutant à l'identité leurs champs discriminants
+        (`DISCRIMINANTS_A9`) ; seuls ceux qui restent en double sont écartés."""
         if not faits_avant or not os.path.exists(faits_avant):
             return
         from .composition import IDS
+        from .memoire import regler_duckdb
         con = duckdb.connect()
+        regler_duckdb(con)            # limite de mémoire du traitement (2 millions de faits)
 
         def ids(fichier):
             cols = {r[0] for r in con.execute(f"DESCRIBE SELECT * FROM read_parquet('{fichier}')").fetchall()}
@@ -178,16 +193,35 @@ class Controles:
             return "NOT (" + " AND ".join(f"{x} IS NULL" for x in ids(fichier)) + ")"
         totaux = dict(con.execute(f"SELECT type_fait, count(*) FROM read_parquet('{faits_avant}') "
                                   f"WHERE {avec_id(faits_avant)} GROUP BY 1").fetchall())
+        disc = "concat_ws('|', " + ", ".join(
+            f"coalesce(json_extract_string(valeur, '$.{c}'), '')" for c in DISCRIMINANTS_A9) + ")"
+        fa, fb = f"read_parquet('{faits_avant}')", f"read_parquet('{faits_apres}')"
+        # Identités portées par plusieurs faits, d'un côté ou de l'autre (petite table).
+        con.execute(f"""CREATE TEMP TABLE _a9_multi AS
+            SELECT k FROM (SELECT {cle(faits_avant)} AS k FROM {fa} WHERE {avec_id(faits_avant)})
+            GROUP BY k HAVING count(*) > 1
+            UNION SELECT k FROM (SELECT {cle(faits_apres)} AS k FROM {fb} WHERE {avec_id(faits_apres)})
+            GROUP BY k HAVING count(*) > 1""")
+        # Identités uniques : comparées telles quelles ; identités partagées : précisées par les
+        # champs discriminants (extraits pour elles seules), puis comparées si elles sont devenues
+        # uniques. Le reste, encore en double, est écarté.
         cur = con.execute(f"""
-            -- Seulement les identités uniques des deux côtés : plusieurs faits sous la même identité
-            -- (un effectif par date d'un maillon, plusieurs rôles sur un texte) ne s'apparient pas.
-            WITH a AS (SELECT type_fait, {cle(faits_avant)} AS k, any_value(valeur) AS valeur
-                       FROM read_parquet('{faits_avant}') WHERE {avec_id(faits_avant)}
-                       GROUP BY 1, 2 HAVING count(*) = 1),
-                 b AS (SELECT {cle(faits_apres)} AS k, any_value(valeur) AS valeur
-                       FROM read_parquet('{faits_apres}') WHERE {avec_id(faits_apres)}
-                       GROUP BY 1 HAVING count(*) = 1)
-            SELECT a.type_fait, a.k, a.valeur, b.valeur FROM a JOIN b USING (k) WHERE a.valeur <> b.valeur""")
+            WITH a AS (SELECT type_fait, k, any_value(valeur) AS valeur FROM (
+                         SELECT type_fait, {cle(faits_avant)} AS k, valeur FROM {fa} WHERE {avec_id(faits_avant)})
+                       WHERE k NOT IN (SELECT k FROM _a9_multi) GROUP BY 1, 2),
+                 b AS (SELECT k, any_value(valeur) AS valeur FROM (
+                         SELECT {cle(faits_apres)} AS k, valeur FROM {fb} WHERE {avec_id(faits_apres)})
+                       WHERE k NOT IN (SELECT k FROM _a9_multi) GROUP BY 1),
+                 am AS (SELECT type_fait, k || '#' || {disc} AS k, any_value(valeur) AS valeur FROM (
+                          SELECT type_fait, {cle(faits_avant)} AS k, valeur FROM {fa} WHERE {avec_id(faits_avant)})
+                        WHERE k IN (SELECT k FROM _a9_multi) GROUP BY 1, 2 HAVING count(*) = 1),
+                 bm AS (SELECT k || '#' || {disc} AS k, any_value(valeur) AS valeur FROM (
+                          SELECT {cle(faits_apres)} AS k, valeur FROM {fb} WHERE {avec_id(faits_apres)})
+                        WHERE k IN (SELECT k FROM _a9_multi) GROUP BY 1 HAVING count(*) = 1)
+            SELECT a.type_fait, a.k, a.valeur, b.valeur FROM a JOIN b USING (k) WHERE a.valeur <> b.valeur
+            UNION ALL
+            SELECT am.type_fait, am.k, am.valeur, bm.valeur FROM am JOIN bm USING (k)
+            WHERE am.valeur <> bm.valeur""")
         compte: dict[tuple, list] = {}
         while True:
             lot = cur.fetchmany(20_000)
@@ -200,12 +234,12 @@ class Controles:
                     continue
                 for chemin, nature in _videes(x, y):
                     compte.setdefault((type_fait, chemin, nature), []).append(
-                        "|".join(x for x in k.split("|") if x))
+                        "|".join(x for x in k.replace("#", "|").split("|") if x))
         con.close()
         objets = []
         for (type_fait, chemin, nature), ks in sorted(compte.items()):
             total = totaux.get(type_fait, 0)
-            if len(ks) > seuil_nb or (total and len(ks) > seuil_part * total):
+            if nature == "a_zero" or len(ks) > seuil_nb or (total and len(ks) > seuil_part * total):
                 quoi = "nombre passé à 0 ou à rien" if nature == "a_zero" else "valeur vidée"
                 objets.append(f"{type_fait}.{chemin} : {quoi} pour {len(ks)} faits sur {total}, dont "
                               + ", ".join(sorted(ks)[:3]))
