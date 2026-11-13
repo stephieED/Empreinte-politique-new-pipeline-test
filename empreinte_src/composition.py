@@ -177,6 +177,11 @@ class Ecrivain:
         for k in IDS:
             col = ids.get(k)
             r[f"id_{k}"] = None if col is None or ligne.get(col) is None else str(ligne.get(col))
+        # SCÉNARIO (commande, section 6 : contrôle bloquant levé par décision) — défaut simulé sur une
+        # branche jetable, jamais fusionnée : les faits publiés du scrutin n° 1 de la XVIIe
+        # disparaissent, C1 doit refuser la publication.
+        if r.get("id_scrutin") == "VTANR5L17V1":
+            return
         r["valeur"] = _json(ligne).decode()
         r["date"] = None if not date or ligne.get(date) is None else str(ligne.get(date))
         r["source_url"] = ligne.get(source) if source else None
