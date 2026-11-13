@@ -38,6 +38,10 @@ def sujets_du_rapport(rapport: dict) -> dict[str, str]:
     if rapport.get("publication_refusee"):
         sujets["publication"] = (f"Rien n'a été publié cette nuit : {rapport['publication_refusee']}. "
                                  "L'acquis est écrit ; le site garde l'état précédent complet.")
+    if rapport.get("rattrapage_erreur"):
+        sujets["rattrapage"] = ("La recherche d'une nuit non écrite à rattraper a échoué ; la mise à jour a "
+                                "continué sans rattrapage. Un acquis non repris reste disponible 14 jours : "
+                                f"la nuit suivante le cherchera de nouveau.\n\nErreur : `{rapport['rattrapage_erreur']}`")
     if rapport.get("echec_ecriture"):
         sujets["ecriture"] = f"L'écriture dans l'entrepôt a échoué : {rapport['echec_ecriture']}"
     return sujets

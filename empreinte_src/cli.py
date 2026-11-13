@@ -80,6 +80,7 @@ def cmd_collecter(a):
     rapport = {"generation": man["generation"], "base": man["base"], "mode": a.mode,
                "debut": debut, "fin": maintenant(), "code": man["code"],
                "releves": releves, "mesures": mesures.etapes,
+               **({"rattrapage_erreur": a.rattrapage_erreur} if getattr(a, "rattrapage_erreur", None) else {}),
                "entrepot_octets": sum(f["taille"] for f in man["fichiers"].values()),
                "entrepot_fichiers": len(man["fichiers"])}
     with open(a.rapport, "w") as f:
@@ -149,7 +150,10 @@ def cmd_calculer(a):
         ctrl.c2_liens({f["fiche"] for f in manifeste_site["fiches"]})
         ctrl.c4_interdits()
         ctrl.c5_couverture(rapport.get("releves", []))
-        changes = {r["uid"].split("@")[0] for r in e._index if r["vu_du"] == gen}
+        # Un fichier modifié cette nuit explique la perte de ses faits, sauf si le lecteur n'a pas
+        # pu le lire : la perte vient alors de nous, pas de la source, et C1 doit la voir (#39).
+        uids_illisibles = {u.split("@")[0] for _, u, _ in l.illisibles}
+        changes = {r["uid"].split("@")[0] for r in e._index if r["vu_du"] == gen} - uids_illisibles
         retirees = dict(ctx.x("""SELECT 'candidat/' || adresse, raison_non_publie FROM candidat
                                  WHERE NOT publie AND adresse IS NOT NULL
                                    AND statut IN ('retiree', 'non_listee')""")) if ctx.existe("candidat") else {}
@@ -371,6 +375,8 @@ def main(argv=None):
     s = sp.add_parser("collecter", parents=[commun]); s.set_defaults(f=cmd_collecter)
     s.add_argument("--mode", default="quotidien"); s.add_argument("--points", nargs="*")
     s.add_argument("--tmp", default=None)
+    s.add_argument("--rattrapage-erreur", default=None,
+                   help="erreur de la recherche d'un acquis à rattraper (tâche preparer), mise au rapport")
     s = sp.add_parser("calculer", parents=[commun]); s.set_defaults(f=cmd_calculer)
     s.add_argument("--z2", default="z2"); s.add_argument("--sortie", default="sortie")
     s.add_argument("--z3", default="z3"); s.add_argument("--decisions", default="decisions")

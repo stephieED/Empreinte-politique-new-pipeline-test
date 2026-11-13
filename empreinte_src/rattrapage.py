@@ -40,11 +40,26 @@ def chercher(depot: str, run_actuel: str | None) -> dict:
 
 
 def main():
+    """Une erreur de l'API GitHub ne doit ni arrêter la nuit ni empêcher l'alerte (issue #41) :
+    après trois essais, la nuit continue sans rattrapage, et l'erreur est remise à la collecte,
+    qui la met dans le rapport (alerte `rattrapage`). Un acquis non repris reste disponible
+    14 jours : la nuit suivante le reprendra."""
+    import time
     p = argparse.ArgumentParser()
     p.add_argument("--depot", required=True)
     p.add_argument("--run-actuel")
+    p.add_argument("--essais", type=int, default=3)
+    p.add_argument("--pause", type=float, default=20)
     a = p.parse_args()
-    print(json.dumps(chercher(a.depot, a.run_actuel)))
+    for k in range(a.essais):
+        try:
+            print(json.dumps(chercher(a.depot, a.run_actuel)))
+            return
+        except Exception as e:                        # API, réseau, réponse illisible
+            erreur = f"{type(e).__name__}: {str(e).strip()[:300]}"
+            if k + 1 < a.essais:
+                time.sleep(a.pause)
+    print(json.dumps({"erreur": erreur}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
