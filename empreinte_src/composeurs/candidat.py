@@ -319,10 +319,15 @@ def _commun(ctx, au) -> dict:
             SELECT unnest(m.organes), l.adresse FROM lignee_maillon m JOIN lignee l USING (lignee)
             WHERE l.publiee AND m.affiche""")}
     fiches |= {f"lignee/{a}" for a in lignee_de.values()}
+    # Dernières lectures dont un vote plus récent sur l'ensemble n'a pu être relié (#34).
+    posterieurs = {}
+    if _vue(ctx, "derniere_lecture") and "votes_posterieurs_non_relies" in [c[0] for c in ctx.x("DESCRIBE derniere_lecture")]:
+        posterieurs = {s: list(v) for s, v in ctx.x("""SELECT scrutin, flatten(list(votes_posterieurs_non_relies))
+                                                         FROM derniere_lecture GROUP BY 1""") if v}
     return {"au": au, "lic": lic, "gouvs": gouvs, "publies_g": publies_g, "fiches": fiches,
             "groupes": groupes, "titres": titres, "debut_activite": debut_activite,
             "debut_paroles": debut_paroles, "legs": legs,
-            "lignee_de": lignee_de}
+            "lignee_de": lignee_de, "posterieurs": posterieurs}
 
 
 def _lien_gouv(organe, commun):
@@ -913,8 +918,8 @@ def _trous_votes(ctx, acteur, depuis) -> list[dict]:
 COLS_VOTES = ["scrutin", "numero", "date", "dossier", "titre_dossier", "intitule", "lecture", "position",
               "cause_non_votant", "par_delegation", "mise_au_point", "matiere", "matiere_statut",
               "matiere_libelle", "origine", "type_texte", "sort_final", "dossier_par_49_3", "groupe",
-              "groupe_sigle", "periode", "gouvernement", "banc", "solennel", "acteur", "source_url",
-              "licence"]
+              "groupe_sigle", "periode", "gouvernement", "banc", "solennel", "votes_posterieurs_non_relies",
+              "acteur", "source_url", "licence"]
 
 
 def _votes(ctx, f, acteur, perim, commun, idx) -> dict:
@@ -933,6 +938,7 @@ def _votes(ctx, f, acteur, perim, commun, idx) -> dict:
         r["licence"] = lic
         r["groupe_sigle"] = (commun["groupes"].get(r["groupe"]) or {}).get("sigle")
         r["titre_dossier"] = r["titre_dossier"] or commun["titres"].get(r["dossier"])
+        r["votes_posterieurs_non_relies"] = commun["posterieurs"].get(r["scrutin"])
         r["dossiers"] = list(r["dossiers"]) if r.get("dossiers") is not None else None
     ens = [r for r in rows if r["nature"] == "ensemble"]
     mot = [r for r in rows if r["nature"] == "motion_censure"]
@@ -973,7 +979,7 @@ COLS_DIVERGENCES = ["scrutin", "date", "dossier", "titre_dossier", "position", "
                     "diverge", "groupe", "sigle", "groupe_divise", "groupe_pour", "groupe_contre",
                     "groupe_abstentions", "groupe_non_votants", "groupe_membres",
                     "groupe_scrutin_different", "matiere", "matiere_libelle", "sort_final", "origine",
-                    "periode", "acteur", "source_url", "licence"]
+                    "periode", "votes_posterieurs_non_relies", "acteur", "source_url", "licence"]
 
 
 def _exclusions(ctx, acteur, depuis) -> dict:
@@ -1024,6 +1030,7 @@ def _divergences(ctx, f, acteur, perim, commun) -> dict:
     for r in rows:
         r["licence"] = commun["lic"].get(PA_SCRUTINS)
         r["titre_dossier"] = r["titre_dossier"] or commun["titres"].get(r["dossier"])
+        r["votes_posterieurs_non_relies"] = commun["posterieurs"].get(r["scrutin"])
     exclus = _exclusions(ctx, acteur, commun["debut_activite"]) if acteur else {}
     total = len(rows) + sum(exclus.values())
     contre = exclus.get("position_publiee_contredite_par_le_decompte", 0)

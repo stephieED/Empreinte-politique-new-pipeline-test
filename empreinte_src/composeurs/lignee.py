@@ -624,6 +624,7 @@ def _amendements(ctx, f, l, ms, anciens, commun):
 
 
 COLS_VOTES = ["scrutin", "numero", "date", "intitule", "nature", "lecture", "sort", "derniere_lecture",
+              "votes_posterieurs_non_relies",
               "dossier", "titre_dossier", "groupe", "sigle", "position_publiee", "position_groupe",
               "raison_position_non_etablie", "pour", "contre", "abstentions", "non_votants", "membres",
               "partage", "source_url", "licence"]
@@ -664,9 +665,16 @@ def _votes(ctx, f, l, ms, leg, commun, idx):
         if _vue(ctx, "derniere_lecture") else "false"
     dos = "(SELECT min(dossier) FROM lien_scrutin_dossier ld WHERE ld.scrutin = s.scrutin)" \
         if _vue(ctx, "lien_scrutin_dossier") else "NULL"
+    # Un vote plus récent sur l'ensemble, relié à aucun texte, a pu être la dernière lecture (#34).
+    tard = ("(SELECT CASE WHEN len(flatten(list(d.votes_posterieurs_non_relies))) > 0 "
+            "THEN flatten(list(d.votes_posterieurs_non_relies)) END FROM derniere_lecture d "
+            "WHERE d.scrutin = s.scrutin)") \
+        if _vue(ctx, "derniere_lecture") and "votes_posterieurs_non_relies" in [c[0] for c in ctx.x("DESCRIBE derniere_lecture")] \
+        else "NULL::VARCHAR[]"
     rows = _lignes(ctx, f"""
         SELECT s.scrutin, s.numero, s.date, s.titre AS intitule, s.nature, s.lecture, s.sort,
-               {dl} AS derniere_lecture, {dos} AS dossier, p.organe AS groupe, g.sigle,
+               {dl} AS derniere_lecture, {tard} AS votes_posterieurs_non_relies, {dos} AS dossier,
+               p.organe AS groupe, g.sigle,
                p.pub AS position_publiee, CASE WHEN p.raison IS NULL THEN p.pub END AS position_groupe,
                p.raison AS raison_position_non_etablie, p.pour, p.contre, p.abst AS abstentions,
                p.nv AS non_votants, p.membres, s.source_url
