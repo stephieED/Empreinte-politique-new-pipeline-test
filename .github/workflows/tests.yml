@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      # L'extra `doc` aussi : la conversion des livrables pour Pages (markdown2) est testée.
+      # L'extra `doc` aussi : la documentation de Pages (pdoc, avec livrables/) est testée.
       - run: pip install -q -e ".[test,doc]"
       - run: python -m pytest -q
 
@@ -42,8 +42,9 @@ jobs:
           ./actionlint -color
 
   documentation:
-    # Documentation du code, tirée des docstrings par pdoc ; déposée comme artefact, sur chaque
-    # branche. Celle de `main` est aussi servie par Pages (workflow `pages.yml`).
+    # Toute la documentation (le code, livrables/ et le traitement), au format pdoc, comme Pages
+    # l'écrit ; déposée comme artefact, sur chaque branche. Celle de `main` est servie par Pages
+    # (workflow `pages.yml`).
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -52,9 +53,9 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install -q -e ".[doc]"
-      - run: pdoc ./empreinte_src --docformat markdown -o documentation-code
+      - run: python -m empreinte_src.pages_doc livrables documentation
       - uses: actions/upload-artifact@v4
         with:
-          name: documentation-code
-          path: documentation-code/
+          name: documentation
+          path: documentation/
           retention-days: 30

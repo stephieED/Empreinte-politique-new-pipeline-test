@@ -1,0 +1,42 @@
+{# Remplace le gabarit de pdoc (mermaid@11, version flottante) : Mermaid est épinglé à une version
+   exacte, ses diagrammes suivent le thème clair ou sombre du navigateur, et ceux des résultats
+   de la recherche sont dessinés à leur tour. Un diagramme est réduit à la largeur de la page ;
+   un clic l'affiche à sa taille naturelle (il défile alors dans son cadre), un autre le réduit. #}
+<style>
+    .pdoc .mermaid-pre {
+        border: none;
+        background: none;
+        overflow-x: auto;
+    }
+
+    .pdoc .mermaid-pre:has(svg) {
+        cursor: zoom-in;
+    }
+
+    .pdoc .mermaid-pre.agrandi {
+        cursor: zoom-out;
+    }
+</style>
+<script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.esm.min.mjs";
+
+    const sombre = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    mermaid.initialize({startOnLoad: false, theme: sombre ? "dark" : "default"});
+    const dessiner = () => mermaid.run({querySelector: ".pdoc .mermaid"}).catch(e => console.error(e));
+    dessiner();
+    new MutationObserver(dessiner).observe(document.querySelector("main.pdoc").parentNode, {childList: true});
+
+    document.addEventListener("click", e => {
+        const cadre = e.target.closest && e.target.closest(".pdoc .mermaid-pre");
+        const svg = cadre && cadre.querySelector("svg");
+        if (!svg || !svg.style.maxWidth && !svg.dataset.largeur) return;
+        if (cadre.classList.toggle("agrandi")) {
+            svg.dataset.largeur = svg.style.maxWidth;
+            svg.style.maxWidth = "none";
+            svg.style.width = svg.dataset.largeur;
+        } else {
+            svg.style.maxWidth = svg.dataset.largeur;
+            svg.style.width = "100%";
+        }
+    });
+</script>
