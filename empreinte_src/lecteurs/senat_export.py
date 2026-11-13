@@ -99,6 +99,8 @@ def _desechapper(s: str) -> str:
     if "\\" not in s:
         return s
     def rempl(m):
+        """Rend le caractère d'une séquence d'échappement trouvée par `_ECHAP` : octal,
+        hexadécimal, lettre de `_SIMPLES`, ou le caractère échappé lui-même."""
         if m.group(1):
             return chr(int(m.group(1), 8))
         if m.group(2):
@@ -180,6 +182,14 @@ def _par(rows, cle):
 
 
 def lire(m):
+    """Lit le dump du Sénat (`m`, un `MembreLu`) et rend
+    `{"identite_source", "mandat", "organe", "organe_libelle"}` (listes de lignes). Un membre qui
+    n'est pas un fichier `.sql` rend `{}` ; un dump sans la table `sen` lève `ValueError`.
+
+    `mandat` réunit les mandats de sénateur (`elusen`), les appartenances aux groupes et aux
+    commissions (avec le libellé de l'organe à la date), les fonctions dans ces groupes et
+    commissions, et les fonctions au bureau (`senbur`). `organe` et `organe_libelle` viennent des
+    groupes, des commissions et de l'historique de leurs libellés."""
     if not m.chemin.lower().endswith(".sql"):
         return {}
     t = tables_du_dump(m.octets)
@@ -233,6 +243,10 @@ def lire(m):
 
     def appartenance(r, uid, code, organe, type_organe, histo, cle_deb, cle_fin,
                      col_deb, col_fin, qualite_code, qualite, libs):
+        """Rend la ligne `mandat` d'une appartenance à un organe, lue dans la ligne `r` du dump :
+        dates (colonnes `col_deb`, `col_fin`), qualité, état, événement, et le libellé de l'organe
+        (colonnes `libs`) pris dans l'historique `histo` à la date de début, à défaut à la date de
+        fin. L'argument `code` n'est pas utilisé."""
         d0, d1 = _d(r[col_deb]), _d(r[col_fin])
         date_ref = d0 or d1
         h = _libelle_a_la_date(histo, date_ref, cle_deb, cle_fin)
@@ -271,6 +285,9 @@ def lire(m):
         mandats.append(x)
 
     def fonction(r, uid, parent, code, libelle, col_deb, col_fin, rang=None):
+        """Rend la ligne `mandat` d'une fonction tenue dans un organe, lue dans la ligne `r` du
+        dump : l'acteur, l'organe et l'appartenance viennent de la ligne `parent` (vides si elle
+        manque), les dates des colonnes `col_deb` et `col_fin`."""
         # Une fonction dont l'appartenance mère manque au dump garde acteur et organe vides.
         parent = parent or {"acteur": None, "type_organe": None, "organe": None, "uid": None}
         return {**vide,

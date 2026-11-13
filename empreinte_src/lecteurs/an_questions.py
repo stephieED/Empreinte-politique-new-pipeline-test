@@ -154,6 +154,13 @@ def _question(q: dict) -> dict:
 
 
 def lire(m):
+    """Lit un membre de l'archive des questions (`m`, un `MembreLu`) et rend
+    `{"question": [lignes]}`, une ligne par question.
+
+    Un fichier unique de la XIVe plus gros que `SEUIL_FLUX` (et qui commence par `{"questions`) est
+    lu en flux : on rend alors un générateur de tels dictionnaires, un par lot. Une question seule,
+    une liste de questions ou une enveloppe à une seule clé qui contient `question` sont lues ;
+    sans objet « question », lève `ValueError`."""
     # Archives de la XIVe : toutes les questions dans un seul fichier (questions écrites : 575 Mo,
     # relevé le 07/11/2026) ; lues en flux, par lots, pour borner la mémoire.
     tete = m.octets[:120].decode("utf-8", "replace")

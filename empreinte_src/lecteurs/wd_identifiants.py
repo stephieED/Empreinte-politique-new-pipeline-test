@@ -25,6 +25,15 @@ MATRICULE = re.compile(r"(\d{5}[a-z])$")
 
 
 def lire(m):
+    """Lit une réponse de requête Wikidata (`m`, un `MembreLu` : le JSON `results.bindings`) et
+    rend `{"identifiant_externe": [lignes]}`.
+
+    Une ligne par (élément, propriété, valeur, article) distinct, pour les identifiants de
+    l'Assemblée (P4123, rendu avec le préfixe `PA`), du Sénat (P1808, rendu comme le matricule,
+    cinq chiffres et une lettre en fin de valeur, en capitales ; `None` s'il n'y est pas) et de
+    Sycomore (P1045, tel quel). Chaque ligne garde aussi la valeur publiée, la date de naissance
+    (`AAAA-MM-JJ` ; `None` si absente ou avant notre ère), le titre de l'article de Wikipédia en
+    français et l'adresse de l'élément."""
     d = orjson.loads(m.octets)
     vus, out = set(), []
     for b in d["results"]["bindings"]:

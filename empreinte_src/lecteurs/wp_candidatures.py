@@ -256,6 +256,15 @@ def _nom_clair(entete: str) -> dict | None:
 
 
 def lire(m):
+    """Lit une réponse de l'API MediaWiki (`m`, un `MembreLu`) et rend
+    `{"candidature": [lignes], "candidature_lecture": [lignes]}`.
+
+    Pour chaque section de `SECTIONS` (candidats déclarés, puis candidatures retirées), chaque
+    ligne dont le nom est reconnu donne une candidature (statut, rang, nom, article lié et son
+    existence, date de déclaration, références, révision, adresse) ; une ligne de
+    `candidature_lecture` par section compte les lignes lues, extraites et non extraites, avec
+    jusqu'à cinq exemples non extraits. Lève `ValueError` si la section « Candidats déclarés » est
+    introuvable."""
     rev, wiki, titre, existe = _texte_wiki(orjson.loads(m.octets))
     page = f"https://fr.wikipedia.org/w/index.php?title={quote((titre or '').replace(' ', '_'))}"
     candidatures, bilans = [], []

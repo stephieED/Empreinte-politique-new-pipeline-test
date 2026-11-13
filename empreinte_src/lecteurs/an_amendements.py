@@ -162,6 +162,12 @@ def _depuis_xiv(a: dict) -> tuple[dict, str | None]:
 
 
 def lire(m):
+    """Lit un membre de l'archive des amendements (`m`, un `MembreLu`).
+
+    Un fichier d'amendement (XVe à XVIIe) donne
+    `{"amendement": [une ligne], "signature": [lignes]}`. Le fichier unique de la XIVe (enveloppe
+    `textesEtAmendements`) est lu en flux : on rend alors un générateur de tels dictionnaires, un
+    par lot de 50 textes."""
     if _ENVELOPPE_XIV in m.octets[:200]:
         return _lire_xiv(m)
     return _amendement(orjson.loads(m.octets)["amendement"], m)

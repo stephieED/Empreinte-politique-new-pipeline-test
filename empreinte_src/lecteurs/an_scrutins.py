@@ -90,6 +90,9 @@ POSITIONS = {
 
 
 def adresse(uid: str, legislature, numero) -> str | None:
+    """Rend l'adresse publique d'un scrutin de l'Assemblée
+    (`…/dyn/{legislature}/scrutins/{numero}`), ou `None` si l'uid ne commence pas par `VTAN` ou si
+    la législature ou le numéro manque."""
     if not uid.startswith("VTAN") or legislature is None or numero is None:
         return None
     return f"https://www.assemblee-nationale.fr/dyn/{legislature}/scrutins/{numero}"
@@ -104,6 +107,8 @@ def entier(x) -> int | None:
 
 
 def booleen(x) -> bool | None:
+    """Rend la valeur booléenne de `x` : `None` pour le vide (`val`), le booléen lui-même, ou celui
+    des chaînes `"true"` et `"false"`. Toute autre valeur lève `ValueError`."""
     x = val(x)
     if x is None:
         return None
@@ -154,6 +159,9 @@ def position_de(cle: str, bloc) -> str | None:
 
 
 def scrutins_du_membre(octets: bytes) -> list[dict]:
+    """Rend la liste des scrutins (dictionnaires de la source) d'un membre : un seul pour un
+    fichier `{"scrutin": …}` (XVe à XVIIe), tous ceux de la législature pour `{"scrutins": …}`
+    (XIVe). Toute autre forme lève `ValueError`."""
     d = orjson.loads(octets)
     if "scrutin" in d:                              # XVe-XVIIe : un scrutin par fichier
         return [d["scrutin"]]
@@ -163,6 +171,10 @@ def scrutins_du_membre(octets: bytes) -> list[dict]:
 
 
 def lire_scrutin(s: dict, out: dict):
+    """Lit un scrutin `s` de la source et ajoute ses lignes à `out` : une à `scrutin` (type, sort,
+    synthèse, objet, dossier), une par groupe à `decompte_groupe`, une par votant nommé à
+    `position_vote`, une par mise au point (dysfonctionnements compris) à `mise_au_point`. Ne rend
+    rien."""
     uid = val(s["uid"])
     leg = entier(s.get("legislature"))
     numero = entier(s.get("numero"))
@@ -268,6 +280,8 @@ def lire_scrutin(s: dict, out: dict):
 
 
 def lire(m):
+    """Lit un membre de l'archive des scrutins (`m`, un `MembreLu`) et rend `{table: [lignes]}`
+    pour toutes les tables de `TABLES`, chaque scrutin du membre lu par `lire_scrutin`."""
     out = {t: [] for t in TABLES}
     for s in scrutins_du_membre(m.octets):
         lire_scrutin(s, out)
