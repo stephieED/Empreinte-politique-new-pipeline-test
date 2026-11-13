@@ -1,5 +1,6 @@
-/* Ajouts à pdoc pour la documentation du projet : le menu commun, les blocs repliables de la
-   page du traitement, et le mode sombre des blocs de code (couleurs « monokai » de Pygments). */
+/* Ajouts à pdoc pour la documentation du projet : le menu commun, les rubriques de la page
+   d'entrée en demi-gras, les blocs repliables de la page du traitement, et le mode sombre des
+   blocs de code (couleurs « monokai » de Pygments). */
 nav.pdoc .menu-global {
     margin: 0 0 1rem calc(0px - var(--pad));
     padding-bottom: .75rem;
@@ -11,6 +12,10 @@ nav.pdoc .menu-global a {
 }
 
 nav.pdoc .menu-global .ici > a {
+    font-weight: 600;
+}
+
+nav.pdoc .rubriques > li > a {
     font-weight: 600;
 }
 
