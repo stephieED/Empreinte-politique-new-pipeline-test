@@ -23,8 +23,12 @@ on:
 permissions:
   contents: read
 
+# Une file pour la nuit et les mises à jour qui écrivent (`quotidien`, `complet`) ; chaque essai a
+# la sienne et part tout de suite (13/11/2026) : il n'écrit rien, et six essais s'attendaient les
+# uns les autres. Un essai ne doit pas déborder sur la nuit (20 h 30 UTC) : il lirait l'entrepôt
+# pendant qu'elle l'écrit (faux échec possible, jamais de publication abîmée).
 concurrency:
-  group: mise-a-jour
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'essai' && format('essai-{0}', github.run_id) || 'mise-a-jour' }}
   cancel-in-progress: false
 
 env:
@@ -151,7 +155,7 @@ jobs:
           key: entrepot-${{ github.run_id }}
 
   calculer:
-    needs: [collecter]
+    needs: [preparer, collecter]
     runs-on: ubuntu-latest
     timeout-minutes: 330
     permissions:
@@ -198,6 +202,9 @@ jobs:
           # remet le pic à zéro à chaque étape) ; le vrai pic est imprimé par la commande.
           grep -E "Elapsed" sortie/time-calculer.txt || true
       - name: Garder les faits lus
+        # Pas pour un essai : ses faits sont lus avec le code de sa branche, et la nuit reprend le
+        # cache le plus récent (issue #44, seconde moitié).
+        if: needs.preparer.outputs.mode != 'essai'
         uses: actions/cache/save@v4
         with:
           path: z2
