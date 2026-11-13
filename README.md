@@ -19,6 +19,7 @@ Ce n'est pas le dépôt du site ; rien n'est publié sur `empreinte-politique.fr
 | `decisions/` | les décisions de la propriétaire, un fichier par décision |
 | `tests/` | les tests sans réseau et les extraits réels des sources qu'ils utilisent |
 | `docs/` | la documentation de l'export des faits |
+| `livrables/` | les documents de conception et de l'étape 2 : modèle, processus, justifications, questions ouvertes, recette (docs 0 à 8), cadrage, journal des changements, rapport de mesures, migration ; versés dans le dépôt le 13/11/2026 pour être publiés sur Pages |
 
 Le fonctionnement d'ensemble (étapes, données, contrôles) est décrit dans les documents de
 conception, rédigés à part.
@@ -102,7 +103,9 @@ empreinte rapport-mesures --depot <propriétaire/dépôt> --cache mesures --sort
 
 ## Documentation
 
-La conception (modèle de données, processus, justifications, estimations, recette) est
-rédigée à part ; ce dépôt en est la réalisation.
+La conception (modèle de données, processus, justifications, questions ouvertes, recette) est
+dans `livrables/` ; le code de ce dépôt en est la réalisation. Le document 4 (estimations) est
+remplacé par le rapport de mesures (`livrables/etape-2/3-rapport-de-mesures.md`, décision du
+13/11/2026).
 
 Licence : AGPL-3.0.
