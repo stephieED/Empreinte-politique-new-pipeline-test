@@ -225,6 +225,9 @@ def collecter(entrepot: Entrepot, transport: Transport, config: dict, mesures: M
             elif pa_cfg["format"] == "pe_eurodeputes":     # volet européen (collecte_pe)
                 from .collecte_pe import relever_eurodeputes
                 lot = [relever_eurodeputes(entrepot, transport, pa_cfg, params)]
+            elif pa_cfg["format"] == "pe_votes":            # volet européen, votes (collecte_pe)
+                from .collecte_pe import relever_votes
+                lot = [relever_votes(entrepot, transport, pa_cfg, params)]
             else:
                 lot = [relever_archive(entrepot, transport, pa_cfg, params)]
             for r in lot:

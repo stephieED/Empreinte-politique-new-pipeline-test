@@ -126,6 +126,18 @@ class Controles:
         if trouves:
             self._signaler("C4", "Données interdites dans les fichiers servis", trouves)
 
+    def c4_forme(self, chemin_schema: str):
+        """Forme des fichiers servis contre le schéma commité en liste blanche (doc. 2, 2.8.1 ;
+        issue #43, décision du 13/11/2026 « Schéma commité, bloquant »). Sans schéma : bloque,
+        on ne publie pas une forme que rien ne vérifie."""
+        from .schema import charger, verifier
+        if not os.path.exists(chemin_schema):
+            self._signaler("C4", "Forme des fichiers servis : schéma absent", [chemin_schema])
+            return
+        ecarts = verifier(self.racine, charger(chemin_schema))
+        if ecarts:
+            self._signaler("C4", "Forme des fichiers servis différente du schéma", ecarts)
+
     # -- C5 : lecture incomplète présentée comme complète --------------------------------
     def c5_couverture(self, releves: list[dict]):
         """Une section dite complète pour une source dont le dernier relevé a échoué."""

@@ -158,6 +158,8 @@ def cmd_calculer(a):
         ctrl = Controles(ecr.racine, levees=ctx.decisions.get("levee_controle", []))
         ctrl.c2_liens({f["fiche"] for f in manifeste_site["fiches"]})
         ctrl.c4_interdits()
+        # Forme des fichiers servis contre le schéma commité (#43) ; à côté de la configuration.
+        ctrl.c4_forme(os.path.join(os.path.dirname(a.config) or ".", "schema_fichiers.yaml"))
         ctrl.c5_couverture(rapport.get("releves", []))
         # Un fichier modifié cette nuit explique la perte de ses faits, sauf si le lecteur n'a pas
         # pu le lire : la perte vient alors de nous, pas de la source, et C1 doit la voir (#39).
@@ -330,6 +332,16 @@ def cmd_ecrire(a):
           f"{sum(x['octets'] for x in env) / 1e6:.1f} Mo")
 
 
+def cmd_schema(a):
+    """Réécrit les colonnes du schéma d'après les fichiers servis d'un calcul (#43)."""
+    from .schema import reecrire_colonnes
+    site = a.site
+    sous = os.path.join(site, "donnees")
+    if os.path.isdir(sous):                       # <sortie>/site/donnees/<publication>/
+        site = os.path.join(sous, sorted(os.listdir(sous))[-1])
+    print(json.dumps(reecrire_colonnes(a.schema, site), ensure_ascii=False, indent=1))
+
+
 def cmd_alerter(a):
     from .alertes import sujets_du_rapport, synchroniser
     if a.rapport and os.path.exists(a.rapport):
@@ -408,6 +420,9 @@ def main(argv=None):
     s = sp.add_parser("restaurer", parents=[commun]); s.set_defaults(f=cmd_restaurer)
     s.add_argument("--avec-blobs", action="store_true"); s.add_argument("--avec-membres", action="store_true")
     s = sp.add_parser("ecrire", parents=[commun]); s.set_defaults(f=cmd_ecrire)
+    s = sp.add_parser("schema", parents=[commun]); s.set_defaults(f=cmd_schema)
+    s.add_argument("--site", required=True, help="dossier site d'un calcul (sortie/site)")
+    s.add_argument("--schema", default="config/schema_fichiers.yaml")
     s = sp.add_parser("alerter", parents=[commun]); s.set_defaults(f=cmd_alerter)
     s = sp.add_parser("reconstruire", parents=[commun]); s.set_defaults(f=cmd_reconstruire)
     s.add_argument("--releve", required=True)

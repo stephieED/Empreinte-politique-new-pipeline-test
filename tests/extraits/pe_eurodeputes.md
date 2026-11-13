@@ -10,3 +10,4 @@ toutes les 2,1 s ; Wikidata (CC0). Lu par `tests/test_europe_mandats.py`.
 | `meps-28210.json` | `meps/28210?format=application/ld+json` | Marine Le Pen : trois législatures (ep-6 à ep-8), cinq groupes, une coprésidence ; doublons « EU_INSTITUTION » des mandats |
 | `meps-197694.json` | `meps/197694?format=application/ld+json` | Raphaël Glucksmann : mandat en cours (ep-9, ep-10) |
 | `org-1541.json`, `org-2345.json`, `org-2978.json`, `org-3968.json`, `org-4908.json` | `corporate-bodies/<id>?format=application/ld+json&language=fr` | les groupes de Le Pen : NI (trois organes successifs), ITS, ENF |
+| `decisions-MTG-PL-2019-09-19.json` | `meetings/MTG-PL-2019-09-19/decisions?format=application/ld+json` | 16 votes nominatifs de la séance du 19/09/2019 (Am, §, Résolution) ; Glucksmann (`person/197694`) figure dans les 16. Lu par `tests/test_europe_votes.py` |

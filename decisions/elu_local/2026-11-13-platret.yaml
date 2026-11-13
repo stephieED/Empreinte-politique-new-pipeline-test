@@ -1,0 +1,16 @@
+# Rattachement d'un candidat sans date de naissance connue à un élu du Répertoire national des
+# élus (décision Q34 du 13/11/2026 : « Nom + naissance, et décision pour les autres »).
+#
+# Gilles Platret n'a ni article Wikipédia ni élément Wikidata dans la liste des candidats : aucune
+# source déclarée ne donne sa date de naissance. Le répertoire publie un seul élu de ce nom et de
+# ce prénom, né le 19/04/1973, maire de Chalon-sur-Saône (Saône-et-Loire) depuis 2020 (fichier des
+# sortants) et réélu en 2026 ; son âge (53 ans au 13/11/2026) concorde avec celui que donne
+# franceinfo (53 ans). Proposé par l'agent, validé par la propriétaire en fusionnant la pull
+# request.
+type: elu_local
+date: 2026-11-13
+candidat: "Gilles Platret"        # nom tel qu'écrit dans la liste des candidats (decisions/candidature)
+nom_elu: "PLATRET"
+prenom_elu: "Gilles"
+naissance: "1973-04-19"
+motif: "élu unique de ce nom dans le répertoire ; âge et fonction concordants avec la liste des candidats"

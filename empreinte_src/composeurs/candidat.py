@@ -57,7 +57,7 @@ NOM = "candidat"
 VERSION = 1
 DEPEND = ("R-CANDIDATURES", "R-IDENTITE", "R-CARRIERE", "R-FONCTIONS", "R-TEXTE-PORTE",
           "R-AMENDEMENT", "R-VOTE-PERSONNE", "R-PERIODE", "R-DIVERGENCE", "R-PAROLE-PERSONNE",
-          "R-QUESTION-PERSONNE", "R-LEGISLATURES", "R-GOUVERNEMENTS", "R-APPARTENANCE")
+          "R-QUESTION-PERSONNE", "R-LEGISLATURES", "R-GOUVERNEMENTS", "R-APPARTENANCE", "R-VOTE-PE")
 
 LEGISLATURES_PUBLIEES = set(LEGISLATURES)   # fiches de législature publiées (seules cibles de lien, C2)
 LONGUEUR_EXTRAIT = 300
@@ -69,10 +69,13 @@ PA_AMO, PA_SCRUTINS, PA_DOSSIERS = "an-amo30-l17", "an-scrutins-l17", "an-dossie
 PA_AMENDEMENTS, PA_SYCERON = "an-amendements-l17", "an-syceron-l17"
 PA_QUESTIONS = ("an-questions-ecrites-l17", "an-questions-gouvernement-l17", "an-questions-orales-l17")
 PA_WP, PA_WD, PA_SENAT = "wp-candidatures-2027", "wd-identifiants-parlementaires", "senat-export"
-PA_PE = "pe-eurodeputes"
+PA_PE, PA_PE_VOTES = "pe-eurodeputes", "pe-votes"
+PA_RNE = "rne-cm"                  # répertoire national des élus (tous ses points : Licence Ouverte)
+DEBUT_VOTES_PE = "2019-07-02"      # portail du PE : votes nominatifs à partir de la 9e législature (Q3)
 
 # Statuts de couverture de R-CARRIERE → statuts servis (doc. 1, 1.5.5).
 STATUT_CARRIERE = {"complet": "complet", "relu_aucun": "relu_aucun", "non_collecte": "non_collecte",
+                   "partiel": "partiel",
                    "hors_source": "borne_historique", "aucun_identifiant": "hors_perimetre",
                    "identifiant_absent_de_la_source": "trou_source", "non_etabli": "non_relu"}
 INSTITUTIONS = ("assemblee", "assemblee_avant_2002", "gouvernement", "senat", "parlement_europeen",
@@ -272,7 +275,8 @@ def _commun(ctx, au) -> dict:
     lic = {}
     for t in ("an_acteurs__mandat", "an_scrutins__scrutin", "an_dossiers__dossier",
               "an_amendements__amendement", "an_comptes_rendus__intervention", "an_questions__question",
-              "senat_export__mandat", "wd_identifiants__identifiant_externe", "pe_eurodeputes__eurodepute",
+              "senat_export__mandat", "wd_identifiants__identifiant_externe", "pe_eurodeputes__eurodepute", "pe_votes__vote_pe",
+              "rne_elus__mandat_local",
               "wp_candidatures__candidature"):
         if _vue(ctx, t):
             for p, l in ctx.x(f"SELECT DISTINCT prov_point, licence FROM {t} WHERE prov_point IS NOT NULL"):
@@ -361,6 +365,7 @@ def _composer_un(ctx, ecr, c, ident, commun):
     div = _divergences(ctx, f, acteur, perim, commun)
     paroles = _paroles(ctx, f, acteur, perim_paroles, commun, idx)
     questions = _questions(ctx, f, acteur, perim, commun, idx)
+    europe = _europe(ctx, f, c, carriere, commun)
     mots_info = _ecrire_mots(ecr, f, idx, au)
 
     # Limites de la fiche (section « Ce qu'on n'a pas pu lire »), en plus des couvertures.
@@ -387,9 +392,12 @@ def _composer_un(ctx, ecr, c, ident, commun):
                         "detail": "Aucun des groupes de la personne ne déclare sa position (majorité, "
                                   "minorité, opposition) : le banc est « non déclaré », jamais déduit.",
                         "au": au})
-    limites.append({"famille": "europe", "statut": "non_collecte",
-                    "detail": "Volet européen (votes, rapports, paroles au Parlement européen) non "
-                              "collecté dans l'essai.", "au": au})
+    if europe:
+        limites.append({"famille": "europe_votes", "statut": europe["statut"], "detail": europe["detail"],
+                        "au": au})
+        limites.append({"famille": "europe_activite", "statut": "non_collecte",
+                        "detail": "Rapports et prises de parole au Parlement européen : non collectés "
+                                  "dans l'essai.", "au": au})
 
     compteurs = _compteurs(c, acteur, perim, carriere, couv_car, fonctions, proposes, amend, votes,
                            div, paroles, questions, au)
@@ -503,7 +511,8 @@ def _carriere(ctx, f, c, commun):
         g = commun["gouvs"].get(l.get("gouvernement"))
         l["gouvernement_nom"] = g["nom"] if g else None
         l["licence"] = (lic_an if l.get("source") == "an" else commun["lic"].get(PA_PE)
-                        if l.get("source") == "pe" else commun["lic"].get(PA_SENAT))
+                        if l.get("source") == "pe" else commun["lic"].get(PA_RNE)
+                        if l.get("source") == "rne" else commun["lic"].get(PA_SENAT))
         if l["licence"]:
             f.licences.add(l["licence"])
         ecr_ids = {"acteur": "acteur", "mandat": "mandat", "organe": "groupe"}
@@ -1201,6 +1210,66 @@ def _questions(ctx, f, acteur, perim, commun, idx) -> dict:
     st = _st(perim)
     par_type = {t: _compte(par.get(t, 0), st) for t in ("ecrite", "au_gouvernement", "orale_sans_debat")}
     return {"par_type": par_type, "statut": st}
+
+
+# -- volet européen : votes nominatifs (R-VOTE-PE ; décisions Q3 et Q33) --------------------
+
+COLS_VOTES_PE = ["date", "heure", "vote", "numero", "seance", "libelle", "document_ref", "objet",
+                 "rubrique", "nature", "position", "raison_position", "intention", "resultat", "pour",
+                 "contre", "abstention", "methode", "eurodepute", "source_url", "licence"]
+
+
+def _europe(ctx, f, c, carriere, commun) -> dict | None:
+    """Votes nominatifs au Parlement européen, un fichier par année (`europe-votes-<année>`), et
+    un index `europe` (années, lignes, couverture). Rien pour un candidat sans identifiant
+    européen : sa frise le dit déjà (`aucun_identifiant`)."""
+    if not c.get("eurodepute"):
+        return None
+    au, pts = commun["au"], [PA_PE_VOTES]
+    mandats = [l for l in carriere if l["institution"] == "parlement_europeen"]
+    avant = any(l["debut"] and l["debut"] < DEBUT_VOTES_PE for l in mandats)
+    apres = any(not l["fin"] or l["fin"] >= DEBUT_VOTES_PE for l in mandats)
+    if not _vue(ctx, "vote_personne_pe"):
+        f.section("europe", [], None, couverture=_absente("europe_votes", ["vote_personne_pe"], pts, au))
+        return {"statut": "non_relu", "detail": "Votes au Parlement européen : règle absente."}
+    rows = _lignes(ctx, "SELECT * FROM vote_personne_pe WHERE per = ? ORDER BY date, heure, numero",
+                   [c["per"]])
+    lic = commun["lic"].get(PA_PE_VOTES)
+    for r in rows:
+        r["licence"] = lic
+    n_ens = sum(1 for r in rows if r["nature"] == "ensemble")
+    n_non = sum(1 for r in rows if r["nature"] == "non_etablie")
+    lu = (f"Votes nominatifs publiés par le Parlement européen depuis le {_fr(DEBUT_VOTES_PE)} "
+          f"({len(rows)}, dont {n_ens} sur l'ensemble d'un texte ; nature non établie pour {n_non}). "
+          "Un vote où la personne ne figure pas n'est pas montré.")
+    if not mandats:
+        statut, detail = "non_etabli", "Aucun mandat de député européen lu : votes non rattachés."
+    elif apres and avant:
+        statut, detail = "partiel", (lu + f" Votes antérieurs au {_fr(DEBUT_VOTES_PE)} : non collectés "
+                                          "dans l'essai (Parltrack, lot à venir).")
+    elif apres:
+        statut, detail = "complet", lu
+    else:
+        statut, detail = "non_collecte", (f"Mandats de député européen antérieurs au {_fr(DEBUT_VOTES_PE)} : "
+                                          "leurs votes ne sont pas publiés par le portail du Parlement "
+                                          "européen, et Parltrack n'est pas encore collecté (lot à venir).")
+    par_annee = defaultdict(list)
+    for r in rows:
+        par_annee[str(r["date"])[:4]].append(r)
+    index = []
+    for annee, lignes in sorted(par_annee.items()):
+        cv = _couv("europe_votes", statut, detail, len(lignes), None, pts, au=au)
+        f.section(f"europe-votes-{annee}", lignes, "position_vote_pe",
+                  ids={"acteur": "eurodepute", "scrutin": "vote", "reunion": "seance"}, date="date",
+                  couverture=cv, colonnes=COLS_VOTES_PE,
+                  extra={"ordre": "chronologique", "au": au,
+                         "lecture": "position : pour, contre, abstention, telle que publiée ; intention : "
+                                    "correction déposée après le vote, qui ne remplace pas la position"})
+        index.append({"annee": annee, "fichier": f"europe-votes-{annee}.json.gz", "lignes": len(lignes),
+                      "eurodepute": c["eurodepute"]})
+    f.section("europe", index, None, couverture=_couv("europe_votes", statut, detail, len(rows), None, pts, au=au),
+              colonnes=["annee", "fichier", "lignes", "eurodepute"], extra={"au": au, "depuis": DEBUT_VOTES_PE})
+    return {"statut": statut, "detail": detail, "n": _compte(len(rows), statut)}
 
 
 # -- filtre par mot -------------------------------------------------------------------------

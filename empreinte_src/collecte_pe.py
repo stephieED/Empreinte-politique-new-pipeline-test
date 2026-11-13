@@ -5,9 +5,11 @@ portail du Parlement européen (`data.europarl.europa.eu/api/v2/`, CC BY 4.0 ; d
 Le portail ne dit pas qui est candidat ; Wikidata déclare l'identifiant de député européen d'une
 personne (P1186). Le relevé est donc fait de trois sortes de membres, tous gardés à l'octet :
 
-1. `wikidata-p1186` : la réponse de Wikidata à la question « quel identifiant européen pour
-   chacun des éléments de la liste des candidats ? » (décisions `candidature`, tous statuts :
-   les données d'un candidat retiré restent, cahier 4.1). Rien n'est rapproché par le nom ;
+1. `wikidata-p1186` : la réponse de Wikidata à la question « quel identifiant européen (P1186),
+   et quelle date de naissance (P569), pour chacun des éléments de la liste des candidats ? »
+   (décisions `candidature`, tous statuts : les données d'un candidat retiré restent, cahier
+   4.1). Rien n'est rapproché par le nom. La date de naissance sert au rattachement des mandats
+   locaux (décision Q34) pour les candidats que la grande requête Wikidata ne couvre pas ;
 2. `mep-<id>` : la fiche de chaque député européen ainsi déclaré (`meps/<id>`), avec ses
    mandats, ses groupes et ses fonctions datés ;
 3. `org-<id>` : chaque groupe politique européen cité par ces fiches (`corporate-bodies/<id>`),
@@ -54,9 +56,11 @@ def elements_de_la_liste(dossier_decisions: str) -> list[str]:
 
 
 def requete_p1186(elements: list[str]) -> str:
-    """Adresse de la requête SPARQL : identifiant européen (P1186) des éléments, résultat trié."""
-    q = ("SELECT ?item ?pe WHERE { VALUES ?item { " + " ".join(f"wd:{e}" for e in elements)
-         + " } ?item wdt:P1186 ?pe . } ORDER BY ?item ?pe")
+    """Adresse de la requête SPARQL : identifiant européen (P1186) et date de naissance (P569) des
+    éléments, résultat trié."""
+    q = ("SELECT ?item ?pe ?naissance WHERE { VALUES ?item { " + " ".join(f"wd:{e}" for e in elements)
+         + " } OPTIONAL { ?item wdt:P1186 ?pe . } OPTIONAL { ?item wdt:P569 ?naissance . } }"
+         + " ORDER BY ?item ?pe ?naissance")
     return f"{SPARQL}?format=json&query={urllib.parse.quote(q)}"
 
 
@@ -64,8 +68,11 @@ def identifiants_pe(octets: bytes) -> dict[str, list[str]]:
     """{élément: [identifiants européens]} lus dans la réponse SPARQL."""
     out: dict[str, list[str]] = {}
     for b in orjson.loads(octets)["results"]["bindings"]:
+        if "pe" not in b:
+            continue
         el = b["item"]["value"].rsplit("/", 1)[-1]
-        out.setdefault(el, []).append(b["pe"]["value"])
+        if b["pe"]["value"] not in out.get(el, []):
+            out.setdefault(el, []).append(b["pe"]["value"])
     return out
 
 
@@ -136,5 +143,120 @@ def relever_eurodeputes(entrepot, transport, pa_cfg: dict, params: dict,
                  message=f"{type(e).__name__}: {e}\n{traceback.format_exc(limit=3)}")
     finally:
         r["requetes"] = len(requetes)
+        r["fin"] = maintenant()
+    return r
+
+
+# -- Votes en séance plénière (lot 2 : portail du PE depuis juillet 2019) ----------------------
+
+def _obtenir_brut(transport, url: str, essais: int = 3, pauses=(5, 30)) -> tuple[int, bytes]:
+    """GET direct, sans le transport des archives : un 404 ou un 204 est une réponse (une séance
+    sans décision, un lundi), pas une panne à réessayer pendant dix minutes. Seuls une erreur
+    réseau ou un 5xx sont réessayés."""
+    import requests
+    dernier = None
+    for k in range(essais):
+        if k:
+            time.sleep(pauses[min(k - 1, len(pauses) - 1)])
+        try:
+            r = transport.session.get(url, timeout=getattr(transport, "delai_s", 60))
+        except requests.RequestException as e:
+            dernier = f"{type(e).__name__}: {e}"
+            continue
+        if r.status_code >= 500:
+            dernier = f"HTTP {r.status_code}"
+            continue
+        return r.status_code, r.content
+    raise RuntimeError(f"{url} : {dernier}")
+
+
+def seances_a_relire(seances: list[str], deja: set[str], depuis: str, aujourd_hui: str,
+                     fenetre_jours: int) -> list[str]:
+    """Séances plénières (`MTG-PL-AAAA-MM-JJ`) à relire : passées, depuis `depuis`, et absentes
+    de l'entrepôt ou récentes (le portail complète ses décisions dans les jours qui suivent)."""
+    import datetime as _dt
+    borne = (_dt.date.fromisoformat(aujourd_hui) - _dt.timedelta(days=fenetre_jours)).isoformat()
+    out = []
+    for s in sorted(set(seances)):
+        d = s[len("MTG-PL-"):][:10]
+        if not (depuis <= d <= aujourd_hui):
+            continue
+        if f"decisions-{s}" not in deja or d >= borne:
+            out.append(s)
+    return out
+
+
+def relever_votes(entrepot, transport, pa_cfg: dict, params: dict, pause_s: float = 2.1,
+                  aujourd_hui: str | None = None, horloge=time.monotonic) -> dict:
+    """Point `pe-votes` : la liste des séances plénières de chaque année depuis `depuis`
+    (`seances-<année>`), puis les décisions de chaque séance (`decisions-<séance>`), gardées à
+    l'octet, une réponse vide (404 ou 204 : séance sans décision) comprise. Une séance déjà rangée
+    n'est relue que si elle date de moins de `fenetre_jours` jours. Au-delà de `budget_s`, le relevé
+    s'arrête proprement (`complet` faux) et reprend la nuit suivante. Rangé sans retrait."""
+    import datetime as _dt
+    from .collecte import releve_vide
+    r = releve_vide(entrepot, pa_cfg)
+    depuis = str(pa_cfg.get("depuis", "2019-07-02"))
+    fenetre = int(pa_cfg.get("fenetre_jours", 60))
+    budget = float(pa_cfg.get("budget_s", 2400))
+    aujourd_hui = aujourd_hui or _dt.datetime.now(_dt.timezone.utc).date().isoformat()
+    debut = horloge()
+    etat = {"requetes": 0, "erreur": None, "interrompu": False, "seances": 0, "vides": 0}
+    dernier = [None]
+
+    def obtenir(url):
+        if dernier[0] is not None:
+            attente = pause_s - (horloge() - dernier[0])
+            if attente > 0:
+                time.sleep(attente)
+        code, octets = _obtenir_brut(transport, url)
+        dernier[0] = horloge()
+        etat["requetes"] += 1
+        r["octets_recus"] += len(octets)
+        return code, octets
+
+    def membres():
+        try:
+            seances = []
+            for an in range(int(depuis[:4]), int(aujourd_hui[:4]) + 1):
+                code, o = obtenir(f"{PORTAIL}meetings?year={an}&limit=500&{FORMAT}")
+                if code not in (200, 204):
+                    raise RuntimeError(f"séances {an} : HTTP {code}")
+                yield _membre(f"seances-{an}", f"meetings/{an}.json", o)
+                d = orjson.loads(o).get("data") if o else []
+                seances += [x["activity_id"] for x in (d or []) if str(x.get("activity_id", "")).startswith("MTG-PL-")]
+            deja = set(entrepot.presents(pa_cfg["id"]))
+            for s in seances_a_relire(seances, deja, depuis, aujourd_hui, fenetre):
+                if horloge() - debut > budget:
+                    etat["interrompu"] = True
+                    return
+                code, o = obtenir(f"{PORTAIL}meetings/{s}/decisions?{FORMAT}")
+                if code not in (200, 204, 404):
+                    raise RuntimeError(f"{s} : HTTP {code}")
+                etat["seances"] += 1
+                etat["vides"] += 0 if o else 1
+                yield _membre(f"decisions-{s}", f"meetings/{s}/decisions.json", o if code == 200 else b"")
+        except Exception as e:  # ce qui est déjà reçu est rangé ; le relevé est en échec
+            etat["erreur"] = f"{type(e).__name__}: {e}"
+
+    try:
+        bilan = entrepot.versionner(pa_cfg, r["releve_id"], membres(), complet=True, delta=True)
+        r.update(nb_membres=bilan.membres, nb_nouvelles_versions=bilan.nouvelles,
+                 nb_inchanges=bilan.inchanges, nb_retraits=0, nb_reapparitions=bilan.reapparitions,
+                 nb_doublons=bilan.doublons, exemples=bilan.exemples)
+        msg = (f"{etat['seances']} séances relues ({etat['vides']} sans décision), "
+               f"{etat['requetes']} requêtes")
+        if etat["erreur"]:
+            r.update(issue="echec", complet=False, message=f"{etat['erreur']} ; {msg}")
+        elif etat["interrompu"]:
+            r.update(issue="nouveau", complet=False, statut_http=200,
+                     message=f"budget de {int(budget)} s atteint, suite la nuit prochaine ; {msg}")
+        else:
+            r.update(issue="nouveau", complet=True, statut_http=200, message=msg)
+    except Exception as e:
+        r.update(issue="echec", complet=False,
+                 message=f"{type(e).__name__}: {e}\n{traceback.format_exc(limit=3)}")
+    finally:
+        r["requetes"] = etat["requetes"]
         r["fin"] = maintenant()
     return r

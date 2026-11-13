@@ -135,6 +135,10 @@ def _identites(ctx) -> dict[str, dict]:
 # -- composer -------------------------------------------------------------------------------
 
 def composer(ctx, ecr):
+    """Compose une fiche par gouvernement publié (qui traverse une législature de
+    `LEGISLATURES_GOUV`), avec l'écrivain `ecr`, en lisant les sorties des règles dans `ctx`.
+    Chaque fiche connaît le gouvernement précédent et le suivant (par date de début). Les comptes
+    sont arrêtés à `ctx.date_reference`, à défaut à la date du jour. Ne rend rien."""
     au = ctx.date_reference or dt.date.today().isoformat()
     gouvs = _lignes(ctx, """
         SELECT organe, nom, adresse, debut, fin, en_cours, rang, source_url FROM gouvernement
@@ -247,11 +251,15 @@ def _composition(ctx, f, g, commun, limites):
         return None
 
     def libelle(m):
+        """Rend le libellé de portefeuille du premier titulaire du ministère `m`, ou `None` s'il
+        n'en a pas."""
         rs = par_ministere.get(m) or []
         return rs[0]["portefeuille"] if rs else None
 
     # Un ministère recréé sous le même libellé (remaniement : nouvel organe) reste un seul groupe.
     def cle_libelle(m):
+        """Rend la clé de regroupement du ministère `m` : son libellé (ou, à défaut, son
+        identifiant), apostrophes et espaces normalisées, sans accents ; `None` pour `None`."""
         return None if m is None else _sans_accents(_ESPACES.sub(" ", (libelle(m) or m).replace("’", "'")))
 
     groupes = defaultdict(list)
@@ -260,12 +268,17 @@ def _composition(ctx, f, g, commun, limites):
         groupes[cle_libelle(r["_racine"])].append(r)
 
     def cle_groupe(k):
+        """Rend la clé de tri du groupe de portefeuilles `k` : les groupes rattachés avant le
+        groupe sans ministère établi, celui du Premier ministre d'abord, puis par préséance, date
+        de début la plus ancienne et clé."""
         rs = [r for r in groupes[k] if r["ministere"] == r["_racine"]] or groupes[k]
         pm = any(r["premier_ministre"] for r in rs)
         prec = min((r["preseance"] for r in rs if r["preseance"] is not None), default=10 ** 6)
         return (k is None, not pm, prec, min(r["debut"] or "" for r in rs), k or "")
 
     def tri_nom(a):
+        """Rend la clé de tri alphabétique de l'acteur `a` (nom puis prénom, sans accents), ou `a`
+        lui-même si son nom est inconnu."""
         return commun["noms"].get(a, {}).get("tri") or a
 
     sortie = []
@@ -422,6 +435,8 @@ def _paroles(ctx, f, g, commun, nb_membres, debut_lu, limites):
     noms = commun["noms"]
 
     def tri_nom(a):
+        """Rend la clé de tri alphabétique de l'acteur `a` (nom puis prénom, sans accents), ou `a`
+        lui-même si son nom est inconnu."""
         return noms.get(a, {}).get("tri") or a
 
     # Sujets : (type, intitulé) ; un paragraphe sans intitulé publié est compté à part.

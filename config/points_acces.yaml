@@ -341,3 +341,114 @@ points_acces:
     format: pe_eurodeputes
     decisions: decisions
     licence: cc-by-4.0
+
+  # --- Parlement européen : décisions de chaque séance plénière depuis la législature ouverte le
+  # 02/07/2019 (votes nominatifs, député européen par député européen ; décision Q3 du 13/11/2026 ;
+  # avant : Parltrack). Une requête toutes les 2,1 s ; une séance déjà rangée n'est relue que si
+  # elle a moins de 60 jours ; premier remplissage ≈ 380 séances. Voir empreinte_src/collecte_pe.py.
+  - id: pe-votes
+    source: europarl
+    type: votes_pe
+    url: https://data.europarl.europa.eu/api/v2/meetings
+    format: pe_votes
+    depuis: "2019-07-02"
+    fenetre_jours: 60
+    budget_s: 2400
+    licence: cc-by-4.0
+
+  # --- Répertoire national des élus (data.gouv.fr, Licence Ouverte 2.0) : mandats locaux des
+  # candidats (décisions du 13/11/2026 : réintégrés au périmètre ; Q34 rattachement par nom, prénom
+  # et date de naissance ; Q35 fin au renouvellement de mars 2026 pour les sortants). Adresse
+  # stable d'une ressource (`/datasets/r/<id>`, redirigée vers le fichier du jour) ; requête
+  # conditionnelle (ETag). Le cahier (3.9) dit que l'identifiant de ressource change à chaque
+  # publication : si c'est le cas, le point tombe en panne (404) et se voit. Députés, sénateurs et
+  # députés européens ne sont pas relevés ici (leurs sources propres le sont).
+  - id: rne-cm
+    source: rne
+    type: elus_rne
+    url: https://www.data.gouv.fr/fr/datasets/r/d5f400de-ae3f-4966-8cb6-a85c70c6c24a
+    format: fichier
+    uid: elus-cm
+    taille_min: 30000000
+    licence: etalab-2.0        # conseillers municipaux
+  - id: rne-maires
+    source: rne
+    type: elus_rne
+    url: https://www.data.gouv.fr/fr/datasets/r/2876a346-d50c-4911-934e-19ee07b0e503
+    format: fichier
+    uid: elus-maires
+    taille_min: 2000000
+    licence: etalab-2.0        # maires
+  - id: rne-epci
+    source: rne
+    type: elus_rne
+    url: https://www.data.gouv.fr/fr/datasets/r/41d95d7d-b172-4636-ac44-32656367cdc7
+    format: fichier
+    uid: elus-epci
+    taille_min: 5000000
+    licence: etalab-2.0        # conseillers communautaires
+  - id: rne-cd
+    source: rne
+    type: elus_rne
+    url: https://www.data.gouv.fr/fr/datasets/r/601ef073-d986-4582-8e1a-ed14dc857fba
+    format: fichier
+    uid: elus-cd
+    taille_min: 200000
+    licence: etalab-2.0        # conseillers départementaux
+  - id: rne-cr
+    source: rne
+    type: elus_rne
+    url: https://www.data.gouv.fr/fr/datasets/r/430e13f9-834b-4411-a1a8-da0b4b6e715c
+    format: fichier
+    uid: elus-cr
+    taille_min: 100000
+    licence: etalab-2.0        # conseillers régionaux
+  - id: rne-ca
+    source: rne
+    type: elus_rne
+    url: https://www.data.gouv.fr/fr/datasets/r/3b6b2281-b9d9-4959-ae9d-c2c166dff118
+    format: fichier
+    uid: elus-ca
+    taille_min: 50000
+    licence: etalab-2.0        # conseillers d'arrondissement
+  - id: rne-ma
+    source: rne
+    type: elus_rne
+    url: https://www.data.gouv.fr/fr/datasets/r/a595be27-cfab-4810-b9d4-22e193bffe35
+    format: fichier
+    uid: elus-ma
+    taille_min: 30000
+    licence: etalab-2.0        # membres d'une assemblée (collectivités à statut particulier)
+  - id: rne-consfde
+    source: rne
+    type: elus_rne
+    url: https://www.data.gouv.fr/fr/datasets/r/84949a7b-53e0-4d78-9a66-8446f5ab6ad4
+    format: fichier
+    uid: elus-consfde
+    taille_min: 30000
+    licence: etalab-2.0        # conseillers des Français de l'étranger
+  - id: rne-afe
+    source: rne
+    type: elus_rne
+    url: https://www.data.gouv.fr/fr/datasets/r/41cea915-fa63-46f2-825f-97fa354a26bc
+    format: fichier
+    uid: elus-afe
+    taille_min: 3000
+    licence: etalab-2.0        # membres de l'Assemblée des Français de l'étranger
+  # Sortants des municipales de 2026 (mandats 2020-2026), jeu figé publié le 27/02/2026.
+  - id: rne-sortants-cm
+    source: rne
+    type: elus_rne
+    url: https://www.data.gouv.fr/fr/datasets/r/bfb340ee-5068-4706-b07c-1ab7b0e2fd5b
+    format: fichier
+    uid: elus-sortants-cm
+    taille_min: 30000000
+    licence: etalab-2.0        # conseillers municipaux sortants (2020-2026)
+  - id: rne-sortants-maires
+    source: rne
+    type: elus_rne
+    url: https://www.data.gouv.fr/fr/datasets/r/c5026511-0a7f-4d79-9c2f-5c61376d2c0b
+    format: fichier
+    uid: elus-sortants-maires
+    taille_min: 2000000
+    licence: etalab-2.0        # maires sortants (2020-2026)
