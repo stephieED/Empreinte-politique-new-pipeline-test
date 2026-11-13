@@ -20,7 +20,7 @@ documents par usage, une rubrique par paquet, dans l'ordre du menu.
 | `documentation.conception` | les documents 1, 2, 3 et 8 |
 | `documentation.decisions` | le cadrage, les questions ouvertes, les corrections P1 à P3 |
 | `documentation.mise_en_oeuvre` | le journal des changements, le rapport de mesures, la migration |
-| `documentation.annexes.mesures` | les mesures de l'étape 1 (`annexes/mesures/`) |
+| `documentation.annexes.mesures` | l'analyse préliminaire des sources (`annexes/mesures/`) |
 | `documentation.annexes.archives` | les documents remplacés (4, 6 et 7) |
 
 Une seule table, `DOCUMENTS`, dit la rubrique de chaque fichier (et son titre dans le menu quand
@@ -74,10 +74,13 @@ RUBRIQUES = (
      "conception, ce que le traitement a mesuré chaque nuit, et ce qu'il restera à faire pour "
      "passer au vrai dépôt."),
     ("annexes", "Annexes et archives",
-     "Les mesures des sources faites pendant la conception, sur lesquelles reposent les choix, et "
-     "les documents remplacés, gardés pour mémoire."),
-    ("annexes.mesures", "Mesures de l'étape 1",
-     "Les mesures faites le 04/11/2026 sur chaque source : volumes, formats, délais, limites."),
+     "L'analyse préliminaire des sources, sur laquelle reposent les choix, et les documents "
+     "remplacés, gardés pour mémoire."),
+    ("annexes.mesures", "Analyse préliminaire des sources (réalisée le 04/11/2026)",
+     "L'analyse de chaque source faite avant la réalisation, le 04/11/2026, sur les archives "
+     "relevées le 03/11/2026 : ce qu'elle contient, ses formats, ses délais, ses défauts et ses "
+     "limites. Les choix du traitement s'y réfèrent. Certains chiffres ont été dépassés depuis : "
+     "les mesures à jour sont dans le [rapport de mesures](etape-2/3-rapport-de-mesures.md)."),
     ("annexes.archives", "Archives : documents remplacés",
      "Des documents remplacés, gardés pour mémoire : les estimations chiffrées (document 4), "
      "remplacées par le [rapport de mesures](etape-2/3-rapport-de-mesures.md), et les documents 6 "
