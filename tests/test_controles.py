@@ -35,6 +35,25 @@ def test_c1_perte_non_expliquee_puis_levee(tmp_path):
     assert c.bilan()["anomalies"][0]["levee_par"] == "decisions/levee/x.yaml"
 
 
+def test_c1_c6_fiche_de_candidat_retiree_expliquee_et_nommee(tmp_path):
+    """Un candidat qui n'est plus dans la liste : sa fiche disparaît, ce n'est ni une perte (C1)
+    ni un effondrement (C6), et l'avertissement A9 la nomme la nuit où elle part."""
+    avant = _faits(tmp_path / "a.parquet", [_f("candidat/x", "votes", f'{{"scrutin":"VT{i}"}}') for i in range(12)]
+                   + [_f("candidat/y", "votes", '{"scrutin":"VT1"}')])
+    apres = _faits(tmp_path / "b.parquet", [_f("candidat/y", "votes", '{"scrutin":"VT1"}')])
+    c = Controles(str(tmp_path))
+    c.c1_c6_comparer(avant, apres, fiches_retirees={"candidat/x": "n'est plus dans la liste"})
+    assert c.bilan()["publication_autorisee"] and not c.anomalies
+    c._vues = set()
+    c.a9_liste_des_candidats()
+    assert c.anomalies[0]["controle"] == "A9" and not c.anomalies[0]["bloquant"]
+    assert c.anomalies[0]["exemples"] == ["fiche candidat/x retirée cette nuit : n'est plus dans la liste"]
+    # Sans la raison, la même disparition bloque.
+    c = Controles(str(tmp_path))
+    c.c1_c6_comparer(avant, apres)
+    assert {a["controle"] for a in c.anomalies} == {"C1", "C6"}
+
+
 def test_c6_effondrement(tmp_path):
     avant = _faits(tmp_path / "a.parquet", [_f("g/x", "actes", f'{{"i":{i}}}') for i in range(20)])
     apres = _faits(tmp_path / "b.parquet", [_f("g/x", "actes", f'{{"i":{i}}}') for i in range(5)])

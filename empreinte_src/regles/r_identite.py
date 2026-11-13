@@ -6,13 +6,16 @@ son adresse publique (doc. 1, 1.2.2, 1.3.4 et 1.6 ; correction P1).
    l'article)`, `("wd", élément)`, `("an", PA…)`, `("senat", matricule)` — tels que
    R-CANDIDATURES les a établis. Le registre rend le `per` : une attribution acquise ne change
    jamais, une personne nouvelle reçoit le numéro suivant, dans un ordre qui ne dépend pas de
-   l'ordre de lecture. Un candidat sans article forme le groupe `("wikipedia-nom", nom tel
-   qu'écrit)`, **sans rapprochement** : s'il reçoit plus tard un article, c'est une décision
-   qui réunira les deux numéros. Sans registre, la règle échoue : elle ne fabrique jamais de
-   numéro de passage.
+   l'ordre de lecture. Un candidat sans article garde la clé sous laquelle le registre le
+   connaît, `("wikipedia-nom", nom écrit par Wikipédia)`, que la décision inscrit
+   (`nom_wikipedia`) ; un candidat nouveau sans article ni élément forme le groupe
+   `("liste-nom", nom écrit par la liste)`, **sans rapprochement** : s'il reçoit plus tard un
+   élément, c'est une décision qui réunira les deux numéros. Sans registre, la règle échoue :
+   elle ne fabrique jamais de numéro de passage.
 2. **Identité** : chaque champ vient d'une source nommée (`source_<champ>`), dans cet ordre :
    l'archive de l'Assemblée (si l'identifiant `PA` y est), l'export du Sénat (si le matricule
-   y est), Wikidata (date de naissance), Wikipédia (nom). Une date de naissance aberrante
+   y est), Wikidata (date de naissance), Wikipédia (nom), la liste des candidats (nom, à
+   défaut de tout le reste). Une date de naissance aberrante
    (avant le 02/01/1900, dont la sentinelle 1900-01-01) n'est pas retenue ; un écart entre
    l'Assemblée et Wikidata est signalé (`naissance_concordance`).
 3. **Adresse** : forme lisible du nom (`francois-ruffin`) ; si une autre personne connue (un
@@ -28,7 +31,7 @@ import pyarrow as pa
 from .r_candidatures import vue_ou_vide
 
 NOM = "R-IDENTITE"
-VERSION = 1
+VERSION = 2
 DEPEND = ("R-CANDIDATURES",)
 SORTIES = ("candidat", "personne_identite", "correspondance")
 DESCRIPTION = (
@@ -37,7 +40,8 @@ DESCRIPTION = (
     "l'Assemblée nationale, le matricule du Sénat. Deux sources ne désignent la même personne "
     "que si un identifiant déclaré les relie, jamais par le nom seul. Le nom, la date et le "
     "lieu de naissance et la profession viennent, dans cet ordre, de l'Assemblée nationale, du "
-    "Sénat, de Wikidata, puis de Wikipédia, et la fiche dit d'où vient chaque champ. Une date "
+    "Sénat, de Wikidata, de Wikipédia, puis de la liste des candidats, et la fiche dit d'où "
+    "vient chaque champ. Une date "
     "de naissance manifestement fausse n'est pas retenue. L'adresse de la fiche est le nom "
     "écrit simplement ; deux personnes de même nom se distinguent par leur année de naissance.")
 
@@ -53,7 +57,11 @@ def slug(x: str) -> str:
 
 
 def _groupe(r) -> list[tuple[str, str]]:
-    g = [("wikipedia", r["article_frwiki"])] if r["article_frwiki"] else [("wikipedia-nom", r["nom"])]
+    g = [("wikipedia", r["article_frwiki"])] if r["article_frwiki"] else []
+    if r["nom_wikipedia"]:
+        g.append(("wikipedia-nom", r["nom_wikipedia"]))
+    if not g:
+        g.append(("liste-nom", r["nom_liste"]))
     for src, col in (("wd", "element_wikidata"), ("an", "acteur"), ("senat", "matricule_senat")):
         if r[col]:
             g.append((src, r[col]))
@@ -70,17 +78,28 @@ def appliquer(ctx):
         raise RuntimeError("R-IDENTITE : génération inconnue (ctx.generation est None) : "
                            "le registre date chaque attribution par sa génération.")
 
-    cur = ctx.con.execute("""SELECT personne_source, nom, article_frwiki, element_wikidata, acteur,
-                                    matricule_senat, rattachement FROM candidature""")
+    cur = ctx.con.execute("""SELECT personne_source, nom, nom_liste, nom_wikipedia, article_frwiki,
+                                    element_wikidata, origine_element, acteur, matricule_senat,
+                                    rattachement FROM candidature""")
     cols = [d[0] for d in cur.description]
     lignes = [dict(zip(cols, x)) for x in cur.fetchall()]
     groupes = [_groupe(r) for r in lignes]
     pers = ctx.registre.attribuer(groupes, ctx.generation)
-    methode = {"wikipedia": "article_cite_par_la_liste", "wikipedia-nom": "nom_ecrit_sans_rapprochement",
-               "wd": "lien_frwiki_de_l_element", "an": "identifiant_declare_wikidata_P4123",
-               "senat": "identifiant_declare_wikidata_P1808"}
+    # Les clés inscrites par la décision `candidature` sont validées par la propriétaire ; les
+    # identifiants parlementaires en sont tirés par Wikidata.
+    methode = {"wikipedia": "article_inscrit_par_decision", "wikipedia-nom": "nom_ecrit_par_wikipedia_inscrit_par_decision",
+               "liste-nom": "nom_ecrit_par_la_liste_sans_rapprochement",
+               "an": "identifiant_declare_wikidata_P4123", "senat": "identifiant_declare_wikidata_P1808"}
+
+    def meth(r, s):
+        if s == "wd":
+            return ("element_inscrit_par_decision" if r["origine_element"] == "decision"
+                    else "lien_frwiki_de_l_element")
+        return methode[s]
     corr = [{"personne_source": r["personne_source"], "per": pers[g[0]], "source": s, "uid": u,
-             "methode": methode[s], "statut": "automatique"}
+             "methode": meth(r, s),
+             "statut": "automatique" if s in ("an", "senat") or meth(r, s) == "lien_frwiki_de_l_element"
+                       else "validee"}
             for r, g in zip(lignes, groupes) for (s, u) in g]
     schema = pa.schema([(c, pa.string()) for c in
                         ("personne_source", "per", "source", "uid", "methode", "statut")])
@@ -106,6 +125,8 @@ def appliquer(ctx):
         j AS (
             SELECT c.per, c.personne_source, c.nom AS nom_wikipedia, c.prenom AS prenom_wikipedia,
                    c.nom_famille AS nom_famille_wikipedia, c.article_url, c.element_url,
+                   (c.article_frwiki IS NOT NULL OR c.nom_wikipedia IS NOT NULL) AS nom_par_wikipedia,
+                   c.source_url AS liste_url,
                    c.naissance_wikidata, c.acteur, c.matricule_senat,
                    a.uid IS NOT NULL AS an_ok, s.matricule IS NOT NULL AS sen_ok,
                    a.civilite AS civ_an, a.prenom AS prenom_an, a.nom AS nom_an,
@@ -139,7 +160,7 @@ def appliquer(ctx):
                coalesce(deces_an, deces_sen) AS deces,
                nom_wikipedia AS nom_usage_wikipedia,
                CASE WHEN nom_an IS NOT NULL THEN 'an' WHEN nom_sen IS NOT NULL THEN 'senat'
-                    ELSE 'wikipedia' END AS source_nom,
+                    WHEN nom_par_wikipedia THEN 'wikipedia' ELSE 'franceinfo' END AS source_nom,
                CASE WHEN prenom_an IS NOT NULL THEN 'an' WHEN prenom_sen IS NOT NULL THEN 'senat'
                     WHEN prenom_wikipedia IS NOT NULL THEN 'wikipedia' END AS source_prenom,
                source_naissance,
@@ -153,7 +174,7 @@ def appliquer(ctx):
                CASE WHEN naiss_an IS NULL OR naissance_wikidata IS NULL THEN 'une_source'
                     WHEN naiss_an = naissance_wikidata THEN 'concordante' ELSE 'divergente' END AS naissance_concordance,
                CASE WHEN an_ok THEN '{URL_DEPUTE}' || acteur
-                    ELSE coalesce(article_url, element_url) END AS source_url,
+                    ELSE coalesce(article_url, element_url, liste_url) END AS source_url,
                article_url AS source_url_wikipedia, element_url AS source_url_wikidata,
                acteur, matricule_senat, an_ok AS acteur_present_an, sen_ok AS matricule_present_senat
         FROM k ORDER BY per""")
@@ -192,12 +213,14 @@ def appliquer(ctx):
                c.rattachement,
                c.raison_rattachement, b.raison_adresse,
                CASE WHEN c.statut = 'retiree' THEN 'candidature retirée : données gardées, fiche non affichée'
-                    WHEN c.statut = 'non_listee' THEN 'n''est plus dans la liste de Wikipédia : données gardées, fiche non affichée'
+                    WHEN c.statut = 'non_listee' THEN 'n''est plus dans la liste des candidats déclarés : données gardées, fiche non affichée'
                     WHEN b.adresse IS NULL THEN 'adresse non établie' END AS raison_non_publie,
                b.n_homonymes, c.statut_source, c.date_declaration_texte, c.date_declaration_raison,
                c.date_declaration_phrase, c.sycomore, c.acteur_connu_an, c.matricule_connu_senat,
-               c."references", c.revision, c.source_url, c.article_url, c.element_url,
-               c.personne_source
+               c."references", c.revision_wikipedia, c.date_declaration_source_url, c.statut_wikipedia,
+               c.nom_liste, c.nom_wikipedia, c.parti, c.origine_element, c.rattachement_par_nom,
+               c.source_liste, c.source_titre, c.date_liste, c.decision,
+               c.source_url, c.article_url, c.element_url, c.personne_source
         FROM candidature c JOIN b USING (personne_source)
         ORDER BY c.statut, c.nom""")
 

@@ -32,7 +32,9 @@ TABLES = {
                  {"per": "per:000002", "nom": "Jean Homonyme", "acteur": None, "adresse": None, "publie": False,
                   "statut": "declaree", "raison_non_publie": "adresse non établie"},
                  {"per": "per:000003", "nom": "Paul Parti", "acteur": None, "adresse": "paul-parti", "publie": False,
-                  "statut": "retiree", "raison_non_publie": "candidature retirée"}],
+                  "statut": "retiree", "raison_non_publie": "candidature retirée"},
+                 {"per": "per:000004", "nom": "Luc Sorti", "acteur": None, "adresse": "luc-sorti", "publie": False,
+                  "statut": "non_listee", "raison_non_publie": "n'est plus dans la liste des candidats"}],
     "gouvernement": [{"organe": "PO-G", "nom": "Bayrou", "adresse": "bayrou"}],
     "gouvernement_legislature": [{"gouvernement": "PO-G", "legislature": 17}],
     "membre_gouvernement": [{"gouvernement": "PO-G", "acteur": "PA7"}],
@@ -109,6 +111,7 @@ def test_perimetre_populations_et_raisons(tmp_path):
     assert p[("candidat", "per:000001")][3] == "candidat/alice-martin"
     assert p[("candidat", "per:000003")][4] == "candidature_retiree_a_la_source"
     assert p[("candidat", "per:000002")][4] is None                    # adresse non établie : pas une sortie
+    assert p[("candidat", "per:000004")][4] == "absent_de_la_liste_des_candidats"
     assert p[("membre_groupe", "PA2")][3] == "lignee/soc"
     assert p[("membre_gouvernement", "PA7")][3] == "gouvernement/bayrou"
     assert p[("depute_ni", "PA9")][3] is None

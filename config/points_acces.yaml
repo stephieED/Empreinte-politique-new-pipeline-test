@@ -286,7 +286,21 @@ points_acces:
     # Un même texte figure deux fois par livraison (texte/version et texte/struct) : l'uid est
     # qualifié par ce dossier, lu sans l'horodatage de la livraison.
     qualifier_uid: '^\d{8}-\d{6}/jorf/global/(?P<q>.+?)/JORF/'
-    premiere_livraison: "JORF_20261006"   # premier remplissage de cette tranche : 30 jours ; le dump global est un chantier à part
+    premiere_livraison: "JORF_20261006"   # premier remplissage de cette tranche : 30 jours ; avant : l'archive globale (jo-global)
+    licence: etalab-2.0
+
+  # --- Journal officiel : archive globale de la DILA (depuis 1861, 1,75 Go, 7,2 millions de
+  # fichiers ; celle du 08/11/2026 remplace les livraisons quotidiennes plus anciennes, retirées).
+  # Relevée une fois. Décision du 13/11/2026 : l'archive reçue est gardée à l'octet (release
+  # `archives-brutes`) ; l'entrepôt ne découpe que les actes et sommaires publiés depuis la XIVe.
+  - id: jo-global
+    source: dila
+    type: jorf
+    url: https://echanges.dila.gouv.fr/OPENDATA/JORF/
+    format: archive_globale
+    motif: '^Freemium_jorf_global_\d{8}-\d{6}\.tar\.gz$'
+    qualifier_uid: '^\d{8}-\d{6}/jorf/global/(?P<q>.+?)/JORF/'
+    depuis: "2012-06-20"
     licence: etalab-2.0
 
   # --- Wikipédia : l'article des candidatures (on ne garde que les faits, voir doc. 1, 1.3.2)

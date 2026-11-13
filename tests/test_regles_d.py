@@ -361,3 +361,25 @@ def test_numero_incomplet_au_milieu_ne_reduit_pas_la_periode(tmp_path):
     assert c["nb_numeros_incomplets"] == 1
     dans = dict(ctx.x("SELECT id_jorf, dans_periode_couverte FROM acte_rattache"))
     assert dans == {"A33": True, "A34": True, "A36": True}
+
+
+def test_archive_globale_compte_et_la_livraison_la_plus_recente_fait_foi(tmp_path):
+    """13/11/2026 : l'archive globale de la DILA (point `jo-global`, livrée le 08/11/2026) donne
+    les numéros depuis la XIVe : ils comptent dans la période couverte bien qu'ils ne soient pas
+    livrés dans leur actualité. Un acte présent dans l'archive et redélivré ensuite n'est lu
+    qu'une fois, dans sa livraison la plus récente."""
+    G = {"prov_point": "jo-global"}
+    actes = [{**_acte("A13", "2013-03-01", livraison="20261108-140000"), **G},
+             {**_acte("A26", "2026-10-06", titre="Arrêté (archive)", livraison="20261108-140000"), **G},
+             _acte("A26", "2026-10-06", titre="Arrêté (redélivré)", livraison="20261110-010000")]
+    sommaires = ([{**x, **G} for x in _sommaire("C13", "2013-03-01", "0051", ["A13"], "20261108-140000")]
+                 + _sommaire("C26", "2026-10-06", "0233", ["A26"], "20261110-010000"))
+    _ecrire_z2(tmp_path / "z2", actes=actes, sommaires=sommaires)
+    ctx, _ = _relier(tmp_path / "z2", tmp_path / "z3")
+    (c,) = _lignes(ctx, "SELECT * FROM couverture_jo")
+    # Le numéro de 2013 compte (archive globale) ; celui du 06/10, redélivré le 10/11, ne compte
+    # pas (hors de son actualité, et pas de l'archive globale dans sa dernière livraison).
+    assert (c["premiere_publication"], c["derniere_publication"]) == ("2013-03-01", "2013-03-01")
+    a = ctx.x("SELECT id_jorf, titre, livraison FROM acte_rattache ORDER BY 1")
+    assert a == [("A13", "Arrêté du 1er janvier", "20261108-140000"),
+                 ("A26", "Arrêté (redélivré)", "20261110-010000")]

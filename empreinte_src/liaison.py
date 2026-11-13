@@ -61,6 +61,10 @@ ARCHIVES_SUCCESSIVES = {
     "an_dossiers__dossier": "uid", "an_dossiers__acte": "dossier", "an_dossiers__document": "uid",
     "an_dossiers__cosignature": "document",
     "an_agenda__reunion": "uid", "an_agenda__point_odj": "reunion",
+    # Journal officiel : un acte, son plan, ses liens, un sommaire de numéro peuvent venir de
+    # l'archive globale et d'une livraison quotidienne : la livraison la plus récente fait foi.
+    "jo_actes__acte_reglementaire": ("livraison", "uid"), "jo_actes__version_acte": ("livraison", "acte"),
+    "jo_actes__lien_acte_loi": ("livraison", "acte"), "jo_actes__sommaire_jo": ("livraison", "conteneur"),
 }
 _LEG = "TRY_CAST(regexp_extract(prov_point, '-l([0-9]+)$', 1) AS INTEGER)"
 
@@ -110,6 +114,11 @@ def _une_archive(nom: str) -> str:
     mode = ARCHIVES_SUCCESSIVES.get(nom)
     if mode is None:
         return f"SELECT * FROM {nom}__archives"
+    if isinstance(mode, tuple):
+        _, cle = mode
+        return f"""SELECT x.* FROM {nom}__archives x
+                   JOIN (SELECT {cle} AS cle, max(livraison) AS l FROM {nom}__archives GROUP BY 1) w
+                     ON x.{cle} IS NOT DISTINCT FROM w.cle AND x.livraison IS NOT DISTINCT FROM w.l"""
     if mode == "courante":
         # Un point sans législature (hors suite d'archives) est toujours lu.
         return f"""SELECT * FROM {nom}__archives

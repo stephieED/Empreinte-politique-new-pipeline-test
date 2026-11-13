@@ -101,7 +101,8 @@ def exporter(dossier_z2: str, lecteurs, sortie: str) -> dict:
             cols = [r[0] for r in con.execute(f"DESCRIBE SELECT * FROM read_parquet('{chemin}')").fetchall()]
             part = os.path.join(morceaux_dir, f"{spec['type']}__{mod.NOM}.parquet")
             nom = f"{mod.NOM}__{table}"
-            if nom in ARCHIVES_SUCCESSIVES and not spec.get("toutes_versions"):
+            if nom in ARCHIVES_SUCCESSIVES and not spec.get("toutes_versions") and \
+                    (not isinstance(ARCHIVES_SUCCESSIVES[nom], tuple) or ARCHIVES_SUCCESSIVES[nom][0] in cols):
                 # Un objet porté par plusieurs archives n'est exporté qu'une fois (comme les règles le lisent).
                 con.execute(f"""CREATE OR REPLACE VIEW {nom}__archives AS SELECT x.* FROM read_parquet('{chemin}') x
                     SEMI JOIN (SELECT prov_point AS p, prov_uid AS u, max(prov_version) AS n
