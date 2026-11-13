@@ -44,6 +44,11 @@ NOMINATION = "Nomination comme membre du Gouvernement"
 
 
 def appliquer(ctx):
+    """Applique R-DEPUTES : écrit `depute`, les mandats de député avec leurs suspensions et
+    reprises (voir la description du module). Rend la couverture,
+    `{nom: (numérateur, dénominateur)}` : `date_prise_fonction_publiee`,
+    `suspension_close_par_une_reprise`, `suppleant_identifie`,
+    `reprise_reliee_au_mandat_suspendu`."""
     ctx.x(f"""CREATE OR REPLACE TEMP TABLE _ga_an AS
         SELECT m.uid, m.acteur, TRY_CAST(m.legislature AS INTEGER) AS legislature,
                coalesce(m.date_prise_fonction, m.date_debut) AS debut,

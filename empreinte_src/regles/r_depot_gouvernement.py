@@ -24,6 +24,9 @@ DESCRIPTION = (
 
 
 def appliquer(ctx):
+    """Applique R-DEPOT-GOUVERNEMENT : écrit `projet_gouvernement`, les projets de loi et le
+    gouvernement qui les a déposés (voir la description du module). Rend la couverture,
+    `{nom: (numérateur, dénominateur)}` : `gouvernement_etabli`."""
     ctx.ecrire("projet_gouvernement", f"""
         WITH p AS (
             SELECT a.dossier, a.texte_associe AS document, a.uid AS acte,

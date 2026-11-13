@@ -70,6 +70,12 @@ def _groupe(r) -> list[tuple[str, str]]:
 
 
 def appliquer(ctx):
+    """Applique R-IDENTITE : attribue à chaque candidat son numéro `per:NNNNNN` dans le registre
+    des identités (`ctx.registre`, complété en mémoire), puis écrit `correspondance`,
+    `personne_identite` et `candidat` (voir la description du module). Lève `RuntimeError` sans
+    registre ou sans génération (`ctx.generation`). Rend la couverture,
+    `{nom: (numérateur, dénominateur)}` : `candidats_publies`, `rattache_assemblee`,
+    `rattache_senat`, `sans_identifiant_parlementaire`, `adresse_etablie`, `naissance_connue`."""
     if ctx.registre is None:
         raise RuntimeError(
             "R-IDENTITE : aucun registre des identités (ctx.registre est None). Le numéro d'une "
@@ -94,6 +100,9 @@ def appliquer(ctx):
                "pe": "identifiant_declare_wikidata_P1186"}
 
     def meth(r, s):
+        """Rend la méthode de rattachement de l'identifiant de source `s` pour la candidature `r` :
+        pour Wikidata (`wd`), selon que l'élément a été inscrit par décision ou trouvé par le lien
+        de l'article ; pour les autres sources, la méthode de `methode`."""
         if s == "wd":
             return ("element_inscrit_par_decision" if r["origine_element"] == "decision"
                     else "lien_frwiki_de_l_element")

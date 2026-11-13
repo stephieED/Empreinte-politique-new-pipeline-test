@@ -37,6 +37,9 @@ _UID = r"^VTANR5L(\d+)V(\d+)$"
 
 
 def appliquer(ctx):
+    """Applique R-CONTINUITE-SCRUTINS : écrit `trou_scrutins`, les trous de l'archive des scrutins
+    (voir la description du module). Rend la couverture, `{nom: (numérateur, dénominateur)}` :
+    `legislature_sans_trou_de_scrutins`."""
     cites = "NULL::VARCHAR[]"
     acte = ctx.existe("an_dossiers__acte")
     ctx.ecrire("trou_scrutins", f"""

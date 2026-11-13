@@ -234,6 +234,12 @@ def _deport(x: dict) -> dict:
 
 
 def lire(m):
+    """Lit un membre de l'archive des acteurs et organes (`m`, un `MembreLu`) et rend
+    `{table: [lignes]}` pour toutes les tables de `TABLES` (les tables sans ligne sont vides).
+
+    Le membre est un acteur (`{"acteur": …}` : son identité et ses mandats), un organe, un déport,
+    ou l'archive de la XIVe en un seul fichier (`{"export": …}` : tous les organes et tous les
+    acteurs). Toute autre forme lève `ValueError`."""
     doc = orjson.loads(m.octets)
     vide = {t: [] for t in TABLES}
     # Archive AMO20 de la XIVe : tous les organes et acteurs dans un seul fichier.

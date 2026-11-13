@@ -133,6 +133,7 @@ def g(d, *ks):
 
 
 def chaines(xs) -> list[str]:
+    """Rend les valeurs de `xs` en chaînes (vide de l'Assemblée lu par `val`), sans les vides."""
     return [str(x) for x in (val(x) for x in xs) if x is not None]
 
 
@@ -144,12 +145,16 @@ def json_ou_none(x) -> str | None:
 
 
 def url_dossier(leg, chemin) -> str | None:
+    """Rend l'adresse publique d'un dossier sur le site de l'Assemblée
+    (`…/dyn/{leg}/dossiers/{chemin}`), ou `None` si la législature ou le chemin manque."""
     if not leg or not chemin:
         return None
     return f"https://www.assemblee-nationale.fr/dyn/{leg}/dossiers/{chemin}"
 
 
 def url_document(uid: str) -> str | None:
+    """Rend l'adresse publique d'un document de l'Assemblée (`…/dyn/opendata/{uid}.html`),
+    seulement pour un uid `…ANR5L{n}…` de la XVe législature ou d'une suivante ; sinon `None`."""
     m = LEG_AN.search(uid or "")
     if not m or int(m.group(1)) < 15:
         return None
@@ -177,6 +182,9 @@ def initiateurs(x) -> tuple[list, list, list]:
 
 
 def lire_dossier(d: dict, out: dict):
+    """Lit un dossier parlementaire `d` : ajoute ses actes à `out["acte"]` (`lire_actes`) et une
+    ligne à `out["dossier"]` (titre, chemins, procédure, initiateurs, fusion, thèmes, nombre
+    d'actes, adresse). Ne rend rien."""
     uid = val(d["uid"])
     leg = val(d.get("legislature"))
     td = d.get("titreDossier") or {}
@@ -216,6 +224,10 @@ def lire_actes(dossier: str, d: dict, url_dos, out: dict) -> int:
 
 
 def ligne_acte(dossier, parent, rang, prof, a: dict, url_dos) -> dict:
+    """Rend la ligne de la table `acte` pour l'acte `a` du dossier `dossier`, placé sous l'acte
+    `parent` au rang `rang` et à la profondeur `prof`. Les champs sont lus tels quels (conclusion,
+    décision, déclaration, motion, textes associés, rapporteurs, publication au JO…). L'adresse est
+    celle de Légifrance, à défaut celle de la conclusion, à défaut `url_dos` (celle du dossier)."""
     info = a.get("infoJO") or {}
     if est_nil(info):
         info = {}
@@ -287,6 +299,11 @@ def ligne_acte(dossier, parent, rang, prof, a: dict, url_dos) -> dict:
 # -- documents -----------------------------------------------------------------------------
 
 def lire_document(doc: dict, out: dict, parent=None, prof=0, url_parent=None):
+    """Lit un document `doc` : ajoute une ligne à `out["document"]` et une par cosignataire à
+    `out["cosignature"]`, puis lit ses divisions (tomes, volumes) de la même façon, avec `parent`,
+    `prof` + 1 et l'adresse du document. La nature et la chambre viennent du préfixe de l'uid.
+    L'adresse est `url_document(uid)`, celle du parent pour une division, `None` pour un document
+    supprimé. Ne rend rien."""
     uid = val(doc["uid"])
     m = PREFIXE.match(uid or "")
     cl = doc.get("classification") or {}
@@ -351,6 +368,10 @@ def lire_document(doc: dict, out: dict, parent=None, prof=0, url_parent=None):
 # -- membre --------------------------------------------------------------------------------
 
 def lire(m):
+    """Lit un membre de l'archive des dossiers et documents (`m`, un `MembreLu`) et rend
+    `{table: [lignes]}` pour toutes les tables de `TABLES`. Le membre est un dossier, un document,
+    ou l'archive de la XIVe en un seul fichier (`{"export": …}` : tous les documents, puis tous les
+    dossiers). Toute autre forme lève `ValueError`."""
     d = orjson.loads(m.octets)
     out = {t: [] for t in TABLES}
     if "dossierParlementaire" in d:

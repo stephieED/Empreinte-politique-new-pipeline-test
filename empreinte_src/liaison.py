@@ -70,6 +70,9 @@ _LEG = "TRY_CAST(regexp_extract(prov_point, '-l([0-9]+)$', 1) AS INTEGER)"
 
 
 def regles() -> list:
+    """Rend les modules de règles du paquet `regles` (sauf ceux dont le nom commence par `_`) qui
+    déclarent `NOM`, `VERSION`, `DEPEND`, `SORTIES` et `appliquer`, dans l'ordre de leurs
+    dépendances (`ordonner`)."""
     from . import regles as paquet
     mods = []
     for info in pkgutil.iter_modules(paquet.__path__):
@@ -87,6 +90,9 @@ def ordonner(mods) -> list:
     ordre, en_cours, fait = [], set(), set()
 
     def visiter(m):
+        """Ajoute la règle `m` à `ordre` après ses dépendances (obligatoires, puis facultatives
+        présentes) ; une règle déjà placée est sautée. Lève `ValueError` pour une dépendance
+        circulaire ou inconnue."""
         if m.NOM in fait:
             return
         if m.NOM in en_cours:
@@ -129,6 +135,15 @@ def _une_archive(nom: str) -> str:
 
 
 class Contexte:
+    """Ce que voit une règle pendant l'étape E4 : une connexion DuckDB (`con`) où sont déclarées
+    les vues des faits lus et des sorties déjà écrites.
+
+    À l'ouverture, chaque table de `dossier_z2` donne trois vues (`<nom>__hist`, `<nom>__archives`
+    et `<nom>`, voir la description du module) ; les décisions de `dossier_decisions` deviennent
+    les tables `decision_<type>` ; les décisions `borne_mandat` sont appliquées à
+    `an_acteurs__mandat`. Les sorties sont écrites dans `dossier_z3`. `generation`,
+    `date_reference` (« aujourd'hui » pour les comptes datés) et `registre` (registre des
+    identités, ou `None`) sont gardés pour les règles qui en ont besoin."""
     def __init__(self, dossier_z2: str, dossier_z3: str, dossier_decisions: str | None = None,
                  generation: int | None = None, date_reference: str | None = None,
                  registre=None):
@@ -196,6 +211,8 @@ class Contexte:
             self.con.register(f"decision_{t}", pa.Table.from_pylist(rows))
 
     def existe(self, nom: str) -> bool:
+        """Vrai si une vue nommée `nom` existe dans la connexion (table de faits, sortie de
+        règle)."""
         return bool(self.con.execute(
             "SELECT count(*) FROM duckdb_views() WHERE view_name = ?", [nom]).fetchall()[0][0])
 
@@ -209,6 +226,8 @@ class Contexte:
         self.sorties[nom] = p
 
     def un(self, sql: str, params=None):
+        """Exécute la requête `sql` (avec ses paramètres) et rend la première colonne de sa
+        première ligne."""
         return self.con.execute(sql, params or []).fetchall()[0][0]
 
     def x(self, sql: str, params=None):

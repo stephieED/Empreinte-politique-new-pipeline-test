@@ -33,6 +33,9 @@ ECART_JOURS = 8
 
 
 def appliquer(ctx):
+    """Applique R-VAGUE : écrit `vague`, les vagues de nominations de chaque gouvernement et ce que
+    chacune est (voir la description du module). Rend la couverture,
+    `{nom: (numérateur, dénominateur)}` : `nomination_datee`."""
     ctx.x(f"""CREATE OR REPLACE TEMP TABLE _vg AS
         WITH d AS (SELECT gouvernement, debut, count(*) AS n, list(DISTINCT acteur) AS acteurs
                    FROM membre_gouvernement WHERE debut IS NOT NULL GROUP BY 1, 2),

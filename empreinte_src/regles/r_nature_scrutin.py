@@ -97,6 +97,9 @@ def _lecture() -> str:
 
 
 def appliquer(ctx):
+    """Applique R-NATURE-SCRUTIN : écrit `scrutin_nature`, la nature et la lecture de chaque
+    scrutin de l'Assemblée (voir la description du module). Rend la couverture,
+    `{nom: (numérateur, dénominateur)}` : `nature_etablie`, `lecture_etablie`."""
     ctx.ecrire("scrutin_nature", f"""
         WITH s AS (
             SELECT *, {NORME} AS n FROM an_scrutins__scrutin WHERE uid NOT LIKE 'VTCG%')

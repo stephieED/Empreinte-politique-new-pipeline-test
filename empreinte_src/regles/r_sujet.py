@@ -59,6 +59,9 @@ def _mots(x):
 
 
 def appliquer(ctx):
+    """Applique R-SUJET : écrit `sujet_intervention`, le sujet de chaque paragraphe d'un compte
+    rendu et le dossier qu'il discute (voir la description du module). Rend la couverture,
+    `{nom: (numérateur, dénominateur)}` : `sujet_etabli`, `texte_relie_a_son_dossier`."""
     q = ", ".join(f"'{c}'" for c in CODES_QUESTION)
     proc = ", ".join(f"'{c}'" for c in CODES_PROCEDURE)
     creneau_titre = f"regexp_matches({norm('ch[1].titre')}, '^questions (au gouvernement|orales sans debat|au premier ministre)')"

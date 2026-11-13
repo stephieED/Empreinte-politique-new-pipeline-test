@@ -18,6 +18,9 @@ NOM_COURT = """array_to_string(list_transform(string_split(libelle_abrege, ' '),
 
 
 def appliquer(ctx):
+    """Applique R-GOUVERNEMENTS : écrit `gouvernement` et `gouvernement_legislature` (les
+    législatures que chaque gouvernement traverse), voir la description du module. Rend la
+    couverture, `{nom: (numérateur, dénominateur)}` : `nom_etabli`."""
     # L'Assemblée nomme « LECORNU » le premier gouvernement Lecornu, et « LECORNU II » le second :
     # le premier devient « Lecornu I » à l'affichage. L'adresse reste celle du nom publié
     # (`lecornu`) : une adresse publiée ne change pas (cahier 6.1).

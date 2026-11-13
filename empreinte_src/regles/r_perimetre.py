@@ -34,6 +34,10 @@ from ..perimetre import LEGISLATURES, LEGISLATURES_GOUVERNEMENTS
 
 
 def appliquer(ctx):
+    """Applique R-PERIMETRE : écrit `population`, les personnes attendues par population et la
+    fiche où chacune doit figurer, décisions `perimetre` comprises (voir la description du module).
+    Rend la couverture, `{nom: (numérateur, dénominateur)}` :
+    `personnes_attendues_avec_une_fiche_possible`."""
     legs = ", ".join(str(n) for n in LEGISLATURES)
     gouv = ", ".join(str(n) for n in LEGISLATURES_GOUVERNEMENTS)
     dec = ""

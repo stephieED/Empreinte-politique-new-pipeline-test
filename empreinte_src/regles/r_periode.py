@@ -37,6 +37,9 @@ FIN_OUVERTE = "'9999-12-31'"
 
 
 def appliquer(ctx):
+    """Applique R-PERIODE : écrit `periode_position`, les périodes d'une position (voir la
+    description du module). Rend la couverture, `{nom: (numérateur, dénominateur)}` :
+    `periode_banc_declare`, `periode_gouvernement_etabli`."""
     ref = date_ref(ctx)
     ctx.x(f"""CREATE OR REPLACE TEMP TABLE _pp AS
         WITH spans AS (

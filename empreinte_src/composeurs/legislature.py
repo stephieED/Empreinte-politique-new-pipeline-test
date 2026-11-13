@@ -170,6 +170,9 @@ def _date_fr(d: str | None) -> str:
 # --------------------------------------------------------------------------- composeur
 
 def composer(ctx, ecr):
+    """Compose une fiche par législature du périmètre (`PERIMETRE`), avec l'écrivain `ecr`, en
+    lisant les sorties des règles dans `ctx` ; ne fait rien si la sortie `legislature` manque. Ne
+    rend rien."""
     if _manquantes(ctx, "legislature"):
         return
     for leg in _lignes(ctx, "SELECT * FROM legislature ORDER BY numero"):
@@ -178,6 +181,11 @@ def composer(ctx, ecr):
 
 
 def composer_legislature(ctx, ecr, leg: dict):
+    """Compose la fiche de la législature `leg` (une ligne de la sortie `legislature`) : un en-tête
+    (la législature et sa source, ses gouvernements, ses compteurs, ses limites, la couverture des
+    règles), dont les gouvernements et les compteurs sont inscrits comme faits publiés, puis les
+    sections hémicycle, groupes, ordre du jour, textes et commissions. Les comptes d'une
+    législature close sont arrêtés à sa date de fin. Ne rend rien."""
     numero = leg["numero"]
     ref = _date_reference(ctx)
     # `au` : date des comptes. Législature close : sa date de fin (jamais l'état actuel).
