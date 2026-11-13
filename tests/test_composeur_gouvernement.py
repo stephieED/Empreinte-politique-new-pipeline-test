@@ -1,6 +1,6 @@
 """Composeur « gouvernement » (cahier 4.4) sur de petites tables Z3 écrites à la main.
 
-Quatre gouvernements : Alpha (XVIe seulement : pas de fiche), Beta (XVIe puis XVIIe), Gamma (XVIIe,
+Quatre gouvernements : Alpha (XIIIe seulement, avant le périmètre : pas de fiche), Beta (XVIe puis XVIIe), Gamma (XVIIe,
 clos), Delta II (XVIIe, en cours, seul couvert en partie par le Journal officiel). Les législatures
 sont celles de la source (XIVe à XVIIe) : Beta est entier dans le périmètre (dossiers depuis la XIVe,
 comptes rendus depuis la XVe)."""
@@ -16,7 +16,7 @@ from empreinte_src.composition import Ecrivain
 from empreinte_src.controles import Controles
 from empreinte_src.liaison import Contexte
 
-STATUTS = {"complet", "trou_source", "borne_historique", "non_collecte", "panne", "en_cours",
+STATUTS = {"complet", "partiel", "trou_source", "borne_historique", "non_collecte", "panne", "en_cours",
            "relu_aucun", "non_relu", "hors_perimetre"}
 AU = "2026-11-06"
 URL_CR = "https://www.assemblee-nationale.fr/dyn/17/comptes-rendus/seance/"
@@ -64,7 +64,7 @@ TABLES = {
         {"organe": "PO4", "nom": "Delta II", "adresse": "delta-ii", "debut": "2025-10-11", "fin": None,
          "en_cours": True, "rang": 4, "source_url": None}],
     "gouvernement_legislature": [
-        {"gouvernement": "PO1", "legislature": 16, "debut": "2022-06-22", "fin": "2024-01-09"},
+        {"gouvernement": "PO1", "legislature": 13, "debut": "2022-06-22", "fin": "2024-01-09"},
         {"gouvernement": "PO2", "legislature": 16, "debut": "2024-01-10", "fin": "2024-06-09"},
         {"gouvernement": "PO2", "legislature": 17, "debut": "2024-07-01", "fin": "2024-09-05"},
         {"gouvernement": "PO3", "legislature": 17, "debut": "2024-09-06", "fin": "2024-12-13"},
@@ -393,12 +393,12 @@ def test_tables_absentes_couverture_le_dit(tmp_path):
 
 
 def test_avant_le_perimetre_aucun_zero(tmp_path, monkeypatch):
-    """Un gouvernement qui commence avant le début des comptes rendus lus (cahier 4.1 : XVe) : ses
-    paroles sont « hors périmètre », sans compte (pas même 0). Simulé en faisant commencer les
-    paroles à la XVIIe."""
+    """Un gouvernement qui commence avant le début des comptes rendus lus (cahier 4.1 : XVe) et reste
+    en fonction après : ses paroles sont lues en partie (`partiel`), et un zéro n'est pas servi.
+    Simulé en faisant commencer les paroles à la XVIIe."""
     monkeypatch.setattr(composeur, "PAROLES_DEPUIS", 17)
     _, _, racine = _composer(tmp_path)
     b = _lire(racine, "gouvernements/beta/fiche.json.gz")["en_bref"]
-    assert b["paroles"]["nb_prises_de_parole"] is None and b["paroles"]["couverture"] == "hors_perimetre"
+    assert b["paroles"]["nb_prises_de_parole"] is None and b["paroles"]["couverture"] == "partiel"
     g = _lire(racine, "gouvernements/gamma/fiche.json.gz")["en_bref"]
     assert g["paroles"]["couverture"] == "complet"
