@@ -602,3 +602,21 @@ Branche `etape-2-essais-paralleles`, proposée par la session candidats, validé
 | Un essai n'enregistre plus le cache des faits lus (`z2-…`) | #44, seconde moitié : la nuit reprend le cache le plus récent, qu'un essai écrivait avec le code de sa branche | 2 (2.5) |
 
 Validé le 13/11 : deux essais lancés ensemble à 15 h 32 UTC (exécutions 43453567542 et 43453573057), en même temps qu'un troisième (PR #62) ; les trois réussis, aucun cache `z2-` enregistré par les deux premiers.
+
+## Documents illustrés fusionnés dans les spécifications (13/11/2026)
+
+Demande de la propriétaire, le 13/11/2026 : « dans document de conception, il faudrait mettre
+la section 6 dans la section 2 (peut-être au début). et la section 7 dans la section 1. L'idée
+étant que on ait les illustration à coté. Pour info, les diagramme flux sont visible en code et
+non en schéma compilé. Il faudrait aussi que les tables de matière soit accessible peut importe
+ou on se trouve pour facilité la navigation (pas que dans le doc de conception. » Choix : les
+illustrations à côté de chaque section. Les schémas dessinés et le sommaire viennent du passage
+de toute la documentation au format pdoc (décision de la propriétaire du 13/11/2026, traité à
+part) : les blocs Mermaid restent tels quels dans le Markdown.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Le document 6 (le processus, expliqué) est réparti dans le document 2 et le document 7 (le modèle, expliqué) dans le document 1 : chaque schéma et son texte sont sous un intertitre « En image » dans la section qu'ils illustrent ; les vues d'ensemble (6.1, 7.1) ouvrent les documents. Aucune section des documents 1 et 2 n'est renumérotée. Les fichiers 6 et 7 deviennent des notes qui disent où chaque partie est passée | lire la spécification et son illustration ensemble | 0 (liste des documents) |
+
+Les écarts entre un schéma et le texte de la spécification ne sont pas tranchés ici : la
+spécification fait foi, et les écarts relevés sont listés dans la PR.

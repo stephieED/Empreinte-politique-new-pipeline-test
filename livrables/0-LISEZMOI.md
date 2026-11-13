@@ -67,18 +67,19 @@ Le détail est dans les documents 3 et 8 et dans `annexes/mesures/`.
 
 | # | Document | Pour |
 | --- | --- | --- |
-| 1 | [Modèle de données](1-modele-de-donnees.md) | la spécification : objets, identifiants, relations, stocké/dérivé, données servies, évolution |
-| 2 | [Processus de collecte et de publication](2-processus-collecte-publication.md) | la spécification : étapes, cadence, pannes, contrôles, publication, exploitation |
+| 1 | [Modèle de données](1-modele-de-donnees.md) | la spécification : objets, identifiants, relations, stocké/dérivé, données servies, évolution ; chaque section avec ses schémas « En image » (objets, identifiants, composition d'une fiche, couverture) |
+| 2 | [Processus de collecte et de publication](2-processus-collecte-publication.md) | la spécification : étapes, cadence, pannes, contrôles, publication, exploitation ; chaque section avec ses schémas « En image » (une soirée normale, pannes, levée d'un contrôle, traçabilité) |
 | 3 | [Justifications](3-justifications.md) | chaque choix, les alternatives écartées, et là où le cahier paraît trop étroit |
 | 4 | [Estimations](4-estimations.md) | volumes, poids par fiche, durées, mémoire, coût, avec leur méthode |
 | 5 | [Questions ouvertes](5-questions-ouvertes.md) | ce qui reste à trancher, ce que ça bloque, ce qu'on fait en attendant |
-| 6 | [Le processus, illustré](6-doc-processus.md) | comprendre le fonctionnement d'ensemble, schémas à l'appui |
-| 7 | [Le modèle, illustré](7-doc-modele.md) | comprendre les objets et comment une fiche se compose |
+| 6 | [Le processus, illustré](6-doc-processus.md) | fusionné dans le document 2 le 13/11/2026 : dit où chaque schéma est passé |
+| 7 | [Le modèle, illustré](7-doc-modele.md) | fusionné dans le document 1 le 13/11/2026 : dit où chaque schéma est passé |
 | 8 | [Recette](8-recette.md) | les tables de la partie 7 : besoins, règles, pièges, exigences, scénarios |
 | — | [annexes/mesures](annexes/mesures/) et [annexes/scripts](annexes/scripts/) | les rapports de mesure et les scripts qui fondent les chiffres |
 
-Ordre de lecture conseillé : ce fichier, puis les documents 7 et 6 (illustrés), puis 5
-(questions), puis les spécifications 1 et 2 au besoin.
+Ordre de lecture conseillé : ce fichier, puis les schémas « En image » des documents 1 et 2
+(chacun s'ouvre sur sa vue d'ensemble : « Le modèle en une image », « Le processus en une
+image »), puis 5 (questions), puis le texte des spécifications 1 et 2 au besoin.
 
 ## Périmètre de ce qui a été fait
 
