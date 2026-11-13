@@ -440,24 +440,59 @@ class Controles:
                           detail=self.bilan_a2)
         return r
 
+    # Fenêtre d'une transition (A3) : entrées et sorties du groupe à moins de tant de jours du scrutin.
+    A3_FENETRE_TRANSITION = 7
+
     def a3_totaux(self):
         """Effectif de chaque groupe à chaque scrutin (nos appartenances à la date) contre le
-        nombre de membres publié par le scrutin ; lois promulguées sans dossier rattaché."""
+        nombre de membres publié par le scrutin ; lois promulguées sans dossier rattaché.
+
+        Un écart d'effectif est **expliqué**, et seulement compté dans le détail (décision de la
+        propriétaire du 13/11/2026, issue #9), quand :
+        - `organe_hors_dates` : l'Assemblée rattache le décompte à un organe de groupe hors de ses
+          dates (groupe socialiste de la XVIe : ancien organe clos le 18/10/2023, employé jusqu'au
+          14/03/2024) ;
+        - `transition` : au moins autant de membres sont entrés dans le groupe ou en sont sortis
+          à moins de `A3_FENETRE_TRANSITION` jours du scrutin que l'écart en compte (remplacement des
+          ministres par leurs suppléants, création d'un groupe : les deux sources ne datent pas le
+          changement du même jour).
+        Seuls les écarts inexpliqués sont nommés. Mesuré sur la génération 10 : 2 187 écarts sur
+        193 821 décomptes, 1 592 de transition, 595 hors dates, aucun inexpliqué."""
         objets = []
         if self._a("an_scrutins__decompte_groupe", "an_scrutins__scrutin"):
-            ecarts = self._x("""
+            dates_groupe = ("(SELECT organe, debut, coalesce(fin, '9999-12-31') AS fin FROM groupe)"
+                            if self._a("groupe") else
+                            "(SELECT NULL::VARCHAR AS organe, NULL::VARCHAR AS debut, NULL::VARCHAR AS fin)")
+            k = int(self.A3_FENETRE_TRANSITION)
+            ecarts = self._x(f"""
                 WITH d AS (SELECT d.scrutin, d.organe, any_value(d.nombre_membres) AS publie,
                                   any_value(s.date) AS date
                            FROM an_scrutins__decompte_groupe d JOIN an_scrutins__scrutin s ON s.uid = d.scrutin
-                           WHERE d.organe IN (SELECT organe FROM _ctl_lm) GROUP BY 1, 2)
-                SELECT d.scrutin, d.organe, d.publie,
-                       (SELECT count(DISTINCT m.acteur) FROM _ctl_lm m WHERE m.organe = d.organe
-                         AND d.date BETWEEN m.debut AND m.fin) AS nous
-                FROM d""")
-            diff = [e for e in ecarts if e[2] is not None and e[2] != e[3]]
+                           WHERE d.organe IN (SELECT organe FROM _ctl_lm) GROUP BY 1, 2),
+                c AS (SELECT d.scrutin, d.organe, d.publie, d.date,
+                             (SELECT count(DISTINCT m.acteur) FROM _ctl_lm m WHERE m.organe = d.organe
+                               AND d.date BETWEEN m.debut AND m.fin) AS nous
+                      FROM d)
+                SELECT c.scrutin, c.organe, c.publie, c.nous,
+                       CASE WHEN c.publie IS NULL OR c.publie = c.nous THEN NULL
+                            WHEN EXISTS (SELECT 1 FROM {dates_groupe} g WHERE g.organe = c.organe
+                                         AND (c.date < g.debut OR c.date > g.fin)) THEN 'organe_hors_dates'
+                            WHEN (SELECT count(*) FROM _ctl_lm m WHERE m.organe = c.organe
+                                  AND (abs(datediff('day', TRY_CAST(m.debut AS DATE), TRY_CAST(c.date AS DATE))) <= {k}
+                                       OR (m.fin <> '9999-12-31'
+                                           AND abs(datediff('day', TRY_CAST(m.fin AS DATE), TRY_CAST(c.date AS DATE))) <= {k})))
+                                 >= abs(c.publie - c.nous) THEN 'transition'
+                            ELSE 'inexplique' END AS explication
+                FROM c""")
+            diff = [e for e in ecarts if e[4] is not None]
             if diff:
-                self.bilan_a3 = {"decomptes_compares": len(ecarts), "ecarts": len(diff)}
-                objets += [f"{s} {o} : publié {p}, nos appartenances {n}" for s, o, p, n in sorted(diff)]
+                par = {x: sum(1 for e in diff if e[4] == x) for x in ("transition", "organe_hors_dates", "inexplique")}
+                self.bilan_a3 = {"decomptes_compares": len(ecarts), "ecarts": len(diff),
+                                 "expliques_transition": par["transition"],
+                                 "expliques_organe_hors_dates": par["organe_hors_dates"],
+                                 "inexpliques": par["inexplique"]}
+                objets += [f"{s} {o} : publié {p}, nos appartenances {n}"
+                           for s, o, p, n, x in sorted(diff) if x == "inexplique"]
         if self._a("loi"):
             objets += [f"loi {n} ({d}) sans dossier rattaché" for n, d in self._x(
                 "SELECT numero_loi, date_promulgation FROM loi WHERE dossier IS NULL AND legislature = 17 ORDER BY 1")]

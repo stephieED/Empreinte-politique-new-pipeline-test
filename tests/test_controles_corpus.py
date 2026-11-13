@@ -187,6 +187,36 @@ def test_a3_effectif_different_du_decompte_publie(tmp_path):
     assert _an(c, "A3")[0]["exemples"] == ["VT1 PO17S : publié 5, nos appartenances 1"]   # PO0 non comparé
 
 
+def test_a3_ecarts_expliques_comptes_sans_etre_nommes(tmp_path):
+    """Issue #9 (13/11/2026) : un écart de transition (PA2 sort du groupe le 01/01/2025, scrutin du
+    03/01) ou sur un organe hors de ses dates n'est plus nommé, seulement compté ; un écart que rien
+    n'explique l'est toujours."""
+    scrutins = TABLES["an_scrutins__scrutin"] + [
+        {"uid": "VT3", "legislature": "17", "numero": 3, "date": "2025-01-03"},
+        {"uid": "VT4", "legislature": "17", "numero": 4, "date": "2026-03-01"},
+        {"uid": "VT5", "legislature": "17", "numero": 5, "date": "2025-01-04"}]
+    decomptes = [{"scrutin": "VT3", "organe": "PO17S", "nombre_membres": 2},     # transition : 1 sortie le 01/01
+                 {"scrutin": "VT5", "organe": "PO17S", "nombre_membres": 4},     # 3 de plus : 1 seul changement
+                 {"scrutin": "VT4", "organe": "PO17S", "nombre_membres": 9}]     # après la fin de l'organe
+    t = dict(TABLES, an_scrutins__scrutin=scrutins, an_scrutins__decompte_groupe=decomptes,
+             groupe=[{"organe": "PO17S", "debut": "2024-07-18", "fin": "2026-01-31"}])
+    c = _ctrl(tmp_path, tables=t)
+    c.a3_totaux()
+    a3 = _an(c, "A3")[0]
+    assert a3["exemples"] == ["VT5 PO17S : publié 4, nos appartenances 1"]
+    assert a3["detail"] == {"decomptes_compares": 3, "ecarts": 3, "expliques_transition": 1,
+                            "expliques_organe_hors_dates": 1, "inexpliques": 1}
+
+
+def test_a3_tous_expliques_pas_d_avertissement(tmp_path):
+    scrutins = TABLES["an_scrutins__scrutin"] + [{"uid": "VT3", "legislature": "17", "numero": 3, "date": "2025-01-03"}]
+    t = dict(TABLES, an_scrutins__scrutin=scrutins,
+             an_scrutins__decompte_groupe=[{"scrutin": "VT3", "organe": "PO17S", "nombre_membres": 2}])
+    c = _ctrl(tmp_path, tables=t)
+    c.a3_totaux()
+    assert _an(c, "A3") == [] and c.bilan_a3["expliques_transition"] == 1
+
+
 PAGE = """<div>Nombre de votants : <b>3</b></span> Pour l'adoption : <b>2</b></span>
 Contre : <b>1</b></span> Abstention : <b>0</b></span>
 <li data-organe-id="PO17S"><span class="h6 _colored-travaux">Pour</span><span>: 2</span>
