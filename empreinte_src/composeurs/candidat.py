@@ -400,6 +400,10 @@ def _composer_un(ctx, ecr, c, ident, commun):
     personne = _personne(c, ident, commun)
     for l in personne.pop("_licences"):
         f.licences.add(l)
+    # L'en-tête est un fait publié (issue #42, décision du 13/11/2026) : sa disparition est vue par
+    # C1, et un champ qui se vide par l'avertissement A9. Reconnu à son numéro de personne (`per`),
+    # jamais à sa valeur : un candidat sans identifiant parlementaire a aussi un `per`.
+    ecr.fait_publie(f, "entete", "identite_personne", personne, {"autre": "per"}, None, None)
     f.entete({
         "personne": personne,
         "candidature": {

@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 
 import yaml
 
@@ -66,7 +67,15 @@ def cmd_collecter(a):
     e = Entrepot(a.entrepot, segment_max=params.get("segment_max_octets", 90 << 20),
                  morceau_max=params.get("morceau_blob_octets", 64 << 20))
     t = Transport(params["user_agent"], dossier_tmp=a.tmp,
-                  budget_s=params.get("budget_telechargement_s", 1800))
+                  budget_s=params.get("budget_telechargement_s", 1800),
+                  # Budget propre à un point (archives closes trop grosses pour 30 min, #32), seulement
+                  # dans un relevé qui le nomme (`--points`) : la nuit garde 30 min par fichier et ne
+                  # peut pas passer des heures sur une archive close (décision du 13/11/2026).
+                  budgets_par_url={p["url"]: p["budget_s"] for p in cfg["points_acces"]
+                                   if p.get("budget_s") and p.get("url") and p["id"] in (a.points or [])},
+                  # Échéance de toute la collecte, avant la limite de la tâche (330 min) : la collecte
+                  # se termine et l'acquis est déposé, au lieu d'être perdu (#38).
+                  fin_collecte=time.monotonic() + params.get("duree_collecte_max_s", 270 * 60))
     if a.mode == "complet":
         for r in e._releves:            # relecture forcée : on oublie les ETag
             r["etag"] = r["last_modified"] = None
@@ -159,6 +168,8 @@ def cmd_calculer(a):
                                    AND statut IN ('retiree', 'non_listee')""")) if ctx.existe("candidat") else {}
         ctrl.c1_c6_comparer(a.faits_precedents or None, os.path.join(a.sortie, "export", "faits-publies.parquet"),
                             uids_changes_a_la_source=changes, fiches_retirees=retirees)
+        ctrl.a9_valeurs_videes(a.faits_precedents or None,
+                               os.path.join(a.sortie, "export", "faits-publies.parquet"))
         # C3, C7 et avertissements : tables des règles et faits publiés de la candidate.
         ctrl.preparer(ctx.con, os.path.join(a.sortie, "export", "faits-publies.parquet"),
                       {f["fiche"] for f in manifeste_site["fiches"]}, manifeste_site["fiches"])

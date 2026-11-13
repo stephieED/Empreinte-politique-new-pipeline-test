@@ -14,7 +14,17 @@ Ce que ce module garantit (doc. 2, 2.2) :
   requêtes de GitHub ;
 - une coupure pendant une reprise (connexion fermée, délai dépassé) est une reprise de plus,
   pas un nouveau départ ; chaque reprise est notée (`journal_reprises`) ;
-- chaque octet reçu est compté, reprises comprises (mesure de la commande, section 5).
+- chaque octet reçu est compté, reprises comprises (mesure de la commande, section 5) ;
+- le budget de temps d'un fichier est tenu **pendant** la copie, pas seulement entre deux essais :
+  un serveur qui envoie au compte-gouttes ne retient plus la collecte jusqu'à la limite de la tâche
+  (issue #37) ; un point peut avoir son propre budget (`budget_s` dans la configuration : archives
+  closes trop grosses pour 30 min, décision du 13/11/2026) ;
+- un hôte qui ne sert plus rien est suspendu pour la nuit : après `echecs_hote_max` échecs sans un
+  octet reçu, ses autres points échouent tout de suite, sans brûler chacun ses 750 s de pauses
+  (35 points sur `data.assemblee-nationale.fr`, issue #37) ;
+- une échéance pour toute la collecte (`fin_collecte`, horloge monotone) : passée, les points
+  restants échouent tout de suite et la collecte se termine normalement, au lieu d'être coupée par
+  la limite de la tâche, qui perdait tout l'acquis de la nuit (issue #38).
 """
 from __future__ import annotations
 
@@ -23,6 +33,7 @@ import os
 import tempfile
 import time
 from dataclasses import dataclass, field
+from urllib.parse import urlsplit
 
 import requests
 
@@ -54,7 +65,9 @@ class Transport:
 
     def __init__(self, user_agent: str, pauses=(30, 120, 600), delai_s: float = 60.0,
                  reprises_max: int = 40, dossier_tmp: str | None = None, pause_reprise_s: float = 2.0,
-                 budget_s: float | None = 1800.0, reprises_vides_max: int = 3):
+                 budget_s: float | None = 1800.0, reprises_vides_max: int = 3,
+                 budgets_par_url: dict[str, float] | None = None, echecs_hote_max: int = 3,
+                 fin_collecte: float | None = None):
         self.session = requests.Session()
         self.session.headers["User-Agent"] = user_agent
         # Octets bruts : un encodage de transport fausserait la comparaison à Content-Length.
@@ -71,10 +84,26 @@ class Transport:
         # mesuré le 07/11/2026, l'Assemblée sert mal une plage prise loin dans un gros fichier
         # (206 puis rien), alors qu'un transfert depuis le début avance.
         self.reprises_vides_max = reprises_vides_max
+        self.budgets_par_url = dict(budgets_par_url or {})
+        self.echecs_hote_max = echecs_hote_max
+        self.echecs_hote: dict[str, int] = {}       # échecs de suite sans un octet, par hôte
+        self.fin_collecte = fin_collecte
         self._debut = time.monotonic()
+        self._budget = budget_s
 
     def _hors_budget(self, en_plus: float = 0.0) -> bool:
-        return bool(self.budget_s) and time.monotonic() - self._debut + en_plus > self.budget_s
+        limite = self._limite()
+        return limite is not None and time.monotonic() + en_plus > limite
+
+    def _limite(self) -> float | None:
+        """Instant (horloge monotone) où le fichier en cours doit s'arrêter : fin de son budget, ou
+        fin de la collecte si elle vient avant."""
+        bornes = [b for b in (self._debut + self._budget if self._budget else None, self.fin_collecte)
+                  if b is not None]
+        return min(bornes) if bornes else None
+
+    def _copier(self, reponse, f) -> int:
+        return _copier(reponse, f, self._limite())
 
     # -- requêtes simples (listes, API) -------------------------------------------------
     def texte(self, url: str) -> tuple[int, str, dict]:
@@ -88,6 +117,15 @@ class Transport:
         debut = time.monotonic()
         derniere_erreur = ""
         self._debut = debut
+        self._budget = self.budgets_par_url.get(url, self.budget_s)
+        hote = urlsplit(url).netloc
+        if self.fin_collecte is not None and time.monotonic() >= self.fin_collecte:
+            rep.message = "durée maximale de la collecte atteinte : point non relevé, nouvel essai à la prochaine"
+            return rep
+        if self.echecs_hote_max and self.echecs_hote.get(hote, 0) >= self.echecs_hote_max:
+            rep.message = (f"hôte {hote} suspendu pour cette mise à jour : {self.echecs_hote[hote]} points "
+                           "de suite sans un octet reçu ; nouvel essai à la prochaine")
+            return rep
         for essai in range(len(self.pauses) + 1):
             if essai:
                 if self._hors_budget(self.pauses[essai - 1]):
@@ -98,6 +136,7 @@ class Transport:
                 fini = self._un_essai(url, etag, last_modified, rep)
                 if fini:
                     rep.duree_s = time.monotonic() - debut
+                    self.echecs_hote[hote] = 0
                     return rep
                 derniere_erreur = rep.message
             except requests.RequestException as e:
@@ -105,7 +144,11 @@ class Transport:
         rep.issue = "echec"
         rep.message = derniere_erreur or "échec sans message"
         if self._hors_budget():
-            rep.message += f" ; budget de {int(self.budget_s)} s dépassé, nouvel essai à la prochaine nuit"
+            rep.message += (" ; durée maximale de la collecte atteinte" if self.fin_collecte is not None
+                            and time.monotonic() >= self.fin_collecte else
+                            f" ; budget de {int(self._budget)} s dépassé, nouvel essai à la prochaine nuit")
+        # Un hôte qui n'a rien servi du tout : compté ; un transfert lent mais vivant ne l'est pas.
+        self.echecs_hote[hote] = self.echecs_hote.get(hote, 0) + 1 if rep.octets_recus == 0 else 0
         rep.duree_s = time.monotonic() - debut
         return rep
 
@@ -133,7 +176,7 @@ class Transport:
         fd, chemin = tempfile.mkstemp(prefix="releve-", dir=self.dossier_tmp)
         try:
             with os.fdopen(fd, "wb") as f:
-                rep.octets_recus += _copier(r, f)
+                rep.octets_recus += self._copier(r, f)
                 reprises = vides = 0
                 while attendu is not None and f.tell() < attendu:
                     # Transfert coupé. Reprise seulement si un validateur garantit la même version.
@@ -156,7 +199,7 @@ class Transport:
                         continue
                     h = {k.lower(): v for k, v in rr.headers.items()}
                     if rr.status_code == 206 and _meme_suite(h, debut_reprise, attendu, etag_recu, date_recue):
-                        n = _copier(rr, f)
+                        n = self._copier(rr, f)
                         rep.octets_recus += n
                         rep.journal_reprises.append(f"206 +{_taille_lisible(n)}")
                         vides = vides + 1 if n < TAILLE_BLOC else 0
@@ -178,7 +221,7 @@ class Transport:
                             attendu = _entier(rep.entetes.get("content-length"))
                             etag_recu = rep.entetes.get("etag")
                             date_recue = rep.entetes.get("last-modified")
-                            rep.octets_recus += _copier(rr, f)
+                            rep.octets_recus += self._copier(rr, f)
                     elif rr.status_code in (200, 206):
                         # Autre version servie, ou serveur qui ignore la plage : on repart de zéro
                         # avec la version entière.
@@ -199,7 +242,7 @@ class Transport:
                         attendu = _entier(rep.entetes.get("content-length"))
                         etag_recu = rep.entetes.get("etag")
                         date_recue = rep.entetes.get("last-modified")
-                        rep.octets_recus += _copier(rr, f)
+                        rep.octets_recus += self._copier(rr, f)
                     else:
                         rr.close()
                         rep.message = f"reprise refusée : HTTP {rr.status_code}"
@@ -237,12 +280,16 @@ def _meme_suite(h: dict, debut: int, attendu: int, etag: str | None, date: str |
     return bool(date) and h.get("last-modified") == date
 
 
-def _copier(reponse, f) -> int:
+def _copier(reponse, f, limite: float | None = None) -> int:
+    """Copie la réponse dans `f` ; s'arrête à l'instant `limite` (horloge monotone), même si le
+    serveur envoie encore : la taille reçue dira que le fichier est incomplet."""
     n = 0
     try:
         for bloc in reponse.iter_content(TAILLE_BLOC):
             f.write(bloc)
             n += len(bloc)
+            if limite is not None and time.monotonic() > limite:
+                break
     except requests.RequestException:
         pass  # coupure : la taille reçue le dira
     finally:

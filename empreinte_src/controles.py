@@ -46,6 +46,27 @@ IDENTITE_PAR_CONTENU = {"parole_sujet": ("sujet", "type_sujet", "dossiers")}
 DECOMPTES_VERIFIES_UN_PAR_UN = {"amendements_compte", "amendements_compte_lignee"}
 
 
+def _vide(v) -> bool:
+    return v is None or v == "" or v == [] or v == {}
+
+
+def _videes(avant, apres, chemin=""):
+    """Feuilles de `avant` qui se vident dans `apres` : (chemin, "a_zero" | "vide")."""
+    if isinstance(avant, dict):
+        apres = apres if isinstance(apres, dict) else {}
+        for k, v in avant.items():
+            yield from _videes(v, apres.get(k), f"{chemin}.{k}" if chemin else k)
+        return
+    if isinstance(avant, bool):
+        return
+    if isinstance(avant, (int, float)):
+        if avant != 0 and (apres is None or apres == 0):
+            yield chemin, "a_zero"
+        return
+    if not _vide(avant) and _vide(apres):
+        yield chemin, "vide"
+
+
 def _empreinte(controle: str, objets) -> str:
     h = hashlib.sha256((controle + "|" + "|".join(sorted(map(str, objets)))).encode()).hexdigest()
     return f"{controle}:{h[:16]}"
@@ -119,6 +140,64 @@ class Controles:
                     fautives.append(f"{chemin} ({x.get('section', 'section')})")
         if fautives:
             self._signaler("C5", "Section dite complète alors qu'une de ses sources est en panne", fautives)
+
+    # -- A9 : valeurs vidées (issue #42, décision du 13/11/2026) ---------------------------
+    def a9_valeurs_videes(self, faits_avant: str | None, faits_apres: str, seuil_part=0.01, seuil_nb=50):
+        """C1 reconnaît un fait à son identité (correctif délibéré du 12/11) : un compteur qui passe
+        de 6 à 0, un champ qui se vide, ne sont pas des pertes pour lui. A9 les compte, à part, sans
+        bloquer : pour les faits présents les deux nuits (même identité), chaque feuille de la
+        valeur qui passe d'un nombre non nul à 0 ou à rien, ou d'une valeur non vide à rien (absente,
+        nulle, chaîne ou liste vide). Avertissement par (type de fait, champ) au-delà de 1 % des faits
+        du type **ou** de 50 faits ; décomptes et identifiants seulement."""
+        if not faits_avant or not os.path.exists(faits_avant):
+            return
+        from .composition import IDS
+        con = duckdb.connect()
+
+        def ids(fichier):
+            cols = {r[0] for r in con.execute(f"DESCRIBE SELECT * FROM read_parquet('{fichier}')").fetchall()}
+            return [f"id_{k}" if f"id_{k}" in cols else "NULL::VARCHAR" for k in IDS]
+
+        def cle(fichier):
+            return (f"fiche || '|' || type_fait || '|' || concat_ws('|', "
+                    + ", ".join(f"coalesce({x}, '')" for x in ids(fichier)) + ")")
+
+        def avec_id(fichier):
+            return "NOT (" + " AND ".join(f"{x} IS NULL" for x in ids(fichier)) + ")"
+        totaux = dict(con.execute(f"SELECT type_fait, count(*) FROM read_parquet('{faits_avant}') "
+                                  f"WHERE {avec_id(faits_avant)} GROUP BY 1").fetchall())
+        cur = con.execute(f"""
+            -- Seulement les identités uniques des deux côtés : plusieurs faits sous la même identité
+            -- (un effectif par date d'un maillon, plusieurs rôles sur un texte) ne s'apparient pas.
+            WITH a AS (SELECT type_fait, {cle(faits_avant)} AS k, any_value(valeur) AS valeur
+                       FROM read_parquet('{faits_avant}') WHERE {avec_id(faits_avant)}
+                       GROUP BY 1, 2 HAVING count(*) = 1),
+                 b AS (SELECT {cle(faits_apres)} AS k, any_value(valeur) AS valeur
+                       FROM read_parquet('{faits_apres}') WHERE {avec_id(faits_apres)}
+                       GROUP BY 1 HAVING count(*) = 1)
+            SELECT a.type_fait, a.k, a.valeur, b.valeur FROM a JOIN b USING (k) WHERE a.valeur <> b.valeur""")
+        compte: dict[tuple, list] = {}
+        while True:
+            lot = cur.fetchmany(20_000)
+            if not lot:
+                break
+            for type_fait, k, va, vb in lot:
+                try:
+                    x, y = json.loads(va), json.loads(vb)
+                except ValueError:
+                    continue
+                for chemin, nature in _videes(x, y):
+                    compte.setdefault((type_fait, chemin, nature), []).append(
+                        "|".join(x for x in k.split("|") if x))
+        con.close()
+        objets = []
+        for (type_fait, chemin, nature), ks in sorted(compte.items()):
+            total = totaux.get(type_fait, 0)
+            if len(ks) > seuil_nb or (total and len(ks) > seuil_part * total):
+                quoi = "nombre passé à 0 ou à rien" if nature == "a_zero" else "valeur vidée"
+                objets.append(f"{type_fait}.{chemin} : {quoi} pour {len(ks)} faits sur {total}, dont "
+                              + ", ".join(sorted(ks)[:3]))
+        self._avertir("A9", "Valeurs vidées d'une publication à l'autre (C1 compare l'identité)", objets)
 
     # -- C1 et C6 : comparaison avec la publication précédente ----------------------------
     def c1_c6_comparer(self, faits_avant: str | None, faits_apres: str,
