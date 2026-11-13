@@ -5,8 +5,8 @@ pour Empreinte politique (collecte, entrepôt, lecture, contrôles, publication 
 Ce n'est pas le dépôt du site ; rien n'est publié sur `empreinte-politique.fr`.
 
 **À lire en ligne** : <https://stephieed.github.io/Empreinte-politique-new-pipeline-test/> mène à
-la [documentation du code](https://stephieed.github.io/Empreinte-politique-new-pipeline-test/doc/),
-à la description du traitement, aux livrables et à la
+la [documentation du projet](https://stephieed.github.io/Empreinte-politique-new-pipeline-test/doc/documentation.html) — les livrables, la description du
+traitement et la documentation du code, avec un menu et une recherche communs — et à la
 [page minimale de contrôle](https://stephieed.github.io/Empreinte-politique-new-pipeline-test/site/index.html)
 (les fiches de la dernière nuit publiée). Mises à jour après chaque nuit publiée et chaque envoi de
 code sur `main`.
@@ -29,15 +29,16 @@ code sur `main`.
 | `livrables/` | les documents de conception et de l'étape 2 : modèle, processus, justifications, questions ouvertes, recette (docs 0 à 8), cadrage, journal des changements, rapport de mesures, migration ; versés dans le dépôt le 13/11/2026 pour être publiés sur Pages |
 
 Le fonctionnement d'ensemble (étapes, données, contrôles) est décrit dans les documents de
-conception (`livrables/`) et sur la page « traitement », écrite à partir du code.
+conception (`livrables/`) et sur la page « Le traitement, étape par étape », écrite à partir du
+code.
 
-**Documentation du code** : générée par [pdoc](https://pdoc.dev) à partir des docstrings, servie
-par Pages (lien en tête de ce fichier) et déposée à chaque envoi de code comme artefact
-`documentation-code` (workflow *Tests*). En local :
+**Documentation** : générée par [pdoc](https://pdoc.dev) — le code à partir des docstrings, avec
+les livrables et le traitement (voir « Pages » plus bas) —, servie par Pages (lien en tête de ce
+fichier) et déposée à chaque envoi comme artefact `documentation` (workflow *Tests*). En local :
 
 ```sh
 pip install -e ".[doc]"
-pdoc ./empreinte_src --docformat markdown    # ouvre la documentation dans le navigateur
+python -m empreinte_src.pages_doc livrables sortie-doc   # puis ouvrir sortie-doc/index.html
 ```
 
 ## Ce qui tourne
@@ -87,13 +88,23 @@ Les budgets des gouvernements ne sont pas collectés : leur section est vide et 
 ## Pages
 
 Le workflow `Pages` (`.github/workflows/pages.yml`) sert, à
-<https://stephieed.github.io/Empreinte-politique-new-pipeline-test/>, la documentation du code
-(pdoc), la description du traitement (`traitement/` : étapes, périmètre, lecteurs, règles,
-contrôles, écrite à partir du code par `empreinte_src/methodologie.py`), les documents de
-`livrables/` convertis en HTML (`empreinte_src/pages_livrables.py`) et la page minimale de
-contrôle avec les fichiers servis de la dernière publication. Il
-tourne après chaque mise à jour sur `main` et après chaque envoi de code sur `main`. Ce n'est pas
-le site : l'interface reste hors périmètre (décision du 13/11/2026).
+<https://stephieed.github.io/Empreinte-politique-new-pipeline-test/>, la page minimale de contrôle
+avec les fichiers servis de la dernière publication (`site/`) et toute la documentation au format
+pdoc (`doc/`), avec un menu, une recherche et un sommaire communs :
+
+- les documents de conception, repris tels quels du dossier `livrables/` : un document par page,
+  découverts à chaque déploiement, diagrammes Mermaid dessinés, liens entre documents menant aux
+  pages correspondantes ;
+- le traitement, étape par étape : les étapes, le périmètre, les lecteurs, les règles et les
+  contrôles, écrits à partir du code par `empreinte_src/methodologie.py` ;
+- la documentation du code (`empreinte_src`), tirée des docstrings.
+
+`empreinte_src/pages_doc.py` écrit ces documents dans un paquet Python `documentation` et le fait
+documenter par pdoc avec `empreinte_src`, selon les gabarits de `pages/gabarits-pdoc/` (menu commun,
+mode sombre, Mermaid épinglé). En local : `python -m empreinte_src.pages_doc livrables sortie-doc`
+(extra `doc`). Pages tourne après chaque mise à jour sur `main` et après chaque envoi sur `main`
+qui change le code, les documents ou les gabarits. Ce n'est pas le site : l'interface reste hors
+périmètre (décision du 13/11/2026).
 
 ## Lancer à la main
 
