@@ -15,7 +15,7 @@ from empreinte_src.composition import Ecrivain
 from empreinte_src.controles import Controles
 from empreinte_src.liaison import Contexte
 
-STATUTS = {"complet", "trou_source", "borne_historique", "non_collecte", "panne", "en_cours",
+STATUTS = {"complet", "partiel", "trou_source", "borne_historique", "non_collecte", "panne", "en_cours",
            "relu_aucun", "non_relu", "hors_perimetre"}
 AU = "2026-11-06"
 CR = "https://www.assemblee-nationale.fr/dyn/17/comptes-rendus/seance/"
@@ -132,7 +132,8 @@ TABLES = {
                       "fin": "2024-01-09", "en_cours": False, "rang": 1, "source_url": None},
                      {"organe": "GB", "nom": "Beta", "adresse": "beta", "debut": "2024-12-14",
                       "fin": None, "en_cours": True, "rang": 2, "source_url": None}],
-    "gouvernement_legislature": [{"gouvernement": "GA", "legislature": 16, "debut": "2022-06-22",
+    # Alpha ne traverse ici que la XIIIe (avant le périmètre) : pas de fiche.
+    "gouvernement_legislature": [{"gouvernement": "GA", "legislature": 13, "debut": "2022-06-22",
                                   "fin": "2024-01-09"},
                                  {"gouvernement": "GB", "legislature": 17, "debut": "2024-12-14", "fin": None}],
     "groupe": [{"organe": "POG", "legislature": 17, "sigle": "ECOS", "libelle": "Écologiste et Social",
@@ -466,3 +467,18 @@ def test_depute_de_la_xive_seulement_paroles_hors_perimetre(tmp_path):
     p = _lire(racine, "candidats/jean-ancien/paroles.json.gz")["couverture"]
     assert p["statut"] == "hors_perimetre" and p["raison"] == "activite_anterieure_au_perimetre"
     assert "paroles" in {l["famille"] for l in f["limites"]}
+
+
+def test_activite_en_partie_avant_le_perimetre_partiel(tmp_path):
+    """Un député de la XIIIe puis de la XIVe : son activité est lue depuis le 20/06/2012 (`partiel`),
+    ses comptes portent sur cette partie et peuvent valoir zéro."""
+    car = [x for x in TABLES["carriere"] if x["per"] != "per:000003"] + [
+        _car("per:000003", "2007-06-20", "2012-06-19", 13, None, mandat="PM3", acteur="PA3"),
+        _car("per:000003", "2012-06-20", "2017-06-20", 14, "legislature/14", mandat="PM4", acteur="PA3")]
+    _, _, racine = _composer(tmp_path, carriere=car)
+    f = _lire(racine, "candidats/jean-ancien/fiche.json.gz")
+    assert f["perimetre_activite"]["statut"] == "partiel"
+    assert f["perimetre_activite"]["jours_dans_le_perimetre"] > 0
+    comptes = {(c["institution"], c["famille"]): c for c in f["en_bref"]["compteurs"]}
+    assert comptes[("assemblee", "positions_textes")]["valeur"] == 0
+    assert _lire(racine, "candidats/jean-ancien/votes.json.gz")["couverture"]["statut"] == "partiel"

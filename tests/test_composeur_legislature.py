@@ -17,7 +17,7 @@ from empreinte_src.controles import Controles
 from empreinte_src.liaison import Contexte, regles
 
 REF = "2026-11-06"
-STATUTS = {"complet", "trou_source", "borne_historique", "non_collecte", "panne", "en_cours",
+STATUTS = {"complet", "partiel", "trou_source", "borne_historique", "non_collecte", "panne", "en_cours",
            "relu_aucun", "non_relu", "hors_perimetre"}
 AMO = {"prov_point": "an-amo30-l17", "licence": "etalab-2.0"}
 DOS = {"prov_point": "an-dossiers-l17", "licence": "etalab-2.0"}
@@ -124,7 +124,7 @@ def ctx(tmp_path):
     vue(c, "gouvernement_legislature", [
         {"gouvernement": "PO847639", "legislature": 17, "debut": "2024-09-06", "fin": "2024-12-13", "regle": "R-GOUVERNEMENTS@1"},
         {"gouvernement": "PO873634", "legislature": 17, "debut": "2025-10-11", "fin": None, "regle": "R-GOUVERNEMENTS@1"},
-        # Attal ne traverse ici que la XVIe : pas de fiche (gouvernements de la XVIIe seulement, pour l'instant).
+        # Attal ne traverse ici que la XVIe : il a sa fiche (gouvernements depuis la XIVe, 13/11/2026).
         {"gouvernement": "PO839000", "legislature": 16, "debut": "2024-01-09", "fin": "2024-06-09", "regle": "R-GOUVERNEMENTS@1"}])
     dep = lambda a, m, debut, fin=None, s_du=None, s_au=None: {
         "acteur": a, "legislature": 17, "mandat": m, "debut": debut, "fin": fin,
@@ -310,7 +310,8 @@ def test_couverture_faits_et_controles(ctx, tmp_path):
     assert {x["fiche"] for x in ecr.faits} == {"legislature/16", "legislature/17"}
     ctrl = Controles(racine)
     ctrl.c4_interdits()
-    ctrl.c2_liens({"legislature/17", "gouvernement/barnier", "gouvernement/lecornu-ii"})
+    ctrl.c2_liens({"legislature/16", "legislature/17", "gouvernement/barnier", "gouvernement/lecornu-ii",
+                   "gouvernement/attal"})
     assert ctrl.anomalies == []
     ctrl = Controles(racine)
     ctrl.c2_liens({"legislature/17"})                         # gouvernements non publiés : bloque
@@ -341,11 +342,11 @@ def test_legislature_close_sans_hemicycle(ctx, tmp_path):
     odj = lire("ordre-du-jour-vide")["couverture"]
     assert odj["statut"] == "trou_source" and odj["numerateur"] is None
     g = lignes(f["gouvernements"])
-    assert [(x["nom"], x["lien"], x["raison_lien"]) for x in g] == [("Attal", None, "gouvernement sans fiche publiée")]
+    assert [(x["nom"], x["lien"], x["raison_lien"]) for x in g] == [("Attal", "gouvernement/attal", None)]
     g = lignes(lire("groupes"))
     assert [(x["sigle"], x["effectif"], x["au"], x["sieges_dans_l_hemicycle"]) for x in g] == \
         [("RE", 169, "2024-06-09", None)]                    # effectif au dernier jour de la législature
     cv = lire("groupes")["couverture"]
-    assert cv["statut"] == "complet" and "hémicycle de cette législature close" in cv["detail"]
+    assert cv["statut"] == "complet" and "sièges de cette législature close ne sont pas publiés" in cv["detail"]
     assert all(x["fiche"] != "legislature/16" or x["date"] is None or x["date"] <= "2024-06-09"
                for x in ecr.faits)

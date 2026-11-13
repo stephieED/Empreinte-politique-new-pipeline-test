@@ -3,11 +3,14 @@
 
 Le siège (`placeHemicycle`) est publié **sans date** : c'est celui du jour de l'archive. Les
 mandats clos reçoivent le siège actuel de la personne (piège 3.1.1) ; seule une archive figée
-après la clôture d'une législature donne les sièges de cette législature. La règle ne sert donc
-le siège que pour la **législature en cours**, daté du jour de constat : la date de référence
-du traitement (le jour de la génération), à défaut la dernière date publiée par la source. Pour
-une législature close, le siège n'est pas connu tant que son archive figée n'est pas lue
-(R-ARBITRAGE-ARCHIVES) : aucune ligne, et la couverture le dit.
+d'une législature close donne les sièges de cette législature (cahier 3.1). Donc :
+
+- **législature en cours** : l'archive courante, datée du jour de constat (la date de référence
+  du traitement, à défaut la dernière date publiée par la source) ;
+- **législature close** : son archive figée (point `…-l<numéro>`), datée de son dernier
+  événement (XVe : 05/04/2022, avant les élections ; XVIe : 09/06/2024, la dissolution), si elle
+  donne le siège d'au moins 90 % des députés en fonction ce jour-là. Sinon (XIVe : pas d'archive
+  figée au chemin standard, cahier 3.1), aucune ligne, et la couverture le dit.
 
 Sont dans l'hémicycle les députés en fonction ce jour-là (R-DEPUTES : un député suspendu parce
 qu'il est au gouvernement n'y est pas, son suppléant y est). Leur groupe est leur appartenance
@@ -20,14 +23,15 @@ décompte, jamais un ratio.
 """
 
 NOM = "R-HEMICYCLE"
-VERSION = 1
+VERSION = 2
 DEPEND = ("R-LEGISLATURES", "R-DEPUTES", "R-APPARTENANCE")
 SORTIES = ("hemicycle", "effectif_groupe")
 DESCRIPTION = (
     "Le siège de chaque député dans l'hémicycle est celui que publie l'Assemblée nationale le jour "
     "où nous lisons ses données : il n'est pas daté par la source, nous le datons du jour de "
-    "lecture, et nous ne le donnons que pour la législature en cours (pour une législature "
-    "close, seul l'état publié à sa clôture vaudrait). Un député entré au gouvernement n'y "
+    "lecture. Pour une législature close, nous le prenons dans l'archive figée de cette "
+    "législature, à la date de l'état qu'elle publie, quand elle donne le siège de presque tous "
+    "les députés ; sinon, il n'est pas donné. Un député entré au gouvernement n'y "
     "figure pas : son suppléant siège. L'effectif d'un groupe à une date est le nombre de "
     "députés qui en sont membres ce jour-là, apparentés compris ; les non-inscrits ne sont pas "
     "un groupe.")
@@ -48,20 +52,63 @@ def date_constat(ctx) -> tuple[str | None, str]:
     return d, "derniere_date_de_la_source"
 
 
+# Part minimale des députés dont l'archive figée donne le siège pour la servir (XIVe : 154 sièges
+# pour 750 mandats, archive non figée à sa clôture).
+SEUIL_ARCHIVE_FIGEE = 0.9
+_LEG_POINT = "TRY_CAST(regexp_extract(prov_point, '-l([0-9]+)$', 1) AS INTEGER)"
+
+
+def _figees(ctx) -> list[tuple[int, str, str]]:
+    """(législature close, point de son archive figée, jour de l'état) des archives utilisables."""
+    if not ctx.existe("an_acteurs__mandat__archives"):
+        return []
+    cands = ctx.x(f"""
+        SELECT l.numero, m.prov_point,
+               max(greatest(coalesce(m.date_debut, ''), coalesce(m.date_fin, ''))) AS jour
+        FROM legislature l JOIN an_acteurs__mandat__archives m
+          ON {_LEG_POINT.replace("prov_point", "m.prov_point")} = l.numero
+         AND TRY_CAST(m.legislature AS INTEGER) = l.numero
+        WHERE NOT l.en_cours AND m.type_organe IN ('ASSEMBLEE', 'GP')
+        GROUP BY 1, 2""")
+    out = []
+    for numero, point, jour in cands:
+        n, avec = ctx.x("""
+            SELECT count(*), count(m.place_hemicycle) FROM depute d
+            LEFT JOIN an_acteurs__mandat__archives m ON m.uid = d.mandat AND m.prov_point = ?
+            WHERE d.legislature = ? AND d.debut <= ? AND coalesce(d.fin, '9999-12-31') >= ?""",
+                        [point, numero, jour, jour])[0]
+        if n and avec >= SEUIL_ARCHIVE_FIGEE * n:
+            out.append((numero, point, jour))
+    return out
+
+
 def appliquer(ctx):
     d, origine = date_constat(ctx)
     jour = "NULL::VARCHAR" if d is None else f"'{d}'"
+    figees = _figees(ctx)
+    # Chaque législature servie : son jour de constat et l'archive qui donne les sièges.
+    servies = " UNION ALL ".join(
+        [f"SELECT numero, {jour} AS jour, NULL::VARCHAR AS point, '{origine}' AS origine "
+         "FROM legislature WHERE en_cours"]
+        + [f"SELECT {n}, '{j}', '{p}', 'archive_figee'" for n, p, j in figees])
     ctx.ecrire("hemicycle", f"""
-        WITH l AS (SELECT numero FROM legislature WHERE en_cours),
-        dep AS (SELECT * FROM depute
-                WHERE legislature IN (SELECT numero FROM l)
-                  AND debut <= {jour} AND coalesce(fin, '9999-12-31') >= {jour}),
-        ni AS (SELECT DISTINCT m.acteur FROM {MANDAT} m JOIN {ORGANE} o ON o.uid = m.organe
-               WHERE m.type_organe = 'GP' AND {EST_NI}
-                 AND m.date_debut <= {jour} AND coalesce(m.date_fin, '9999-12-31') >= {jour}),
-        grp AS (SELECT acteur, any_value(groupe) AS groupe, count(*) AS n FROM appartenance
-                WHERE debut <= {jour} AND coalesce(fin, '9999-12-31') >= {jour} GROUP BY 1)
-        SELECT dep.legislature, {jour} AS date, dep.acteur,
+        WITH l AS ({servies}),
+        dep AS (SELECT d.*, l.jour, l.point, l.origine FROM depute d JOIN l ON l.numero = d.legislature
+                WHERE d.debut <= l.jour AND coalesce(d.fin, '9999-12-31') >= l.jour),
+        mf AS (SELECT * FROM an_acteurs__mandat__archives WHERE prov_point IN
+               (SELECT point FROM l WHERE point IS NOT NULL)),
+        ni AS (SELECT DISTINCT l.numero, m.acteur FROM {MANDAT} m JOIN {ORGANE} o ON o.uid = m.organe
+               JOIN l ON m.date_debut <= l.jour AND coalesce(m.date_fin, '9999-12-31') >= l.jour
+               WHERE m.type_organe = 'GP' AND {EST_NI}),
+        grp AS (SELECT l.numero, a.acteur, any_value(a.groupe) AS groupe, count(*) AS n
+                FROM appartenance a JOIN l ON a.debut <= l.jour AND coalesce(a.fin, '9999-12-31') >= l.jour
+                GROUP BY 1, 2),
+        m AS (SELECT dep.mandat AS uid, coalesce(f.place_hemicycle, CASE WHEN dep.point IS NULL
+                                                 THEN c.place_hemicycle END) AS place_hemicycle,
+                     coalesce(f.prov_url, c.prov_url) AS prov_url, coalesce(f.prov_uid, c.prov_uid) AS prov_uid
+              FROM dep JOIN {MANDAT} c ON c.uid = dep.mandat
+              LEFT JOIN mf f ON f.uid = dep.mandat AND f.prov_point = dep.point)
+        SELECT dep.legislature, dep.jour AS date, dep.acteur,
                TRY_CAST(m.place_hemicycle AS INTEGER) AS siege,
                CASE WHEN grp.n = 1 THEN grp.groupe END AS groupe,
                CASE WHEN grp.n = 1 THEN 'groupe' WHEN grp.n > 1 THEN 'non_etabli'
@@ -70,11 +117,12 @@ def appliquer(ctx):
                     WHEN grp.n IS NULL AND ni.acteur IS NULL THEN 'aucun mandat de groupe à cette date' END
                     AS raison_rattachement,
                CASE WHEN m.place_hemicycle IS NULL THEN 'siège non connu' END AS raison_siege,
-               dep.mandat, '{origine}' AS date_origine, m.place_hemicycle AS siege_source,
+               dep.mandat, dep.origine AS date_origine, m.place_hemicycle AS siege_source,
                m.prov_url AS source_url, m.prov_uid
-        FROM dep JOIN {MANDAT} m ON m.uid = dep.mandat
-        LEFT JOIN grp ON grp.acteur = dep.acteur LEFT JOIN ni ON ni.acteur = dep.acteur
-        ORDER BY siege, dep.acteur""")
+        FROM dep JOIN m ON m.uid = dep.mandat
+        LEFT JOIN grp ON grp.acteur = dep.acteur AND grp.numero = dep.legislature
+        LEFT JOIN ni ON ni.acteur = dep.acteur AND ni.numero = dep.legislature
+        ORDER BY dep.legislature, siege, dep.acteur""")
 
     # Effectif jour par jour : +1 à l'entrée, -1 le lendemain de la sortie, cumulés, puis
     # étalés sur chaque jour de vie du groupe (au plus tard le jour de constat).
@@ -101,4 +149,4 @@ def appliquer(ctx):
     rat = ctx.un("SELECT count(*) FROM hemicycle WHERE rattachement <> 'non_etabli'")
     closes = ctx.un("SELECT count(*) FROM legislature WHERE NOT en_cours")
     return {"siege_connu": (siege, n), "groupe_ou_non_inscrit_etabli": (rat, n),
-            "siege_legislatures_closes": (0, closes)}
+            "siege_legislatures_closes": (len(figees), closes)}

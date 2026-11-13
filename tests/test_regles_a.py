@@ -372,3 +372,23 @@ def test_hemicycle_sans_date_de_reference(z2_reel, tmp_path):
     h = _lignes(ctx, "SELECT DISTINCT date, date_origine FROM hemicycle")
     # Dernière date publiée de l'extrait : l'entrée d'Élisabeth Borne comme apparentée EPR.
     assert h == [{"date": "2026-09-26", "date_origine": "derniere_date_de_la_source"}]
+
+
+def test_hemicycle_legislature_close_depuis_son_archive_figee(tmp_path):
+    """Cahier 3.1 : seule l'archive figée d'une législature close donne le siège de cette législature.
+    L'archive courante donne au mandat clos le siège actuel de la personne : il n'est pas repris."""
+    a = lambda u, ac, leg, organe, d, f, place, point: {
+        "uid": u, "acteur": ac, "type_organe": "ASSEMBLEE", "organe": organe, "legislature": leg,
+        "date_debut": d, "date_prise_fonction": d, "date_fin": f, "cause_mandat": "élections générales",
+        "place_hemicycle": place, "prov_point": point}
+    organes = [{"uid": "PO791932", "type_organe": "ASSEMBLEE", "legislature": "16", "date_debut": "2022-06-22",
+                "date_fin": "2024-06-09"},
+               {"uid": "PO838901", "type_organe": "ASSEMBLEE", "legislature": "17", "date_debut": "2024-07-18"}]
+    mandats = [a("PM16", "PA1", "16", "PO791932", "2022-06-22", "2024-06-09", "300", "an-amo30-l17"),
+               a("PM16", "PA1", "16", "PO791932", "2022-06-22", "2024-06-09", "42", "an-amo30-l16"),
+               a("PM17", "PA2", "17", "PO838901", "2024-07-18", None, "7", "an-amo30-l17")]
+    ctx, bilan = _relier(_ecrire_z2(tmp_path / "z2", organes, mandats), tmp_path / "z3")
+    h = _lignes(ctx, "SELECT legislature, date, acteur, siege, date_origine FROM hemicycle ORDER BY 1")
+    assert h == [{"legislature": 16, "date": "2024-06-09", "acteur": "PA1", "siege": 42, "date_origine": "archive_figee"},
+                 {"legislature": 17, "date": "2026-11-06", "acteur": "PA2", "siege": 7, "date_origine": "date_reference"}]
+    assert bilan["R-HEMICYCLE"]["couverture"]["siege_legislatures_closes"] == [1, 1]

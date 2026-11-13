@@ -9,7 +9,7 @@ d'accès viennent les faits de chacune. Les composeurs, les règles et les contr
 | Législatures, groupes, lignées | XIVe à XVIIe |
 | Scrutins, amendements, dossiers, questions | XIVe à XVIIe |
 | Prises de parole en séance | XVe à XVIIe |
-| Gouvernements, actes réglementaires | depuis 2007 (Fillon I) |
+| Gouvernements, actes réglementaires | depuis la XIVe (20/06/2012 ; décision du 13/11/2026) |
 """
 from __future__ import annotations
 
@@ -18,9 +18,10 @@ LEGISLATURES = (14, 15, 16, 17)
 # Prises de parole en séance : à partir de cette législature (cahier 4.1 : « XVe → XVIIe »).
 PAROLES_DEPUIS = 15
 LEGISLATURES_PAROLES = tuple(n for n in LEGISLATURES if n >= PAROLES_DEPUIS)
-# Gouvernements publiés : ceux qui traversent ces législatures. Le cahier demande « depuis 2007 »
-# (Fillon I) : l'extension attend les actes du Journal officiel depuis 2007 (archive globale).
-LEGISLATURES_GOUVERNEMENTS = (17,)
+# Gouvernements publiés : ceux qui traversent ces législatures (d'Ayrault II à aujourd'hui).
+# Décision du 13/11/2026 (« on commence à la même période que la 14e leg ») : la XIVe, et non
+# 2007 (Fillon I) comme le disait le cahier 4.1 ; le Journal officiel à partir de la même date.
+LEGISLATURES_GOUVERNEMENTS = LEGISLATURES
 
 # Archive des acteurs de chaque législature : AMO20 pour la XIVe, AMO30 ensuite (même contenu,
 # nom de fichier différent à la source).

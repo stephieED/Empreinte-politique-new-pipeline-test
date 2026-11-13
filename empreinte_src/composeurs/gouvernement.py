@@ -75,6 +75,13 @@ def _couv(famille, statut, detail, numerateur=None, denominateur=None, points=()
     return c
 
 
+def _avant(g, debut_lu, au) -> str:
+    """Statut d'une section quand le gouvernement commence avant ce qui est lu : `partiel` s'il
+    est en fonction aussi après (les chiffres portent sur la partie lue, le détail la dit),
+    `hors_perimetre` s'il a fini avant."""
+    return "hors_perimetre" if (g["fin"] or au) < debut_lu else "partiel"
+
+
 def _compte(n, statut):
     """Un compte nul n'est servi que si la lecture est complète (cahier, règle 5 ; C5)."""
     return None if n == 0 and statut not in ("complet", "relu_aucun") else n
@@ -490,7 +497,7 @@ def _paroles(ctx, f, g, commun, nb_membres, debut_lu, limites):
         phrase_q += (f" {sans_intitule} prises de parole sans intitulé publié sont comptées sous "
                      f"« Intitulé non publié ».")
     if g["debut"] < debut_lu:
-        couv = _couv("paroles", "hors_perimetre",
+        couv = _couv("paroles", _avant(g, debut_lu, au),
                      f"Comptes rendus lus à partir de la XVe législature (le {_fr(debut_lu)}, cahier "
                      f"4.1) ; ceux du {_fr(g['debut'])} au {_fr(_veille(debut_lu))} sont hors du "
                      "périmètre. " + phrase_q,
@@ -557,7 +564,7 @@ def _deposes(ctx, f, g, commun, debut_lu):
               "fonction ce jour-là. La matière est la commission saisie au fond (aide à la lecture). "
               "Le ministère porteur n'est pas encore établi (règle à venir).")
     if g["debut"] < debut_lu:
-        couv = _couv("textes", "hors_perimetre",
+        couv = _couv("textes", _avant(g, debut_lu, au),
                      f"Dossiers législatifs lus à partir de la XIVe législature (le {_fr(debut_lu)}, "
                      f"cahier 4.1) : les projets déposés du {_fr(g['debut'])} au "
                      f"{_fr(_veille(debut_lu))} n'y figurent que s'ils ont continué ensuite. " + phrase,
@@ -590,7 +597,7 @@ def _deposes(ctx, f, g, commun, debut_lu):
         r["licence"] = lic
     nb_eng = len({r["acte"] for r in e_rows})
     nb_textes = len({r["dossier"] for r in e_rows if r["procedure_code"] != "13"})
-    c49 = _couv("procedure_49_3", "complet" if g["debut"] >= debut_lu else "hors_perimetre",
+    c49 = _couv("procedure_49_3", "complet" if g["debut"] >= debut_lu else _avant(g, debut_lu, au),
                 "Engagements de responsabilité (article 49, alinéa 3) lus dans les dossiers législatifs, "
                 "rattachés au gouvernement en fonction à leur date. Un même engagement figure dans le "
                 "dossier du texte et dans le dossier « Engagement de la responsabilité du Gouvernement ». "

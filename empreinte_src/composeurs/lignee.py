@@ -20,7 +20,7 @@ Fichiers de `lignees/<adresse>/` :
 | `amendements.json.gz` | XIVe à XVIIe : amendements distincts déposés par les membres pendant leur appartenance, par commission et par année ; irrecevables et signatures à part | à la demande |
 | `amendements-<annee>[-<k>].json.gz` | liste de l'année | au clic |
 | `votes-<législature>.json.gz` | un fichier par législature du groupe : décompte publié de chaque scrutin pour le groupe (pour, contre, abstention, non-votants, membres), position majoritaire publiée et si elle est établie (Q30), partage du groupe | à la demande |
-| `avec-qui-<législature>.json.gz` | les autres groupes de la législature, dans l'ordre de l'hémicycle (législature en cours) ou des sigles (législature close, dont l'hémicycle n'est pas publié) : scrutins où les deux positions sont établies et ceux où elles coïncident, par nature de scrutin | à la demande |
+| `avec-qui-<législature>.json.gz` | les autres groupes de la législature, dans l'ordre de l'hémicycle (législature en cours, ou close avec une archive figée : XVe, XVIe) ou des sigles (XIVe) : scrutins où les deux positions sont établies et ceux où elles coïncident, par nature de scrutin | à la demande |
 | `mots/<xx>.json.gz` | index de mots | au filtre par mot |
 
 Règles éditoriales (cahier, partie 2) : aucun score, aucun classement, aucun ratio — la fiche sert
@@ -57,8 +57,8 @@ POSITIONS = ("pour", "contre", "abstention")
 LIMITES = [
     "Textes, amendements et votes de la XIVe à la XVIIe législature ; prises de parole en séance à "
     "partir de la XVe (cahier 4.1) : un groupe de la XIVe n'a pas de prises de parole servies.",
-    "L'hémicycle d'une législature close n'est pas publié par l'Assemblée : pour ces législatures, les "
-    "autres groupes sont rangés par sigle, sans place médiane.",
+    "Le siège d'une législature close vient de son archive figée (XVe, XVIe) ; la XIVe n'en a pas "
+    "d'utilisable : ses groupes sont rangés par sigle, sans place médiane.",
     "Les groupes de la XIIe et de la XIIIe servent au calcul des filiations ; ils ne sont pas affichés.",
     "Effectifs et membres d'après les mandats de groupe publiés par l'Assemblée (apparentés compris).",
 ]
@@ -739,9 +739,10 @@ def _avec_qui(ctx, f, l, ms, leg, commun):
         ordre = "hémicycle (place médiane des membres siégeant le jour de constat ; groupes clos à la fin)"
     else:
         # Législature close : l'Assemblée ne publie que l'hémicycle en cours. Rien n'est déduit.
-        couv = _couv("votes", "complet", phrase + " L'hémicycle de cette législature n'est pas publié : "
-                     "groupes rangés par sigle, sans place médiane.", len(rows), len(rows), pts, au=au)
-        ordre = "alphabétique (sigle) : hémicycle non publié pour une législature close"
+        couv = _couv("votes", "complet", phrase + " Les sièges de cette législature ne sont pas publiés "
+                     "(pas d'archive figée utilisable) : groupes rangés par sigle, sans place médiane.",
+                     len(rows), len(rows), pts, au=au)
+        ordre = "alphabétique (sigle) : sièges non publiés pour cette législature"
     f.section(nom, rows, "avec_qui", ids={"autre": "maillon"}, date="au", source=None,
               couverture=couv, colonnes=COLS_AVEC_QUI, extra={"ordre": ordre, "au": au})
 

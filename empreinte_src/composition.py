@@ -124,14 +124,14 @@ class Ecrivain:
 
     def marquer_panne(self, couverture: dict | None) -> dict | None:
         """Une couverture « complet » dont une source est en panne devient « panne », datée."""
-        if not couverture or couverture.get("statut") != "complet" or not self.pannes:
+        if not couverture or couverture.get("statut") not in ("complet", "partiel") or not self.pannes:
             return couverture
         touches = sorted(set(couverture.get("points_acces") or []) & set(self.pannes))
         if not touches:
             return couverture
         depuis = min((self.pannes[p] for p in touches if self.pannes[p]), default=None)
         c = dict(couverture)
-        c.update({"statut": "panne", "statut_sans_panne": "complet", "points_en_panne": touches,
+        c.update({"statut": "panne", "statut_sans_panne": c["statut"], "points_en_panne": touches,
                   "panne_depuis": depuis,
                   "detail": (c.get("detail") or "") + (" " if c.get("detail") else "")
                   + f"Source en panne{' depuis le ' + depuis[:10] if depuis else ''} ("

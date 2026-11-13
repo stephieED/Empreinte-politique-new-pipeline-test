@@ -81,8 +81,9 @@ LIMITES = [
      "detail": "Le terme légal de la législature n'est pas publié par la source de l'Assemblée : "
                "la frise s'arrête à la date de référence."},
     {"sujet": "hemicycle_legislature_close", "statut": "trou_source",
-     "detail": "L'Assemblée ne publie le siège de chaque député que pour la législature en cours : "
-               "pour une législature close, ni l'hémicycle ni la place des groupes ne sont servis."},
+     "detail": "Le siège d'un député n'est publié, pour une législature close, que par l'archive "
+               "figée de cette législature ; celle-ci n'en a pas d'utilisable : ni l'hémicycle ni "
+               "la place des groupes ne sont servis."},
     {"sujet": "articles_de_la_periode", "statut": "hors_perimetre",
      "detail": "Les articles du site sur la période ne sont pas composés dans cette tranche."},
 ]
@@ -213,8 +214,10 @@ def composer_legislature(ctx, ecr, leg: dict):
                                          for g in gouvs]
     comptes = _compteurs(ctx, leg, au, lic, gouvs)
     entete["compteurs"] = comptes
+    avec_sieges = bool(ctx.existe("hemicycle") and
+                       ctx.un("SELECT count(*) FROM hemicycle WHERE legislature = ?", [numero]))
     entete["limites"] = [x for x in LIMITES
-                         if not (leg["en_cours"] and x["sujet"] == "hemicycle_legislature_close")]
+                         if not ((leg["en_cours"] or avec_sieges) and x["sujet"] == "hemicycle_legislature_close")]
     f.entete(entete)
     # Les lignes de l'en-tête sont affichées : elles sont des faits publiés comme les autres.
     for g in gouvs:
@@ -404,11 +407,18 @@ def _section_hemicycle(ctx, f, leg, au, lic):
     siege = sum(1 for l in lignes if l["siege"] is not None)
     ratt = sum(1 for l in lignes if l["rattachement"] != "non_etabli")
     jour = lignes[0]["date"] if lignes else None
-    if not leg["en_cours"]:
+    if not leg["en_cours"] and not lignes:
         couv = {"statut": "borne_historique", "numerateur": 0, "denominateur": None,
-                "detail": "Le siège n'est publié que pour la législature en cours : pour une "
-                          "législature close, seule son archive figée le donnerait.",
+                "detail": "Le siège n'est publié que dans l'archive figée d'une législature close, "
+                          "et celle-ci n'en a pas d'utilisable (XIVe : pas d'archive figée au chemin "
+                          "standard).",
                 "points_acces": points}
+    elif not leg["en_cours"]:
+        couv = _couv(min(siege, ratt), n,
+                     f"{_fr(siege)} sièges connus et {_fr(ratt)} groupes (ou non-inscrits) établis "
+                     f"sur {_fr(n)} députés en fonction le {_date_fr(jour)}, d'après l'archive figée "
+                     "de la législature : c'est l'état qu'elle publie à cette date.",
+                     points, au=jour)
     else:
         couv = _couv(min(siege, ratt), n,
                      f"{_fr(siege)} sièges connus et {_fr(ratt)} groupes (ou non-inscrits) établis "
@@ -478,8 +488,8 @@ def _section_groupes(ctx, f, leg, au, lic):
               f"déclarée par {_fr(declares)} groupe(s) sur {_fr(len(grp))} : sans déclaration, "
               "« non déclarée », jamais déduite.")
     if not avec_hemicycle:
-        detail += (" L'hémicycle de cette législature close n'est pas publié : les sièges ne sont pas "
-                   "servis, et les non-inscrits ne sont pas comptés ici.")
+        detail += (" Les sièges de cette législature close ne sont pas publiés (pas d'archive figée "
+                   "utilisable) : ils ne sont pas servis, et les non-inscrits ne sont pas comptés ici.")
     if ecarts:
         detail += " Effectif et sièges diffèrent pour : " + ", ".join(ecarts) + "."
     f.section("groupes", lignes, "effectif_groupe", ids={"organe": "groupe"}, date="au",

@@ -572,7 +572,10 @@ def _perimetre(ctx, c, acteur, commun, depuis, plage_txt, quoi="Activité") -> d
                   "19/06/2002) : leur activité est hors du périmètre, rien n'est compté pour eux.")
         if not dans:
             detail += f" Aucun mandat ni fonction depuis le {_fr(depuis)} : rien n'est compté."
-        return {"statut": "hors_perimetre", "raison": "activite_anterieure_au_perimetre", "detail": detail,
+        # Lue en partie (mandats avant et depuis le début du périmètre) : `partiel` ; rien depuis :
+        # `hors_perimetre`.
+        return {"statut": "partiel" if dans else "hors_perimetre",
+                "raison": "activite_anterieure_au_perimetre", "detail": detail,
                 "jours_dans_le_perimetre": dans, "jours_total": total, "points_acces": pts,
                 "depuis": depuis, "statut_comptes": "complet" if dans else "hors_perimetre"}
     return {"statut": "complet", "raison": None, "detail": base, "jours_dans_le_perimetre": dans,
