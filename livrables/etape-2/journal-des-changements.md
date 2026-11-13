@@ -564,7 +564,7 @@ Branche `etape-2-forme-des-fichiers`, issue #43, décision du 13/11/2026 « Sch�
 
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
-| `config/schema_fichiers.yaml` : colonnes de chaque section (nom où les nombres deviennent `N` ; index de mots `<type>/mots/*`), vocabulaires de 14 champs fermés (sort final, raison du sort, étape, origine, matière, lecture, positions, partage, banc, rôle, nature du sujet), statuts de couverture du doc. 1 (1.5.5). C4 refuse une section inconnue, des colonnes changées, une valeur hors vocabulaire, ou un schéma absent. `empreinte schema --site <sortie>/site` réécrit les colonnes d'après un calcul ; les vocabulaires se modifient à la main | #43 : rien ne vérifiait la forme ; doc. 2, 2.8.1 prévoyait déjà « validation de chaque fichier contre son schéma en liste blanche ». Colonnes tirées du calcul local du 13/11 (42 sections, aucun écart) ; les sections que l'entrepôt local n'a pas (volet européen, actes de l'archive globale du JO) sont à ajouter d'après l'essai sur GitHub | 2 (2.8.1 C4), 7 (contrat des fichiers servis) ; **toute PR qui change une section met le schéma à jour** |
+| `config/schema_fichiers.yaml` : colonnes de chaque section (nom où les nombres deviennent `N` ; index de mots `<type>/mots/*`), vocabulaires de 14 champs fermés (sort final, raison du sort, étape, origine, matière, lecture, positions, partage, banc, rôle, nature du sujet), statuts de couverture du doc. 1 (1.5.5). C4 refuse une section inconnue, des colonnes changées, une valeur hors vocabulaire, ou un schéma absent. `empreinte schema --site <sortie>/site` réécrit les colonnes d'après un calcul ; les vocabulaires se modifient à la main | #43 : rien ne vérifiait la forme ; doc. 2, 2.8.1 prévoyait déjà « validation de chaque fichier contre son schéma en liste blanche ». Colonnes tirées du calcul local du 13/11 (42 sections, aucun écart), puis complétées sur le site de l'essai 43458918104 (branche des mandats locaux, volet européen compris) : 44 sections, dont `candidats/europe` et `candidats/europe-votes-N`, aucun écart. Essai de la PR sur l'entrepôt de production (43460310627) : publication autorisée. Ordre de fusion convenu : après #64 et #91 | 2 (2.8.1 C4), 7 (contrat des fichiers servis) ; **toute PR qui change une section met le schéma à jour** |
 
 ## Mandats locaux des candidats (13/11/2026)
 
@@ -591,6 +591,23 @@ ans, le candidat 27 : non rattaché.
 Essai du lot 2 sur la branche (13/11/2026, 14 h 55 → 15 h 21 UTC, `points=pe-eurodeputes pe-votes`) :
 publication autorisée, 72 fiches, 1 906 342 faits publiés (+24 002 : les votes de R. Glucksmann) ;
 premier remplissage 17 min 14 s (407 requêtes, 382 Mo) ; calcul 6 min 29 s.
+
+Essais de la branche des mandats locaux (13/11/2026) : 43456313070 (15 h 48 → 16 h 03 UTC,
+`rne-*` et `pe-eurodeputes`) : publication autorisée, +29 faits publiés (les périodes de mandat
+local) ; collecte des 11 fichiers d'élus 1 min 20 s (145 Mo) ; **23 clés d'export en double** :
+adjoints et maires délégués dont la même fonction est attribuée deux fois dans un mandat (Petit-Bourg,
+2020 puis 2021) ; corrigé en ajoutant la date de début de fonction à la clé. Puis 43458918104
+(16 h 04 → 16 h 38 UTC, branche à jour de `main`, élus, députés européens et votes européens :
+lots 2 et mandats locaux ensemble, avec les contrôles de valeurs de #62) : publication autorisée,
+72 fiches, 1 906 408 faits publiés, **0 clé en double** dans l'export ; collecte 17 min 25 s ;
+calcul 14 min 06 s (sans cache des faits lus, #92). Le site de cet essai a servi à régénérer le
+schéma des fichiers servis de #66 (sections `europe`, `europe-votes-<année>` des candidats).
+
+Fusionnées le 13/11/2026 : #50 (liste franceinfo) 12 h 40, #55 (mandats européens) 14 h 09,
+#64 (votes européens) 16 h 49, #91 (mandats locaux, décision Platret), puis #66 (schéma) ; ordre
+fixé avec la session « New pipeline issues » pour que C4 connaisse les sections nouvelles. La nuit
+du 13/11 fait le premier remplissage des décisions du Parlement européen (≈ 17 min, une fois) et
+le premier relevé des fichiers d'élus.
 
 ## Essais en parallèle ; un essai ne garde plus les faits lus (13/11/2026)
 
@@ -709,3 +726,22 @@ Essai sur `main` après ces fusions (`43464134163`, 13/11/2026, 16 h 35 → 16 h
 #65, #67, #90, #93, #97 ensemble ; collecte limitée à Wikipédia, calcul sur tout l'entrepôt) :
 **publication autorisée** ; 0 clé en double ; 1 339 102 paragraphes attribués (+594) ; plus
 d'avertissement A3 ; 72 fiches, 1 882 957 faits publiés ; calcul 11 min 31 s, pic 4,7 Go (E4).
+
+
+## Documents illustrés fusionnés dans les spécifications (13/11/2026)
+
+Demande de la propriétaire, le 13/11/2026 : « dans document de conception, il faudrait mettre
+la section 6 dans la section 2 (peut-être au début). et la section 7 dans la section 1. L'idée
+étant que on ait les illustration à coté. Pour info, les diagramme flux sont visible en code et
+non en schéma compilé. Il faudrait aussi que les tables de matière soit accessible peut importe
+ou on se trouve pour facilité la navigation (pas que dans le doc de conception. » Choix : les
+illustrations à côté de chaque section. Les schémas dessinés et le sommaire viennent du passage
+de toute la documentation au format pdoc (décision de la propriétaire du 13/11/2026, traité à
+part) : les blocs Mermaid restent tels quels dans le Markdown.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Le document 6 (le processus, expliqué) est réparti dans le document 2 et le document 7 (le modèle, expliqué) dans le document 1 : chaque schéma et son texte sont sous un intertitre « En image » dans la section qu'ils illustrent ; les vues d'ensemble (6.1, 7.1) ouvrent les documents. Aucune section des documents 1 et 2 n'est renumérotée. Les fichiers 6 et 7 deviennent des notes qui disent où chaque partie est passée | lire la spécification et son illustration ensemble | 0 (liste des documents) |
+
+Les écarts entre un schéma et le texte de la spécification ne sont pas tranchés ici : la
+spécification fait foi, et les écarts relevés sont listés dans la PR.
