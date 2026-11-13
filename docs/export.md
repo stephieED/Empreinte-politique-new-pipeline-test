@@ -26,7 +26,7 @@ l'export aux relevés et aux versions de la même nuit.
 
 | Colonne | Sens |
 | --- | --- |
-| `cle_fait` | identifiant du fait, stable d'une nuit à l'autre : `type|clé` (voir les types) |
+| `cle_fait` | identifiant du fait, stable d'une nuit à l'autre : `type|clé` (voir les types). Quand la source publie deux fois un objet sous le même identifiant (fin de séance de 370 comptes rendus de la XVe), le second porte `#1` à la fin de sa clé |
 | `type_fait` | type de fait (`mandat`, `position_vote`, `signature`, `acte_reglementaire`…) |
 | `fiche` | la fiche du site qui publie ce fait ; vide tant que les fiches ne sont pas composées |
 | `id_acteur` | identifiant de personne de la source (`PA…` pour l'Assemblée, matricule pour le Sénat) |

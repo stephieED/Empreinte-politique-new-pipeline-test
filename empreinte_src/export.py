@@ -47,6 +47,10 @@ def requete_table(chemin: str, spec: dict, colonnes: list[str], nom: str | None 
     valeur_cols = [c for c in colonnes if c not in EXCLUES_DE_LA_VALEUR]
     struct = ", ".join(f"{q(c)} := {q(c)}" for c in valeur_cols)
     cle = " || '|' || ".join(f"coalesce(CAST({q(c)} AS VARCHAR), '')" for c in spec["cle"])
+    if spec.get("rang"):
+        # Rang d'un objet que la source publie plusieurs fois sous le même identifiant : `#<rang>`
+        # à partir du second, la clé du premier ne change pas.
+        cle = f"{cle} || CASE WHEN coalesce({q(spec['rang'])}, 0) > 0 THEN '#' || {q(spec['rang'])} ELSE '' END"
     sel = [f"'{spec['type']}' || '|' || {cle} AS cle_fait", f"'{spec['type']}' AS type_fait",
            "CAST(NULL AS VARCHAR) AS fiche"]
     for k in IDS:
