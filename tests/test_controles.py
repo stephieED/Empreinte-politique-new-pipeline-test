@@ -237,3 +237,28 @@ def test_alerte_de_panne_dit_s_il_reste_des_donnees():
     assert date["panne:an-amendements-l15"].endswith("celles du dernier relevé complet, du 2026-11-07.")
     ancien = sujets_du_rapport({"releves": [base]})["panne:an-amendements-l15"]
     assert ancien.endswith("les données restent celles du dernier relevé complet.")
+
+
+def test_c6_une_section_decoupee_en_paquets_ne_s_effondre_pas(tmp_path):
+    """Essai du 13/11/2026 (#111) : `amendements-2013` (551 lignes) devient `amendements-2013-1`…
+    quand les amendements de la XIVe retrouvés font grossir l'année ; ce n'est pas un effondrement."""
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from empreinte_src.controles import _section_sans_paquet
+
+    assert _section_sans_paquet("amendements-2013-12") == "amendements-2013"
+    assert _section_sans_paquet("paroles-textes-2017-s2-14") == "paroles-textes-2017-s2"
+    assert _section_sans_paquet("votes-14") == "votes-14"
+    assert _section_sans_paquet("amendements-2013") == "amendements-2013"
+
+    def faits(chemin, sections):
+        lignes = [{"fiche": "lignee/x", "section": s, "type_fait": "amendement_lignee", "id_amendement": f"A{s}{k}",
+                   "valeur": "{}"} for s, n in sections for k in range(n)]
+        pq.write_table(pa.table({c: [l.get(c) for l in lignes] for c in ("fiche", "section", "type_fait",
+                                                                          "id_amendement", "valeur")}), chemin)
+    faits(tmp_path / "a.parquet", [("amendements-2013", 551)])
+    faits(tmp_path / "b.parquet", [("amendements-2013-1", 400), ("amendements-2013-2", 400)])
+    c = Controles(str(tmp_path))
+    c.c1_c6_comparer(str(tmp_path / "a.parquet"), str(tmp_path / "b.parquet"),
+                     uids_changes_a_la_source={"Aamendements-2013"})
+    assert [a["controle"] for a in c.bilan()["anomalies"] if a["controle"] == "C6"] == []
