@@ -325,3 +325,16 @@ points_acces:
     format: api_json
     uid: identifiants-parlementaires
     licence: cc0-1.0
+
+  # --- Parlement européen : les candidats anciens ou actuels députés européens (décision Q3 du
+  # 13/11/2026 ; portail du PE pour les mandats). Identifiant européen déclaré par Wikidata (P1186)
+  # pour les éléments de la liste des candidats (decisions/candidature), puis la fiche de chaque
+  # député européen et le nom de ses groupes. Plusieurs requêtes, une toutes les 2,1 s : voir
+  # empreinte_src/collecte_pe.py. Pas d'ETag : relu chaque nuit, versionné si les octets changent.
+  - id: pe-eurodeputes
+    source: europarl
+    type: eurodeputes_pe
+    url: https://data.europarl.europa.eu/api/v2/
+    format: pe_eurodeputes
+    decisions: decisions
+    licence: cc-by-4.0

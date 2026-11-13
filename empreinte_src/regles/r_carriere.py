@@ -16,9 +16,15 @@ Une ligne par période, toutes institutions :
 - **Sénat** (`senat`) : les mandats de sénateur de l'export du Sénat, lus par le matricule
   déclaré (R-CANDIDATURES), découpés par le groupe avec son **libellé à la date** (jamais le
   libellé actuel de l'archive de l'Assemblée). Export absent ou vide : « non collecté ».
-- **Parlement européen**, **mandats locaux** : non collectés dans l'essai ; mandats de député
-  antérieurs à 2002 : hors source (Sycomore non collecté). Ces absences sont des lignes de
-  `couverture_carriere`, pas des périodes inventées.
+- **Parlement européen** (`parlement_europeen`) : les mandats de député européen
+  (`MEMBER_PARLIAMENT` dans `org/ep-<n>`) du portail du Parlement européen, lus par
+  l'identifiant européen que Wikidata déclare (P1186, point `pe-eurodeputes` ; décision Q3 du
+  13/11/2026), découpés par le groupe politique européen à la date, avec son nom de l'époque.
+  Le numéro de la législature européenne est dans le libellé, jamais dans `legislature` (qui est
+  celle de l'Assemblée).
+- **Mandats locaux** : non collectés dans l'essai ; mandats de député antérieurs à 2002 : hors
+  source (Sycomore non collecté). Ces absences sont des lignes de `couverture_carriere`, pas des
+  périodes inventées.
 
 `lien` ne pointe que vers une fiche publiée : `legislature/<14 à 17>` (module `perimetre`),
 `gouvernement/<adresse>` pour un gouvernement publié.
@@ -27,18 +33,21 @@ from ..perimetre import LEGISLATURES, LEGISLATURES_GOUVERNEMENTS
 from .r_candidatures import vue_ou_vide
 
 NOM = "R-CARRIERE"
-VERSION = 1
+VERSION = 2
 DEPEND = ("R-IDENTITE", "R-DEPUTES", "R-APPARTENANCE", "R-COMPOSITION", "R-GOUVERNEMENTS",
           "R-HEMICYCLE")
 SORTIES = ("carriere", "couverture_carriere")
 DESCRIPTION = (
     "La carrière d'un candidat rassemble ses mandats de député (publiés par l'Assemblée "
     "nationale depuis juin 2002), ses fonctions au gouvernement (depuis mai 2007) et ses mandats "
-    "de sénateur (publiés par le Sénat), chacun avec ses dates. Un député entré au gouvernement "
+    "de sénateur (publiés par le Sénat) et de député européen (publiés par le Parlement européen, "
+    "pour la personne à qui Wikidata déclare un identifiant de député européen), chacun avec ses "
+    "dates. Un député entré au gouvernement "
     "voit son mandat suspendu, pas terminé : la frise le montre. Le groupe affiché est celui "
     "auquel il appartenait à chaque date, et pour le Sénat avec le nom que le groupe portait "
-    "alors. Les mandats de député antérieurs à 2002, les mandats au Parlement européen et les "
-    "mandats locaux ne sont pas encore collectés : la fiche le dit au lieu de les taire.")
+    "alors. Les mandats de député antérieurs à 2002 et les mandats locaux ne sont pas encore "
+    "collectés : la fiche le dit au lieu de les taire.")
+ORDINAL = "CASE WHEN {n} = 1 THEN '1re' ELSE {n} || 'e' END"
 
 LEGISLATURES_PUBLIEES = LEGISLATURES
 FIN_OUVERTE = "DATE '9999-12-31'"
@@ -85,9 +94,18 @@ def appliquer(ctx):
     ident_sen = vue_ou_vide(ctx, "senat_export__identite_source", {"uid": "VARCHAR", "feminin": "BOOLEAN"})
     senat_collecte = ctx.existe("senat_export__mandat") and ctx.un(
         "SELECT count(*) > 0 FROM senat_export__mandat")
+    pe_app = vue_ou_vide(ctx, "pe_eurodeputes__appartenance_pe", {
+        "personne": "VARCHAR", "appartenance": "VARCHAR", "organisation": "VARCHAR",
+        "classification": "VARCHAR", "role": "VARCHAR", "debut": "VARCHAR", "fin": "VARCHAR",
+        "represente": "VARCHAR", "prov_url": "VARCHAR"})
+    pe_grp = vue_ou_vide(ctx, "pe_eurodeputes__groupe_pe", {
+        "organisation": "VARCHAR", "sigle": "VARCHAR", "libelle": "VARCHAR", "version_de": "VARCHAR"})
+    pe_fiche = vue_ou_vide(ctx, "pe_eurodeputes__eurodepute", {"personne": "VARCHAR", "genre": "VARCHAR"})
+    pe_collecte = ctx.existe("pe_eurodeputes__eurodepute") and ctx.un(
+        "SELECT count(*) > 0 FROM pe_eurodeputes__eurodepute")
 
     ctx.x("""CREATE OR REPLACE TEMP TABLE _car_c AS
-        SELECT per, acteur, matricule_senat, sycomore, acteur_connu_an FROM candidat""")
+        SELECT per, acteur, matricule_senat, sycomore, acteur_connu_an, eurodepute FROM candidat""")
 
     # --- Assemblée : périodes en fonction et suspensions ----------------------------------
     ctx.x(f"""CREATE OR REPLACE TEMP TABLE _car_an AS
@@ -154,6 +172,37 @@ def appliquer(ctx):
         FROM {senat} m JOIN _car_c c ON m.acteur = 'senat:' || c.matricule_senat
         WHERE m.nature = 'appartenance' AND m.type_organe IN ('GRPPOL', 'GRPPOLNI')""")
 
+    # --- Parlement européen : mandats de député européen et groupe politique à la date ----------
+    ctx.x(f"""CREATE OR REPLACE TEMP TABLE _car_pe AS
+        SELECT DISTINCT c.per, a.personne AS acteur, a.appartenance || '#f' AS cle, a.appartenance AS mandat,
+               'en_fonction' AS etat, a.debut::DATE AS d0, coalesce(a.fin::DATE, {FIN_OUVERTE}) AS d1,
+               try_cast(replace(a.organisation, 'org/ep-', '') AS INTEGER) AS legislature_pe,
+               a.represente, a.prov_url AS source_url
+        FROM {pe_app} a JOIN _car_c c ON a.personne = c.eurodepute
+        WHERE a.role = 'MEMBER_PARLIAMENT' AND a.organisation LIKE 'org/ep-%' AND a.debut IS NOT NULL""")
+    # Un même groupe tenu sans interruption sous plusieurs rôles (membre, puis coprésident le
+    # lendemain) est une seule période : les périodes contiguës d'un même organe sont fusionnées.
+    ctx.x(f"""CREATE OR REPLACE TEMP TABLE _car_gpe AS
+        WITH a AS (
+            SELECT DISTINCT c.per, x.organisation AS groupe, x.debut::DATE AS g0,
+                   coalesce(x.fin::DATE, {FIN_OUVERTE}) AS g1
+            FROM {pe_app} x JOIN _car_c c ON x.personne = c.eurodepute
+            WHERE x.classification = 'EU_POLITICAL_GROUP' AND x.debut IS NOT NULL),
+        b AS (SELECT *, max(g1) OVER (PARTITION BY per, groupe ORDER BY g0, g1
+                                      ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS fin_avant
+              FROM a),
+        i AS (SELECT *, sum(CASE WHEN fin_avant IS NULL OR g0 > fin_avant + 1 THEN 1 ELSE 0 END)
+                            OVER (PARTITION BY per, groupe ORDER BY g0, g1) AS ilot
+              FROM b),
+        f AS (SELECT per, groupe, min(g0) AS g0, max(g1) AS g1 FROM i GROUP BY per, groupe, ilot)
+        SELECT f.per, f.g0, f.g1, f.groupe, g.sigle, g.libelle,
+               CASE WHEN g.version_de = 'org/NI' THEN 'non_inscrit'
+                    WHEN g.libelle IS NULL THEN 'non_etabli' ELSE 'groupe' END AS statut,
+               0 AS priorite
+        FROM f LEFT JOIN (SELECT organisation, any_value(sigle) AS sigle, any_value(libelle) AS libelle,
+                                 any_value(version_de) AS version_de FROM {pe_grp} GROUP BY 1) g
+          ON g.organisation = f.groupe""")
+
     ctx.ecrire("carriere", f"""
         WITH an AS (
             SELECT s.per, 'assemblee' AS institution, s.s0 AS d0, s.s1 AS d1,
@@ -207,13 +256,26 @@ def appliquer(ctx):
                          NULL::VARCHAR AS groupe_libelle, 'sans_objet' AS groupe_statut
                   FROM _car_sen_susp) s
             LEFT JOIN (SELECT uid, any_value(feminin) AS feminin FROM {ident_sen} GROUP BY 1) si
-              ON si.uid = s.acteur)
+              ON si.uid = s.acteur),
+        pe AS (
+            SELECT s.per, 'parlement_europeen', s.s0, s.s1,
+                   CASE WHEN f.genre = 'FEMALE' THEN 'Députée européenne' ELSE 'Député européen' END
+                   || CASE WHEN s.legislature_pe IS NOT NULL
+                           THEN ' · ' || {ORDINAL.format(n="s.legislature_pe")} || ' législature européenne' ELSE '' END
+                   || CASE WHEN s.represente IS NOT NULL AND s.represente <> 'FRA' THEN ' · ' || s.represente ELSE '' END,
+                   NULL::INTEGER, NULL, s.groupe, s.sigle, s.groupe_libelle,
+                   coalesce(s.groupe_statut, 'non_etabli'), NULL::INTEGER, NULL, NULL, NULL,
+                   'pe', s.etat, NULL, s.mandat, s.acteur, NULL, NULL, NULL, s.source_url
+            FROM {segments("_car_pe", "_car_gpe")} s
+            LEFT JOIN (SELECT personne, any_value(genre) AS genre FROM {pe_fiche} GROUP BY 1) f
+              ON f.personne = s.acteur)
         SELECT per, institution, strftime(d0, '%Y-%m-%d') AS debut,
                CASE WHEN d1 < {FIN_OUVERTE} THEN strftime(d1, '%Y-%m-%d') END AS fin,
                libelle, legislature, gouvernement, groupe, groupe_sigle, groupe_libelle, groupe_statut,
                siege, siege_date, raison_siege, lien, source, etat, qualite, mandat, acteur,
                circonscription, cause_fin, fin_raison, source_url
-        FROM (SELECT * FROM an UNION ALL SELECT * FROM gv UNION ALL SELECT * FROM sen)
+        FROM (SELECT * FROM an UNION ALL SELECT * FROM gv UNION ALL SELECT * FROM sen
+              UNION ALL SELECT * FROM pe)
         ORDER BY per, debut, institution""")
 
     # --- Couverture, candidat par candidat et institution par institution -------------------
@@ -234,6 +296,9 @@ def appliquer(ctx):
               WHEN 'senat' THEN CASE WHEN c.matricule_senat IS NULL THEN 'aucun_identifiant'
                                      WHEN NOT {str(bool(senat_collecte)).lower()} THEN 'non_collecte'
                                      WHEN n.lignes > 0 THEN 'complet' ELSE 'non_etabli' END
+              WHEN 'parlement_europeen' THEN CASE WHEN c.eurodepute IS NULL THEN 'aucun_identifiant'
+                                     WHEN NOT {str(bool(pe_collecte)).lower()} THEN 'non_collecte'
+                                     WHEN n.lignes > 0 THEN 'complet' ELSE 'non_etabli' END
               ELSE 'non_collecte' END AS statut,
             CASE i.institution
               WHEN 'assemblee' THEN CASE WHEN c.acteur IS NULL THEN 'Aucun identifiant de l''Assemblée déclaré : nos sources ne connaissent aucun mandat de député.'
@@ -249,7 +314,10 @@ def appliquer(ctx):
                                      WHEN NOT {str(bool(senat_collecte)).lower()} THEN 'Export du Sénat non collecté.'
                                      WHEN n.lignes > 0 THEN 'Mandats de sénateur de l''export du Sénat.'
                                      ELSE 'Matricule déclaré, aucun mandat dans l''export du Sénat.' END
-              WHEN 'parlement_europeen' THEN 'Parlement européen : non collecté dans l''essai.'
+              WHEN 'parlement_europeen' THEN CASE WHEN c.eurodepute IS NULL THEN 'Aucun identifiant de député européen déclaré par Wikidata : nos sources ne connaissent aucun mandat au Parlement européen.'
+                                     WHEN NOT {str(bool(pe_collecte)).lower()} THEN 'Portail du Parlement européen non collecté.'
+                                     WHEN n.lignes > 0 THEN 'Mandats de député européen du portail du Parlement européen, toutes législatures.'
+                                     ELSE 'Identifiant européen déclaré, aucun mandat lu dans le portail du Parlement européen.' END
               ELSE 'Mandats locaux : non collectés dans l''essai.' END AS detail
         FROM c CROSS JOIN i
         LEFT JOIN n ON n.per = c.per AND n.institution = i.institution
@@ -264,12 +332,15 @@ def appliquer(ctx):
     seg_grp = ctx.un("""SELECT count(*) FROM carriere WHERE institution IN ('assemblee', 'senat')
                         AND etat = 'en_fonction' AND groupe_statut <> 'non_etabli'""")
     syc = ctx.un("SELECT count(*) FROM _car_c WHERE sycomore IS NOT NULL")
-    for t in ("_car_c", "_car_an", "_car_gan", "_car_an_seg", "_car_sen", "_car_gsen", "_car_sen_susp"):
+    pe_per = ctx.un("SELECT count(DISTINCT per) FROM carriere WHERE institution = 'parlement_europeen'")
+    pe_ids = ctx.un("SELECT count(*) FROM _car_c WHERE eurodepute IS NOT NULL")
+    for t in ("_car_c", "_car_an", "_car_gan", "_car_an_seg", "_car_sen", "_car_gsen", "_car_sen_susp",
+              "_car_pe", "_car_gpe"):
         ctx.x(f"DROP TABLE IF EXISTS {t}")
     return {"candidats_avec_mandat_de_depute_depuis_2002": (an_, n),
             "candidats_avec_fonction_gouvernementale_depuis_2007": (gv, n),
             "mandats_de_senateur_lus" if senat_collecte else "senat_non_collecte": (sen_, sen_ids),
             "periode_avec_groupe_etabli": (seg_grp, seg),
             "mandats_anterieurs_a_2002_hors_source_sycomore_declare": (syc, n),
-            "parlement_europeen_non_collecte": (0, n),
+            "mandats_europeens_lus": (pe_per, pe_ids),
             "mandats_locaux_non_collectes": (0, n)}
