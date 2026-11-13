@@ -52,6 +52,14 @@ DISCRIMINANTS_A9 = ("institution", "nature", "date", "legislature", "role", "ann
                     "periode", "debut", "famille", "quoi")
 
 
+def _section_sans_paquet(section: str) -> str:
+    """`amendements-2013-12` → `amendements-2013` ; `paroles-textes-2017-s2-14` →
+    `paroles-textes-2017-s2`. Un numéro de paquet suit toujours une année ou un semestre : `votes-14`
+    (législature) n'est pas touché."""
+    m = re.fullmatch(r"(.*-\d{4}(?:-s\d)?)-\d+", section or "")
+    return m.group(1) if m else section
+
+
 def _vide(v) -> bool:
     return v is None or v == "" or v == [] or v == {}
 
@@ -317,11 +325,18 @@ class Controles:
         if non_expliques:
             self._signaler("C1", "Faits publiés perdus sans explication",
                            [f"{p[0]} / {p[1]} / {p[2]}: {p[3][:120]}" for p in non_expliques])
-        # C6 : une section qui tombe à zéro ou baisse fortement d'un coup.
-        avant = dict(((f, s), n) for f, s, n in con.execute(
-            f"SELECT fiche, section, count(*) FROM read_parquet('{faits_avant}') GROUP BY 1, 2").fetchall())
-        apres = dict(((f, s), n) for f, s, n in con.execute(
-            f"SELECT fiche, section, count(*) FROM read_parquet('{faits_apres}') GROUP BY 1, 2").fetchall())
+        # C6 : une section qui tombe à zéro ou baisse fortement d'un coup. Une section découpée en
+        # paquets (`amendements-2013` → `amendements-2013-1`, `-2`…, quand l'année grossit) est
+        # comptée avec ses paquets : sinon son nom d'origine « tombe à 0 » (essai du 13/11/2026,
+        # amendements de la XIVe retrouvés, #111).
+        def sections(fichier):
+            out: dict[tuple, int] = {}
+            for f, s, n in con.execute(f"SELECT fiche, section, count(*) FROM read_parquet('{fichier}') "
+                                       "GROUP BY 1, 2").fetchall():
+                k = (f, _section_sans_paquet(s))
+                out[k] = out.get(k, 0) + n
+            return out
+        avant, apres = sections(faits_avant), sections(faits_apres)
         chutes = [f"{f}/{s}: {n} → {apres.get((f, s), 0)}" for (f, s), n in avant.items()
                   if n >= 10 and apres.get((f, s), 0) < n * (1 - seuil_effondrement)
                   and f not in fiches_retirees]
