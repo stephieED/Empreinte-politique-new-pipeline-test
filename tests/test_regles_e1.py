@@ -32,7 +32,7 @@ from empreinte_src.lecture import COLONNES_PROVENANCE, Lecture
 from empreinte_src.liaison import Contexte, ordonner, relier
 from empreinte_src.regles import (r_appartenance, r_candidatures, r_carriere, r_composition,
                                   r_deputes, r_fonctions, r_gouvernements, r_hemicycle,
-                                  r_identite, r_legislatures)
+                                  r_identite, r_legislatures, r_mandat_local)
 from tests.test_lecteur_wp_candidatures import RETIREES
 
 EX = os.path.join(os.path.dirname(__file__), "extraits")
@@ -48,7 +48,7 @@ PAS = {
                "url": "http://exemple.invalid/export_sens.zip"}, "etalab-2.0"),
 }
 TOUTES = [r_legislatures, r_gouvernements, r_composition, r_appartenance, r_deputes, r_hemicycle,
-          r_candidatures, r_identite, r_carriere, r_fonctions]
+          r_candidatures, r_identite, r_mandat_local, r_carriere, r_fonctions]
 
 
 def _page_wp(dossier):

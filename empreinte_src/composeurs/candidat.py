@@ -70,10 +70,12 @@ PA_AMENDEMENTS, PA_SYCERON = "an-amendements-l17", "an-syceron-l17"
 PA_QUESTIONS = ("an-questions-ecrites-l17", "an-questions-gouvernement-l17", "an-questions-orales-l17")
 PA_WP, PA_WD, PA_SENAT = "wp-candidatures-2027", "wd-identifiants-parlementaires", "senat-export"
 PA_PE, PA_PE_VOTES = "pe-eurodeputes", "pe-votes"
+PA_RNE = "rne-cm"                  # répertoire national des élus (tous ses points : Licence Ouverte)
 DEBUT_VOTES_PE = "2019-07-02"      # portail du PE : votes nominatifs à partir de la 9e législature (Q3)
 
 # Statuts de couverture de R-CARRIERE → statuts servis (doc. 1, 1.5.5).
 STATUT_CARRIERE = {"complet": "complet", "relu_aucun": "relu_aucun", "non_collecte": "non_collecte",
+                   "partiel": "partiel",
                    "hors_source": "borne_historique", "aucun_identifiant": "hors_perimetre",
                    "identifiant_absent_de_la_source": "trou_source", "non_etabli": "non_relu"}
 INSTITUTIONS = ("assemblee", "assemblee_avant_2002", "gouvernement", "senat", "parlement_europeen",
@@ -274,6 +276,7 @@ def _commun(ctx, au) -> dict:
     for t in ("an_acteurs__mandat", "an_scrutins__scrutin", "an_dossiers__dossier",
               "an_amendements__amendement", "an_comptes_rendus__intervention", "an_questions__question",
               "senat_export__mandat", "wd_identifiants__identifiant_externe", "pe_eurodeputes__eurodepute", "pe_votes__vote_pe",
+              "rne_elus__mandat_local",
               "wp_candidatures__candidature"):
         if _vue(ctx, t):
             for p, l in ctx.x(f"SELECT DISTINCT prov_point, licence FROM {t} WHERE prov_point IS NOT NULL"):
@@ -504,7 +507,8 @@ def _carriere(ctx, f, c, commun):
         g = commun["gouvs"].get(l.get("gouvernement"))
         l["gouvernement_nom"] = g["nom"] if g else None
         l["licence"] = (lic_an if l.get("source") == "an" else commun["lic"].get(PA_PE)
-                        if l.get("source") == "pe" else commun["lic"].get(PA_SENAT))
+                        if l.get("source") == "pe" else commun["lic"].get(PA_RNE)
+                        if l.get("source") == "rne" else commun["lic"].get(PA_SENAT))
         if l["licence"]:
             f.licences.add(l["licence"])
         ecr_ids = {"acteur": "acteur", "mandat": "mandat", "organe": "groupe"}

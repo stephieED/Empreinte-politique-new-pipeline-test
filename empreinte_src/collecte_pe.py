@@ -5,9 +5,11 @@ portail du Parlement européen (`data.europarl.europa.eu/api/v2/`, CC BY 4.0 ; d
 Le portail ne dit pas qui est candidat ; Wikidata déclare l'identifiant de député européen d'une
 personne (P1186). Le relevé est donc fait de trois sortes de membres, tous gardés à l'octet :
 
-1. `wikidata-p1186` : la réponse de Wikidata à la question « quel identifiant européen pour
-   chacun des éléments de la liste des candidats ? » (décisions `candidature`, tous statuts :
-   les données d'un candidat retiré restent, cahier 4.1). Rien n'est rapproché par le nom ;
+1. `wikidata-p1186` : la réponse de Wikidata à la question « quel identifiant européen (P1186),
+   et quelle date de naissance (P569), pour chacun des éléments de la liste des candidats ? »
+   (décisions `candidature`, tous statuts : les données d'un candidat retiré restent, cahier
+   4.1). Rien n'est rapproché par le nom. La date de naissance sert au rattachement des mandats
+   locaux (décision Q34) pour les candidats que la grande requête Wikidata ne couvre pas ;
 2. `mep-<id>` : la fiche de chaque député européen ainsi déclaré (`meps/<id>`), avec ses
    mandats, ses groupes et ses fonctions datés ;
 3. `org-<id>` : chaque groupe politique européen cité par ces fiches (`corporate-bodies/<id>`),
@@ -54,9 +56,11 @@ def elements_de_la_liste(dossier_decisions: str) -> list[str]:
 
 
 def requete_p1186(elements: list[str]) -> str:
-    """Adresse de la requête SPARQL : identifiant européen (P1186) des éléments, résultat trié."""
-    q = ("SELECT ?item ?pe WHERE { VALUES ?item { " + " ".join(f"wd:{e}" for e in elements)
-         + " } ?item wdt:P1186 ?pe . } ORDER BY ?item ?pe")
+    """Adresse de la requête SPARQL : identifiant européen (P1186) et date de naissance (P569) des
+    éléments, résultat trié."""
+    q = ("SELECT ?item ?pe ?naissance WHERE { VALUES ?item { " + " ".join(f"wd:{e}" for e in elements)
+         + " } OPTIONAL { ?item wdt:P1186 ?pe . } OPTIONAL { ?item wdt:P569 ?naissance . } }"
+         + " ORDER BY ?item ?pe ?naissance")
     return f"{SPARQL}?format=json&query={urllib.parse.quote(q)}"
 
 
@@ -64,8 +68,11 @@ def identifiants_pe(octets: bytes) -> dict[str, list[str]]:
     """{élément: [identifiants européens]} lus dans la réponse SPARQL."""
     out: dict[str, list[str]] = {}
     for b in orjson.loads(octets)["results"]["bindings"]:
+        if "pe" not in b:
+            continue
         el = b["item"]["value"].rsplit("/", 1)[-1]
-        out.setdefault(el, []).append(b["pe"]["value"])
+        if b["pe"]["value"] not in out.get(el, []):
+            out.setdefault(el, []).append(b["pe"]["value"])
     return out
 
 

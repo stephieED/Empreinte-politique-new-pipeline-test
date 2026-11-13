@@ -4,7 +4,7 @@
 Trois sortes de membres :
 
 - `wikidata-p1186` : réponse SPARQL, une ligne par (élément Wikidata, identifiant européen) →
-  table `identifiant_pe` ;
+  table `identifiant_pe`, et par (élément, date de naissance) → `naissance_wikidata` ;
 - `mep-<id>` : fiche d'un député européen (`meps/<id>`) → `eurodepute` (identité telle que
   publiée) et `appartenance_pe` (une ligne par appartenance datée : mandat de député européen
   `MEMBER_PARLIAMENT` dans `org/ep-<n>`, groupe politique, commission, délégation, parti
@@ -20,11 +20,12 @@ import orjson
 import pyarrow as pa
 
 NOM = "pe_eurodeputes"
-VERSION = 1
+VERSION = 2
 TYPES = ("eurodeputes_pe",)
 S = pa.string()
 TABLES = {
     "identifiant_pe": pa.schema([("element", S), ("identifiant", S)]),
+    "naissance_wikidata": pa.schema([("element", S), ("naissance", S)]),
     "eurodepute": pa.schema([
         ("personne", S), ("libelle", S), ("prenom", S), ("nom", S), ("naissance", S),
         ("lieu_naissance", S), ("nationalite", S), ("genre", S)]),
@@ -50,10 +51,18 @@ def _suffixe(v):
 def lire(m):
     out = {t: [] for t in TABLES}
     if m.uid == "wikidata-p1186":
+        vus = set()
         for b in orjson.loads(m.octets)["results"]["bindings"]:
             el = b["item"]["value"].rsplit("/", 1)[-1]
-            out["identifiant_pe"].append({"element": el, "identifiant": b["pe"]["value"],
-                                          "prov_url": f"https://www.wikidata.org/wiki/{el}"})
+            url = f"https://www.wikidata.org/wiki/{el}"
+            if "pe" in b and (el, "pe", b["pe"]["value"]) not in vus:
+                vus.add((el, "pe", b["pe"]["value"]))
+                out["identifiant_pe"].append({"element": el, "identifiant": b["pe"]["value"], "prov_url": url})
+            n = (b.get("naissance") or {}).get("value")
+            # Une date « -… » (avant notre ère) ou partielle n'est pas une date de naissance utile.
+            if n and not n.startswith("-") and (el, "n", n[:10]) not in vus:
+                vus.add((el, "n", n[:10]))
+                out["naissance_wikidata"].append({"element": el, "naissance": n[:10], "prov_url": url})
     elif m.uid.startswith("mep-"):
         for p in _donnees(m.octets):
             pid = str(p.get("identifier") or _suffixe(p.get("id")))
@@ -86,6 +95,8 @@ def lire(m):
 
 
 EXPORT = {
+    "naissance_wikidata": {"type": "naissance_wikidata", "cle": ["element", "naissance"],
+                           "ids": {"autre": "element"}, "date": None},
     "identifiant_pe": {"type": "identifiant_pe_wikidata", "cle": ["element", "identifiant"],
                        "ids": {"autre": "element"}, "date": None},
     "eurodepute": {"type": "eurodepute", "cle": ["personne"], "ids": {"acteur": "personne"},
