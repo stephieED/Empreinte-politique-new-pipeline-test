@@ -592,6 +592,23 @@ Essai du lot 2 sur la branche (13/11/2026, 14 h 55 → 15 h 21 UTC, `points=pe-e
 publication autorisée, 72 fiches, 1 906 342 faits publiés (+24 002 : les votes de R. Glucksmann) ;
 premier remplissage 17 min 14 s (407 requêtes, 382 Mo) ; calcul 6 min 29 s.
 
+Essais de la branche des mandats locaux (13/11/2026) : 43456313070 (15 h 48 → 16 h 03 UTC,
+`rne-*` et `pe-eurodeputes`) : publication autorisée, +29 faits publiés (les périodes de mandat
+local) ; collecte des 11 fichiers d'élus 1 min 20 s (145 Mo) ; **23 clés d'export en double** :
+adjoints et maires délégués dont la même fonction est attribuée deux fois dans un mandat (Petit-Bourg,
+2020 puis 2021) ; corrigé en ajoutant la date de début de fonction à la clé. Puis 43458918104
+(16 h 04 → 16 h 38 UTC, branche à jour de `main`, élus, députés européens et votes européens :
+lots 2 et mandats locaux ensemble, avec les contrôles de valeurs de #62) : publication autorisée,
+72 fiches, 1 906 408 faits publiés, **0 clé en double** dans l'export ; collecte 17 min 25 s ;
+calcul 14 min 06 s (sans cache des faits lus, #92). Le site de cet essai a servi à régénérer le
+schéma des fichiers servis de #66 (sections `europe`, `europe-votes-<année>` des candidats).
+
+Fusionnées le 13/11/2026 : #50 (liste franceinfo) 12 h 40, #55 (mandats européens) 14 h 09,
+#64 (votes européens) 16 h 49, #91 (mandats locaux, décision Platret), puis #66 (schéma) ; ordre
+fixé avec la session « New pipeline issues » pour que C4 connaisse les sections nouvelles. La nuit
+du 13/11 fait le premier remplissage des décisions du Parlement européen (≈ 17 min, une fois) et
+le premier relevé des fichiers d'élus.
+
 ## Essais en parallèle ; un essai ne garde plus les faits lus (13/11/2026)
 
 Branche `etape-2-essais-paralleles`, proposée par la session candidats, validée par la propriétaire.
