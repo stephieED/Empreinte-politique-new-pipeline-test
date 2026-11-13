@@ -321,7 +321,7 @@ def test_menu_de_la_page_d_entree(doc):
                "Mise en œuvre", "Journal des changements", "Rapport de mesures",
                "Migration vers le vrai dépôt",
                "Le code (empreinte_src)",
-               "Annexes et archives", "Mesures de l&#39;étape 1"]
+               "Annexes et archives", "Analyse préliminaire des sources (réalisée le 04/11/2026)"]
     if os.path.isdir(LIVRABLES):
         # Les fichiers nouveaux (ici `zz-essai/`) se rangent dans la conception, après la table.
         attendu[8:8] = ["Autre", "Essai de liens"]
