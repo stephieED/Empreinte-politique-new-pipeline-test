@@ -495,3 +495,26 @@ def test_activite_en_partie_avant_le_perimetre_partiel(tmp_path):
     comptes = {(c["institution"], c["famille"]): c for c in f["en_bref"]["compteurs"]}
     assert comptes[("assemblee", "positions_textes")]["valeur"] == 0
     assert _lire(racine, "candidats/jean-ancien/votes.json.gz")["couverture"]["statut"] == "partiel"
+
+
+def test_questions_en_seance_reliees_au_compte_rendu(tmp_path):
+    """R-QAG (Q38) : une question au gouvernement reçoit sa séance, son lien et ses intervenants ;
+    une question écrite n'en a pas ; la phrase de couverture le compte."""
+    qg = {**TABLES["question_personne"][0], "question": "QANR5L17QG9", "type": "au_gouvernement",
+          "type_code": "QG", "date": "2025-02-12", "date_nature": "seance_de_la_reponse",
+          "date_reponse": "2025-02-12", "numero": "9"}
+    qrp = [{"question": "QANR5L17QG9", "statut": "appariee", "raison": None, "date_seance": "2025-02-11",
+            "source_url": CR + "CRSANR5L17S2025O1N098#197",
+            "intervenants": [{"acteur": "PA2", "qualite": "membre_du_gouvernement"}]}]
+    _, _, racine = _composer(tmp_path, question_personne=TABLES["question_personne"] + [qg],
+                             question_reponse_parole=qrp)
+    q = {r["question"]: r for r in _rows(_lire(racine, "candidats/alice-martin/questions.json.gz"))}
+    g = q["QANR5L17QG9"]
+    assert (g["statut_seance"], g["date_seance"], g["lien_seance"]) == (
+        "appariee", "2025-02-11", CR + "CRSANR5L17S2025O1N098#197")
+    assert g["intervenants"] == [{"acteur": "PA2", "qualite": "membre_du_gouvernement"}]
+    e = q["QANR5L17QE1"]
+    assert e["statut_seance"] is None and e["intervenants"] is None
+    f = _lire(racine, "candidats/alice-martin/fiche.json.gz")
+    cv = next(c for c in f["couverture"] if c["section"] == "questions")
+    assert "1 sur 1" in cv["detail"]

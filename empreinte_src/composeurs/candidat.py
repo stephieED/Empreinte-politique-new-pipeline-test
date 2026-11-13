@@ -1174,7 +1174,10 @@ def _entier(x):
 COLS_QUESTIONS = ["question", "type", "type_code", "numero", "legislature", "date", "date_nature",
                   "ministere", "ministere_libelle", "ministere_attributaire_libelle", "rubrique",
                   "tete_analyse", "analyses", "date_reponse", "cloture", "date_cloture", "acteur",
-                  "source_url", "raison_source_url", "source_point", "licence"]
+                  "source_url", "raison_source_url", "source_point", "licence",
+                  "statut_seance", "raison_seance", "date_seance", "lien_seance", "intervenants"]
+# Séance d'une question au gouvernement ou orale sans débat (R-QAG) : `statut_seance` appariee /
+# non_appariee (raison dans `raison_seance`), vide pour une question écrite.
 
 
 def _questions(ctx, f, acteur, perim, commun, idx) -> dict:
@@ -1184,7 +1187,11 @@ def _questions(ctx, f, acteur, perim, commun, idx) -> dict:
         f.section("questions", [], "question", couverture=_absente("questions", ["question_personne"], pts, au))
         return {"par_type": None, "statut": "non_relu"}
     legs = ", ".join(str(n) for n in LEGISLATURES)
-    rows = _lignes(ctx, f"""SELECT * FROM question_personne WHERE acteur = ?
+    qag = _vue(ctx, "question_reponse_parole")
+    jointure = ("""LEFT JOIN (SELECT question, statut AS statut_seance, raison AS raison_seance,
+                                    date_seance, source_url AS lien_seance, intervenants
+                             FROM question_reponse_parole) s USING (question)""" if qag else "")
+    rows = _lignes(ctx, f"""SELECT * FROM question_personne {jointure} WHERE acteur = ?
                             AND TRY_CAST(legislature AS INTEGER) IN ({legs})
                             ORDER BY date NULLS LAST, question""", [acteur]) if acteur else []
     for k, r in enumerate(rows):
@@ -1193,12 +1200,20 @@ def _questions(ctx, f, acteur, perim, commun, idx) -> dict:
         r["source_point"] = point(fam, leg) if fam and leg else None
         r["licence"] = commun["lic"].get(r["source_point"])
         r["analyses"] = list(r["analyses"]) if r["analyses"] is not None else None
+        r["intervenants"] = [dict(x) for x in r["intervenants"]] if r.get("intervenants") else None
         idx.ajouter("questions", k, r["tete_analyse"], r["analyses"], r["rubrique"])
     rep = sum(1 for r in rows if r["date_reponse"])
+    orales = [r for r in rows if r["type_code"] in ("QG", "QOSD")]
+    app = sum(1 for r in orales if r.get("statut_seance") == "appariee")
+    seance = (f" Une question posée en séance (au gouvernement ou orale sans débat) est reliée au compte "
+              f"rendu de sa séance quand l'auteur y prend la parole sous l'intitulé de la question, "
+              f"dans les dix jours qui précèdent sa publication au Journal officiel : {app} sur "
+              f"{len(orales)} ; les autres restent sans lien, la raison est dite." if qag else
+              " Le lien entre une question posée en séance et le compte rendu n'est pas établi (règle "
+              "R-QAG non appliquée).")
     phrase = (f"Questions écrites, au gouvernement et orales sans débat dont la personne est l'auteur "
               f"({len(rows)}), avec réponse publiée pour {rep}. Une question sans réponse n'a pas de date "
-              "de réponse. Chaque question renvoie à sa page sur le site de l'Assemblée. Le lien entre une question au gouvernement et sa prise de parole n'est pas encore "
-              "établi (règle R-QAG à venir).")
+              "de réponse. Chaque question renvoie à sa page sur le site de l'Assemblée." + seance)
     cv = _couv_activite("questions", perim, phrase, rep, len(rows), pts, au)
     f.section("questions", rows, "question", ids={"acteur": "acteur", "question": "question",
                                                   "organe": "ministere"},

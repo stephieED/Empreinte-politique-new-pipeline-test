@@ -23,6 +23,7 @@ par changement, la plus récente en bas.
 | 13/11/2026 | Mandats locaux des candidats réintégrés au périmètre de validation (« oui il faudrait les intégrer ») ; rattachement à instruire | 0 (fait), 1 (1.5.1, R-CARRIERE), 2 (sources) |
 | 13/11/2026 | Q34 : mandats locaux rattachés par nom, prénom et date de naissance exacte ; sans date connue, par décision | 1 (R-IDENTITE, R-CARRIERE), 5 (Q34) |
 | 13/11/2026 | Q35 : un mandat municipal 2020-2026 (fichier des sortants) se termine au 15/03/2026, date déduite et signalée ; avant 2020, borne historique | 1 (R-CARRIERE), 5 (Q35) |
+| 13/11/2026 | Q38 : R-QAG relie une question au gouvernement ou orale sans débat à sa séance par l'auteur **et** l'intitulé, dans les 10 jours qui précèdent sa publication au JO ; pas de repli sur l'auteur seul ; les questions orales sans débat comprises | 1 (1.5.4, R-QAG), 5 (Q38) |
 
 ## Corrections demandées par la commande de réalisation
 
