@@ -149,6 +149,33 @@ colonnes:
   - acteur
   - source_url
   - licence
+  candidats/europe:
+  - annee
+  - fichier
+  - lignes
+  - eurodepute
+  candidats/europe-votes-N:
+  - date
+  - heure
+  - vote
+  - numero
+  - seance
+  - libelle
+  - document_ref
+  - objet
+  - rubrique
+  - nature
+  - position
+  - raison_position
+  - intention
+  - resultat
+  - pour
+  - contre
+  - abstention
+  - methode
+  - eurodepute
+  - source_url
+  - licence
   candidats/exposes-N:
   - amendement
   - date_depot
