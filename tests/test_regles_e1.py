@@ -7,7 +7,12 @@ Sur des extraits réels lus par les vrais lecteurs :
 - `wp_candidatures_section1.json` (+ les deux lignes « Candidatures retirées » recopiées de la
   révision 241073157, comme dans `test_lecteur_wp_candidatures.py`) ;
 - `wd_identifiants_extrait.json`, `senat_export_extrait.zip` ;
-et sur de petites tables écrites ici quand l'extrait ne couvre pas le cas."""
+et sur de petites tables écrites ici quand l'extrait ne couvre pas le cas.
+
+Depuis le 13/11/2026, la liste des candidats est une décision `candidature` (recopiée de
+franceinfo). Sauf mention contraire, chaque test reçoit une décision faite de la liste de
+Wikipédia qu'il lit (`_decision_depuis_wp`) : article cité, ou nom écrit, sans élément inscrit,
+ce qui reproduit la chaîne de la version 1 (article -> élément -> identifiants)."""
 import os
 import random
 import shutil
@@ -15,6 +20,7 @@ import tempfile
 
 import orjson
 import pyarrow as pa
+import yaml
 import pyarrow.parquet as pq
 import pytest
 
@@ -73,10 +79,46 @@ def _z2_reel(d, sources=("amo", "wp", "wd", "senat")):
     return d / "z2"
 
 
-def _relier(z2, z3, registre_dir, mods=TOUTES, generation=1, registre=True):
+LISTE_URL = "https://exemple.invalid/liste-des-candidats"
+
+
+def _ecrire_decision(dossier, entrees, date="2026-11-13", nom_fichier=None):
+    """Une décision `candidature` (forme du fichier réel), toutes les clés dans chaque entrée."""
+    os.makedirs(dossier, exist_ok=True)
+    cles = ("nom", "statut", "parti", "wikidata", "article_frwiki", "nom_wikipedia",
+            "rattachement_par_nom", "note")
+    d = {"type": "candidature", "election": "presidentielle-2027", "date": date,
+         "source": "franceinfo", "source_url": LISTE_URL, "source_titre": "Liste d'essai",
+         "decisions": [{k: e.get(k, False if k == "rattachement_par_nom" else None) for k in cles}
+                       for e in entrees]}
+    with open(os.path.join(dossier, nom_fichier or f"{date}-liste.yaml"), "w") as f:
+        yaml.safe_dump(d, f, allow_unicode=True, sort_keys=False)
+    return dossier
+
+
+def _decision_depuis_wp(z2, dossier):
+    """La liste de Wikipédia lue dans z2 (état courant), recopiée en décision."""
+    p = os.path.join(str(z2), "wp_candidatures__candidature.parquet")
+    entrees = []
+    if os.path.exists(p):
+        t = pq.read_table(p).to_pylist()
+        der = {}
+        for r in t:
+            der[r["prov_uid"]] = max(der.get(r["prov_uid"], 0), r["prov_version"])
+        for r in t:
+            if r["prov_version"] == der[r["prov_uid"]] and r["prov_etat"] == "present":
+                entrees.append({"nom": r["nom"], "statut": r["statut"], "article_frwiki": r["article"],
+                                "nom_wikipedia": None if r["article"] else r["nom"]})
+    return _ecrire_decision(dossier, entrees)
+
+
+def _relier(z2, z3, registre_dir, mods=TOUTES, generation=1, registre=True, decisions=None):
     reg = RegistreIdentites(str(registre_dir)) if registre else None
-    ctx = Contexte(str(z2), str(z3), generation=generation, date_reference="2026-11-06",
-                   registre=reg)
+    if decisions is None:
+        decisions = _decision_depuis_wp(z2, os.path.join(str(z3) + "-decisions", "candidature"))
+        decisions = os.path.dirname(decisions)
+    ctx = Contexte(str(z2), str(z3), dossier_decisions=str(decisions), generation=generation,
+                   date_reference="2026-11-06", registre=reg)
     bilan = relier(ctx, ordonner(mods))
     return ctx, {b["regle"].split("@")[0]: b for b in bilan}, reg
 
@@ -150,7 +192,9 @@ def test_rattachement_par_le_titre_de_l_article(reel):
     re_ = c["Bruno Retailleau"]
     assert (re_["acteur"], re_["matricule_senat"], re_["sycomore"]) == ("PA2538", "04033B", "6689")
     assert re_["acteur_connu_an"] is True and re_["matricule_connu_senat"] is True
-    assert ru["source_url"].startswith("https://fr.wikipedia.org/w/index.php?title=")
+    assert ru["source_url"] == LISTE_URL
+    assert ru["date_declaration_source_url"].startswith("https://fr.wikipedia.org/w/index.php?title=")
+    assert (ru["origine_element"], ru["rattachement_par_nom"]) == ("lien_frwiki", False)
 
 
 def test_candidat_sans_mandat_zemmour(reel):
@@ -171,7 +215,7 @@ def test_candidat_sans_mandat_zemmour(reel):
 
 def test_candidat_sans_article_groupe_par_le_nom_sans_rapprochement(reel):
     ctx, _ = reel
-    rows = _lignes(ctx, "SELECT * FROM candidat WHERE rattachement = 'aucun_article'")
+    rows = _lignes(ctx, "SELECT * FROM candidat WHERE rattachement = 'aucun_element'")
     assert len(rows) == 5
     for r in rows:
         corr = _lignes(ctx, "SELECT source, uid FROM correspondance WHERE per = ?", [r["per"]])
@@ -224,14 +268,144 @@ def test_identifiant_partage_non_retenu(tmp_path):
 
 
 def test_plus_dans_la_liste_garde_non_publie(tmp_path):
+    """La liste la plus récente fait foi ; une personne d'une liste plus ancienne garde sa ligne."""
+    dec = tmp_path / "d" / "candidature"
+    _ecrire_decision(dec, [{"nom": "Ancien", "statut": "declaree", "article_frwiki": "Ancien"},
+                           {"nom": "Actuel", "statut": "declaree", "article_frwiki": "Actuel"}],
+                     date="2026-11-01")
+    _ecrire_decision(dec, [{"nom": "Actuel", "statut": "declaree", "article_frwiki": "Actuel"},
+                           {"nom": "Parti", "statut": "non_listee", "article_frwiki": "Parti"}],
+                     date="2026-11-13")
     z2 = tmp_path / "z2"
-    _ecrire(z2, wp_candidatures, "candidature", [
-        {**_cand("Ancien", "Ancien"), "_uid": "page", "_version": 1, "prov_etat": "present"},
-        {**_cand("Actuel", "Actuel"), "_uid": "page", "_version": 2}])
-    ctx, _, _ = _relier(z2, tmp_path / "z3", tmp_path / "r", [r_candidatures, r_identite])
+    os.makedirs(z2)
+    ctx, _, _ = _relier(z2, tmp_path / "z3", tmp_path / "r", [r_candidatures, r_identite],
+                        decisions=tmp_path / "d")
     c = {r["nom"]: r for r in _lignes(ctx, "SELECT * FROM candidat")}
     assert (c["Ancien"]["statut"], c["Ancien"]["publie"]) == ("non_listee", False)
+    assert (c["Parti"]["statut"], c["Parti"]["publie"]) == ("non_listee", False)
+    assert c["Parti"]["raison_non_publie"].startswith("n'est plus dans la liste des candidats")
     assert (c["Actuel"]["statut"], c["Actuel"]["publie"]) == ("declaree", True)
+    assert c["Actuel"]["date_liste"] == "2026-11-13"
+
+
+def test_element_inscrit_par_la_decision(tmp_path):
+    """L'élément Wikidata inscrit fait foi ; il est contrôlé contre l'article inscrit."""
+    z2 = tmp_path / "z2"
+    _ecrire(z2, wd_identifiants, "identifiant_externe",
+            _wd("Q3085763", "François Ruffin", an="PA722142")
+            + _wd("Q5829", "Jean-Luc Mélenchon", an="PA2150"))
+    dec = _ecrire_decision(tmp_path / "d" / "candidature", [
+        {"nom": "François Ruffin", "statut": "declaree", "wikidata": "Q3085763", "article_frwiki": "François Ruffin"},
+        {"nom": "Eric Zemmour", "statut": "declaree", "wikidata": "Q288477", "article_frwiki": "Éric Zemmour"},
+        {"nom": "Jean Lassalle", "statut": "declaree", "wikidata": "Q3173022", "article_frwiki": "Jean Lassalle",
+         "rattachement_par_nom": True},
+        {"nom": "Christian Collovati", "statut": "declaree"},
+        {"nom": "Mal Écrit", "statut": "declaree", "wikidata": "Q12x"},
+        {"nom": "Autre", "statut": "declaree", "wikidata": "Q5829", "article_frwiki": "Autre article"}])
+    ctx, bilan, _ = _relier(z2, tmp_path / "z3", tmp_path / "r", [r_candidatures, r_identite],
+                            decisions=tmp_path / "d")
+    c = {r["nom_liste"]: r for r in _lignes(ctx, "SELECT * FROM candidat")}
+    ru = c["François Ruffin"]
+    assert (ru["rattachement"], ru["acteur"], ru["origine_element"]) == ("wikidata", "PA722142", "decision")
+    z = c["Eric Zemmour"]
+    assert (z["rattachement"], z["element_wikidata"], z["acteur"]) == ("sans_identifiant_parlementaire", "Q288477", None)
+    assert (z["nom"], z["adresse"]) == ("Éric Zemmour", "eric-zemmour")      # nom de l'article, adresse inchangée
+    assert c["Jean Lassalle"]["rattachement_par_nom"] is True
+    co = c["Christian Collovati"]
+    assert (co["rattachement"], co["publie"], co["adresse"]) == ("aucun_element", True, "christian-collovati")
+    assert _lignes(ctx, "SELECT source, uid, statut FROM correspondance WHERE per = ?", [co["per"]]) == [
+        {"source": "liste-nom", "uid": "Christian Collovati", "statut": "validee"}]
+    assert (c["Mal Écrit"]["rattachement"], c["Mal Écrit"]["raison_rattachement"]) == (
+        "non_etabli", "élément Wikidata mal écrit dans la décision")
+    assert c["Autre"]["rattachement"] == "non_etabli" and c["Autre"]["acteur"] is None
+    assert c["Autre"]["raison_rattachement"].startswith("l'élément Wikidata inscrit a pour lien un autre article")
+    i = _lignes(ctx, "SELECT * FROM personne_identite WHERE per = ?", [co["per"]])[0]
+    assert (i["source_nom"], i["source_url"]) == ("franceinfo", LISTE_URL)
+    w = {r["source"]: r for r in _lignes(ctx, "SELECT * FROM correspondance WHERE per = ?", [ru["per"]])}
+    assert (w["wd"]["methode"], w["wd"]["statut"]) == ("element_inscrit_par_decision", "validee")
+    assert (w["an"]["methode"], w["an"]["statut"]) == ("identifiant_declare_wikidata_P4123", "automatique")
+    assert bilan["R-CANDIDATURES"]["couverture"]["element_wikidata_retenu"] == [3, 6]
+
+
+def test_numero_garde_quand_la_liste_change_de_source(tmp_path):
+    """Les numéros attribués sous la liste de Wikipédia (article, ou nom écrit) sont gardés quand
+    la décision inscrit en plus l'élément Wikidata."""
+    z2 = tmp_path / "z2"
+    _ecrire(z2, wp_candidatures, "candidature", [
+        _cand("Anasse Kazib", "Anasse Kazib", rang=0),
+        _cand("Benoît Mathieu", None, rang=1, personne_source="Benoît Mathieu")])
+    ctx1, _, reg = _relier(z2, tmp_path / "z3a", tmp_path / "r", [r_candidatures, r_identite])
+    avant = dict(ctx1.x("SELECT nom, per FROM candidat"))
+    reg.sauver()
+    _ecrire_decision(tmp_path / "d" / "candidature", [
+        {"nom": "Anasse Kazib", "statut": "declaree", "wikidata": "Q106405647", "article_frwiki": "Anasse Kazib"},
+        {"nom": "Benoît Mathieu", "statut": "declaree", "nom_wikipedia": "Benoît Mathieu"},
+        {"nom": "Joël Chevé", "statut": "declaree"}])
+    ctx2, _, _ = _relier(z2, tmp_path / "z3b", tmp_path / "r", [r_candidatures, r_identite],
+                         generation=2, decisions=tmp_path / "d")
+    apres = dict(ctx2.x("SELECT nom, per FROM candidat"))
+    assert apres["Anasse Kazib"] == avant["Anasse Kazib"]
+    assert apres["Benoît Mathieu"] == avant["Benoît Mathieu"]
+    assert apres["Joël Chevé"] not in avant.values()
+    k = _lignes(ctx2, "SELECT * FROM candidat WHERE nom = 'Anasse Kazib'")[0]
+    assert (k["element_wikidata"], k["statut_wikipedia"]) == ("Q106405647", "declaree")
+    c = _lignes(ctx2, "SELECT * FROM candidat WHERE nom = 'Joël Chevé'")[0]
+    assert (c["statut_wikipedia"], c["date_declaration"]) == (None, None)
+    assert c["date_declaration_raison"].startswith("non connue de nos sources : franceinfo ne date pas")
+
+
+def test_ecarts_avec_wikipedia(tmp_path):
+    z2 = tmp_path / "z2"
+    _ecrire(z2, wp_candidatures, "candidature", [
+        _cand("A", "Article A", rang=0), _cand("B", "Article B", rang=1),
+        _cand("C", "Article C", statut="retiree", rang=2), _cand("D", None, rang=3, personne_source="D"),
+        _cand("F", "Article F", rang=4)])
+    _ecrire_decision(tmp_path / "d" / "candidature", [
+        {"nom": "A", "statut": "declaree", "article_frwiki": "Article A"},
+        {"nom": "C", "statut": "declaree", "article_frwiki": "Article C"},
+        {"nom": "D", "statut": "declaree", "nom_wikipedia": "D"},
+        {"nom": "E", "statut": "declaree"},
+        {"nom": "F", "statut": "retiree", "article_frwiki": "Article F"}])
+    ctx, bilan, _ = _relier(z2, tmp_path / "z3", tmp_path / "r", [r_candidatures, r_identite],
+                            decisions=tmp_path / "d")
+    e = [(r["ecart"], r["nom"]) for r in _lignes(ctx, "SELECT * FROM candidature_ecart_wikipedia")]
+    assert e == [("declare_par_wikipedia_absent_de_la_liste", "B"),
+                 ("declare_selon_wikipedia_retire_dans_la_liste", "F"),
+                 ("retire_selon_wikipedia_declare_dans_la_liste", "C")]
+    # Un écart n'ajoute ni ne retire personne.
+    assert {r["nom"] for r in _lignes(ctx, "SELECT nom FROM candidat WHERE publie")} == {"A", "C", "D", "E"}
+    assert bilan["R-CANDIDATURES"]["couverture"]["ecarts_avec_wikipedia"] == [3, 4]
+
+
+def test_statut_inconnu_dans_la_decision_echoue(tmp_path):
+    _ecrire_decision(tmp_path / "d" / "candidature", [{"nom": "A", "statut": "declare"}])
+    os.makedirs(tmp_path / "z2")
+    with pytest.raises(ValueError, match="statut inconnu"):
+        _relier(tmp_path / "z2", tmp_path / "z3", tmp_path / "r", [r_candidatures, r_identite],
+                decisions=tmp_path / "d")
+
+
+def test_decision_reelle_de_la_liste_bien_formee():
+    """Le fichier recopié de franceinfo : statuts connus, éléments bien écrits et uniques, mêmes
+    clés partout (la table des décisions prend ses colonnes à la première entrée)."""
+    import glob
+    import re
+    racine = os.path.join(os.path.dirname(__file__), "..", "decisions", "candidature")
+    fichiers = sorted(glob.glob(os.path.join(racine, "*.yaml")))
+    assert fichiers
+    for f in fichiers:
+        d = yaml.safe_load(open(f))
+        assert d["type"] == "candidature" and d["election"] == "presidentielle-2027" and d["date"]
+        cles = {tuple(sorted(e)) for e in d["decisions"]}
+        assert len(cles) == 1
+        q = [e["wikidata"] for e in d["decisions"] if e["wikidata"]]
+        assert all(re.fullmatch(r"Q[1-9][0-9]*", x) for x in q) and len(q) == len(set(q))
+        assert {e["statut"] for e in d["decisions"]} <= set(r_candidatures.STATUTS)
+        noms = [e["nom"] for e in d["decisions"]]
+        assert len(noms) == len(set(noms))
+    d = yaml.safe_load(open(os.path.join(racine, "2026-11-13-franceinfo.yaml")))
+    assert sum(e["statut"] == "declaree" for e in d["decisions"]) == 37          # « 37 candidats au 13/11/2026 »
+    assert sum(e["statut"] == "retiree" for e in d["decisions"]) == 6
 
 
 def test_adresse_homonymes_annee_de_naissance(tmp_path):

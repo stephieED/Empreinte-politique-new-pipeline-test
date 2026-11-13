@@ -11,7 +11,7 @@ Une ligne par (population, personne, fiche attendue) :
 | `depute_ni` | député d'une législature publiée (XIVe à XVIIe) sans groupe pendant tout son mandat de cette législature | aucune (ses votes et amendements restent dans le corpus) |
 
 Une personne ne sort d'une population que pour une **raison établie** (`raison_sortie`) :
-candidature retirée à la source, ou décision `perimetre` (`personne` : `per:…` ou `PA…`,
+candidature retirée, candidat absent de la liste en vigueur (`non_listee`), ou décision `perimetre` (`personne` : `per:…` ou `PA…`,
 `population`, `motif`). Un candidat déclaré sans fiche pour une raison technique (adresse non
 établie) n'est **pas** sorti : C7 le nomme dans le refus, jusqu'à une décision.
 
@@ -20,15 +20,15 @@ sont attendus comme les autres : la fiche les sert ou les signale ; C7 vérifie 
 """
 
 NOM = "R-PERIMETRE"
-VERSION = 1
+VERSION = 2
 DEPEND = ("R-IDENTITE", "R-LIGNEE", "R-APPARTENANCE", "R-COMPOSITION", "R-GOUVERNEMENTS", "R-DEPUTES")
 SORTIES = ("population",)
 DESCRIPTION = (
     "Le site suit quatre populations : les candidats déclarés, les membres des groupes, les membres "
     "des gouvernements et les députés non inscrits. Pour chacune, nous calculons à partir des "
     "sources qui est attendu et sur quelle fiche. Une personne attendue ne sort du site que pour une "
-    "raison établie : candidature retirée, ou décision publiée. Sinon, la publication est refusée et "
-    "la personne est nommée.")
+    "raison établie : candidature retirée, candidat qui n'est plus dans la liste, ou décision "
+    "publiée. Sinon, la publication est refusée et la personne est nommée.")
 
 from ..perimetre import LEGISLATURES, LEGISLATURES_GOUVERNEMENTS
 
@@ -47,7 +47,8 @@ def appliquer(ctx):
             SELECT 'candidat' AS population, c.per, c.acteur,
                    CASE WHEN c.adresse IS NOT NULL THEN 'candidat/' || c.adresse END AS fiche_attendue,
                    NULL::VARCHAR AS section_attendue,
-                   CASE WHEN c.statut = 'retiree' THEN 'candidature_retiree_a_la_source' END AS raison_source,
+                   CASE c.statut WHEN 'retiree' THEN 'candidature_retiree_a_la_source'
+                                 WHEN 'non_listee' THEN 'absent_de_la_liste_des_candidats' END AS raison_source,
                    c.publie, c.raison_non_publie AS detail
             FROM candidat c
             UNION ALL

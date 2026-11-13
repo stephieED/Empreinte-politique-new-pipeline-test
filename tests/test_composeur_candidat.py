@@ -31,7 +31,13 @@ def _cand(per, nom, adresse, acteur=None, statut="declaree", ratt="wikidata", co
             "date_declaration_texte": "10/01/2026", "date_declaration_raison": None,
             "date_declaration_phrase": None, "sycomore": None,
             "acteur_connu_an": connu if acteur else None, "matricule_connu_senat": None,
-            "references": [], "revision": 1, "source_url": "https://fr.wikipedia.org/wiki/Liste",
+            "references": [], "revision_wikipedia": 1,
+            "date_declaration_source_url": "https://fr.wikipedia.org/w/index.php?title=Liste&oldid=1",
+            "statut_wikipedia": statut, "nom_liste": nom, "nom_wikipedia": None, "parti": "Parti d'essai",
+            "origine_element": "decision" if acteur else None, "rattachement_par_nom": False,
+            "source_liste": "franceinfo", "source_titre": "Liste d'essai", "date_liste": "2026-11-13",
+            "decision": "candidature/2026-11-13-franceinfo.yaml#0",
+            "source_url": "https://exemple.invalid/liste-des-candidats",
             "article_url": f"https://fr.wikipedia.org/wiki/{nom.replace(' ', '_')}",
             "element_url": None, "personne_source": nom}
 
@@ -296,6 +302,13 @@ def test_entete_identite_groupe_et_liens_publies(sortie):
     assert inst["parlement_europeen"] == inst["local"] == "non_collecte"
     for c in f["en_bref"]["compteurs"]:
         assert c["au"] == AU
+    # La liste vient de franceinfo (décision), la date de déclaration de Wikipédia, chacune sourcée.
+    k = f["candidature"]
+    assert (k["source"], k["source_url"], k["source_lue_le"]) == (
+        "franceinfo", "https://exemple.invalid/liste-des-candidats", "2026-11-13")
+    assert (k["date_declaration"], k["date_declaration_source"]) == ("2026-01-10", "wikipedia")
+    assert k["date_declaration_source_url"].startswith("https://fr.wikipedia.org/")
+    assert k["parti"] == "Parti d'essai" and k["rattachement_valide_par_decision"] is False
 
 
 def test_groupe_actuel_renvoie_a_sa_lignee(tmp_path):
