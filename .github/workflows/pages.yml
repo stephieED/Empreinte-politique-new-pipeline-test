@@ -1,6 +1,8 @@
 # Pages du dépôt d'essai (décision de la propriétaire du 13/11/2026 : « Doc + page minimale ») :
-# la documentation du code (pdoc) et la page minimale de contrôle avec les fichiers servis de la
-# dernière publication (release `publication`). Ce n'est pas le site : l'interface reste hors
+# la documentation du code (pdoc), la description du traitement tirée du code (`traitement/`,
+# issue #95), les documents de conception de `livrables/` convertis en HTML (`livrables/`, s'ils
+# sont dans le dépôt ; décision du 13/11/2026) et la page minimale de contrôle avec les fichiers
+# servis de la dernière publication (release `publication`). Ce n'est pas le site : l'interface reste hors
 # périmètre. Une seule tâche déploie, avec les seuls droits de Pages ; rien n'écrit dans le code,
 # l'entrepôt ni les releases.
 #
@@ -14,7 +16,8 @@ on:
     branches: [main]
   push:
     branches: [main]
-    paths: ["empreinte_src/**", "pyproject.toml", "pages/**", ".github/workflows/pages.yml"]
+    paths: ["empreinte_src/**", "pyproject.toml", "pages/**", "config/points_acces.yaml",
+            "livrables/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -34,6 +37,12 @@ jobs:
       - run: pip install -q -e ".[doc]"
       - name: Documentation du code (pdoc)
         run: pdoc ./empreinte_src --docformat markdown -o sortie-pages/doc
+      - name: Description du traitement, tirée du code (issue 95)
+        run: >-
+          python -m empreinte_src.methodologie sortie-pages/traitement
+          --commit "$GITHUB_SHA" --depot "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+      - name: Documents de conception (livrables/ en HTML ; rien s'il n'y en a pas)
+        run: python -m empreinte_src.pages_livrables livrables sortie-pages/livrables
       - name: Page minimale et fichiers servis de la dernière publication
         env:
           GH_TOKEN: ${{ github.token }}
@@ -60,7 +69,7 @@ jobs:
             echo ""
             echo "| Partie | Fichiers | Octets |"
             echo "| --- | ---: | ---: |"
-            for p in doc site; do
+            for p in doc traitement livrables site; do
               if [ -d "sortie-pages/$p" ]; then
                 echo "| $p | $(find "sortie-pages/$p" -type f | wc -l) | $(du -sb "sortie-pages/$p" | cut -f1) |"
               fi
