@@ -108,7 +108,8 @@ class Ecrivain:
     complet). Sans lui, ils restent dans `faits` (tests) jusqu'à `ecrire_faits_publies`."""
 
     def __init__(self, dossier: str, id_publication: str, pannes: dict[str, str] | None = None,
-                 chemin_faits: str | None = None, lot_faits: int = 50_000):
+                 chemin_faits: str | None = None, lot_faits: int = 50_000,
+                 releves_reussis: dict[str, str | None] | None = None):
         self.racine = os.path.join(dossier, "donnees", id_publication)
         self.id_publication = id_publication
         os.makedirs(self.racine, exist_ok=True)
@@ -121,6 +122,9 @@ class Ecrivain:
         self._ouvertes: list[Fiche] = []
         # {point d'accès en panne cette nuit: date du premier échec depuis le dernier relevé réussi}
         self.pannes = dict(pannes or {})
+        # {point d'accès en panne: date du dernier relevé complet réussi, ou None s'il n'y en a
+        # jamais eu} ; un point absent : inconnu (issue #33).
+        self.reussis = dict(releves_reussis or {})
 
     def marquer_panne(self, couverture: dict | None) -> dict | None:
         """Une couverture « complet » dont une source est en panne devient « panne », datée."""
@@ -130,12 +134,26 @@ class Ecrivain:
         if not touches:
             return couverture
         depuis = min((self.pannes[p] for p in touches if self.pannes[p]), default=None)
+        # Un point qui n'a jamais été relevé avec succès n'a pas de « dernier relevé complet » : ses
+        # données manquent, la section ne doit pas laisser croire qu'elle les montre (issue #33).
+        jamais = [p for p in touches if p in self.reussis and not self.reussis[p]]
+        autres = [p for p in touches if p not in jamais]
+        dates = [self.reussis[p] for p in autres if self.reussis.get(p)]
+        suites = []
+        if jamais:
+            suites.append("aucun relevé n'a encore abouti pour " + ", ".join(jamais) + " : "
+                          + ("ses" if len(jamais) == 1 else "leurs") + " données manquent ici")
+        if autres:
+            suites.append((f"pour {', '.join(autres)}, " if jamais else "")
+                          + "données du dernier relevé complet"
+                          + (f", du {min(dates)[:10]}" if len(dates) == len(autres) else ""))
         c = dict(couverture)
         c.update({"statut": "panne", "statut_sans_panne": c["statut"], "points_en_panne": touches,
                   "panne_depuis": depuis,
+                  "dernier_releve_reussi": {p: (self.reussis[p] or None) for p in touches if p in self.reussis},
                   "detail": (c.get("detail") or "") + (" " if c.get("detail") else "")
                   + f"Source en panne{' depuis le ' + depuis[:10] if depuis else ''} ("
-                  + ", ".join(touches) + ") : données du dernier relevé complet."})
+                  + ", ".join(touches) + ") : " + " ; ".join(suites) + "."})
         return c
 
     def fiche(self, type_fiche: str, adresse: str, titre: str) -> Fiche:

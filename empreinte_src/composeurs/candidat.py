@@ -51,6 +51,7 @@ import unicodedata
 from collections import defaultdict
 
 from ..perimetre import LEGISLATURES, LEGISLATURES_GOUVERNEMENTS, PAROLES_DEPUIS, plage, point, points
+from ..regles.r_continuite_scrutins import marquer as marquer_trous
 
 NOM = "candidat"
 VERSION = 1
@@ -111,6 +112,25 @@ def _couv(famille, statut, detail, numerateur=None, denominateur=None, points=()
         c["au"] = au
     c.update(extra)
     return c
+
+
+def points_de_l_annee(ctx, pts: list[str], annee) -> list[str]:
+    """Points d'accès d'une section limitée à une année : ceux des législatures qui recouvrent
+    cette année (un point sans législature est gardé). Sans cela, la section « amendements de
+    2026 » se disait en panne quand l'archive de la XVIe (close en 2024) ne venait pas (#33)."""
+    import re as _re
+    if not annee or not str(annee).isdigit() or not _vue(ctx, "legislature"):
+        return pts
+    if getattr(ctx, "_annees_legislatures", None) is None:
+        ctx._annees_legislatures = {int(n): ((d or "")[:4], (f or "9999")[:4])
+                                    for n, d, f in ctx.x("SELECT numero, debut, fin FROM legislature")}
+    out = []
+    for p in pts:
+        m = _re.search(r"-l(\d+)$", p)
+        per = ctx._annees_legislatures.get(int(m.group(1))) if m else None
+        if per is None or per[0] <= str(annee) <= per[1]:
+            out.append(p)
+    return out
 
 
 def _absente(famille, manque, points, au) -> dict:
@@ -789,7 +809,7 @@ def _amendements(ctx, f, acteur, perim, commun, idx) -> dict:
                   date="date_depot",
                   couverture=_couv("amendements", "complet", f"Exposés sommaires des amendements de "
                                    f"{annee} dont la personne est l'auteur principal, en texte.",
-                                   len(ls), len(ls), pts, au=au),
+                                   len(ls), len(ls), points_de_l_annee(ctx, pts, annee), au=au),
                   colonnes=["amendement", "date_depot", "expose", "acteur", "source_url", "licence"],
                   extra={"annee": annee})
     sans = sum(1 for l in lignes if l["raison_sans_expose"])
@@ -805,7 +825,8 @@ def _amendements(ctx, f, acteur, perim, commun, idx) -> dict:
                   date="date_depot",
                   couverture=_couv("amendements", "complet", f"Amendements déposés en {annee} dont la "
                                    "personne est l'auteur principal (copies dédoublonnées), avec l'adresse "
-                                   "de sa page sur le site de l'Assemblée.", len(ls), len(ls), pts, au=au),
+                                   "de sa page sur le site de l'Assemblée.", len(ls), len(ls),
+                                   points_de_l_annee(ctx, pts, annee), au=au),
                   colonnes=COLS_AMENDEMENTS,
                   extra={"annee": annee, "dossiers": titres, "ordre": "chronologique",
                          "aide_a_la_lecture": ["commission_libelle"]})
@@ -879,6 +900,18 @@ def _amendements(ctx, f, acteur, perim, commun, idx) -> dict:
 
 # -- ce qu'il a voté ------------------------------------------------------------------------
 
+def _trous_votes(ctx, acteur, depuis) -> list[dict]:
+    """Trous de l'archive des scrutins (R-CONTINUITE-SCRUTINS) pendant un mandat de député de la
+    personne, dans le périmètre lu : ses votes de ces jours-là manquent à la source."""
+    if not acteur or not _vue(ctx, "carriere"):
+        return []
+    from ..regles.r_continuite_scrutins import couvre, trous
+    iv = ctx.x("""SELECT debut, fin FROM carriere WHERE acteur = ? AND etat = 'en_fonction'
+                  AND institution = 'assemblee'""", [acteur])
+    return [t for t in trous(ctx)
+            if any(couvre(t, max(d0 or "", depuis or ""), d1) for d0, d1 in iv)]
+
+
 COLS_VOTES = ["scrutin", "numero", "date", "dossier", "titre_dossier", "intitule", "lecture", "position",
               "cause_non_votant", "par_delegation", "mise_au_point", "matiere", "matiere_statut",
               "matiere_libelle", "origine", "type_texte", "sort_final", "dossier_par_49_3", "groupe",
@@ -917,8 +950,9 @@ def _votes(ctx, f, acteur, perim, commun, idx) -> dict:
               f"({len(ens)} textes). Matière établie pour {mat}, sort final connu pour {sort}, période "
               f"établie pour {per}. Une personne non nommée n'a pas de position, jamais déduite. Un 49.3 "
               "n'est jamais une position : le texte est seulement signalé (dossier_par_49_3).")
-    cv = _couv_activite("votes", perim, phrase, mat, len(ens), pts, au,
-                        sort_final_connu=[sort, len(ens)], periode_etablie=[per, len(ens)])
+    ts = _trous_votes(ctx, acteur, commun["debut_activite"])
+    cv = marquer_trous(_couv_activite("votes", perim, phrase, mat, len(ens), pts, au,
+                                      sort_final_connu=[sort, len(ens)], periode_etablie=[per, len(ens)]), ts)
     extra = {"ordre": "chronologique ; regroupées par période (voir l'en-tête : periodes)",
              "aide_a_la_lecture": ["matiere_libelle"], "au": au,
              "note_49_3": "dossier_par_49_3 : le gouvernement a engagé sa responsabilité sur ce texte "
@@ -927,12 +961,13 @@ def _votes(ctx, f, acteur, perim, commun, idx) -> dict:
            "autre": "periode"}
     f.section("votes", ens, "position_texte", ids=ids, date="date", couverture=cv, colonnes=COLS_VOTES,
               extra=extra)
-    cvm = _couv_activite("votes", perim, f"Motions de censure mises aux voix ({len(mot)} positions "
-                         "nommées) : présentées à part, jamais comptées parmi les positions sur un texte.",
-                         len(mot), len(mot), points("scrutins"), au)
+    cvm = marquer_trous(_couv_activite("votes", perim, f"Motions de censure mises aux voix ({len(mot)} positions "
+                                       "nommées) : présentées à part, jamais comptées parmi les positions sur un texte.",
+                                       len(mot), len(mot), points("scrutins"), au), ts)
     f.section("votes-motions", mot, "position_motion", ids=ids, date="date", couverture=cvm,
               colonnes=COLS_VOTES + ["dossiers"], extra={"ordre": "chronologique", "au": au})
-    st = _st(perim)
+    # Un trou de la source pendant un mandat : un compte nul n'est pas servi (règle 5).
+    st = "trou_source" if ts and _st(perim) == "complet" else _st(perim)
     return {"positions": _compte(len(ens), st), "motions": _compte(len(mot), st), "statut": st}
 
 
@@ -1004,10 +1039,12 @@ def _divergences(ctx, f, acteur, perim, commun) -> dict:
               f"{contre} parce que la position publiée du groupe contredit son propre décompte : ces "
               "scrutins sont « non établis » (décision du 06/11/2026, Q30). Les divergences ne sont "
               "jamais comptées.")
+    ts = _trous_votes(ctx, acteur, commun["debut_activite"])
     cv = _couv_activite("divergences", perim, phrase, len(rows), total, pts, au,
                         ecartes=[{"raison": k, "positions": v} for k, v in sorted(exclus.items())],
                         regle_de_selection="5 conditions du cahier 4.2 ; groupes ayant une fiche : "
                                            f"ceux des lignées publiées ({plage()} législature)")
+    cv = marquer_trous(cv, ts)
     f.section("divergences", rows, "comparaison_groupe",
               ids={"acteur": "acteur", "scrutin": "scrutin", "dossier": "dossier", "organe": "groupe",
                    "autre": "periode"},
@@ -1017,7 +1054,7 @@ def _divergences(ctx, f, acteur, perim, commun) -> dict:
                                 "diffèrent ; aucun total n'est servi (cahier, règle 7)",
                      "groupe_divise": "les membres du groupe n'ont pas tous voté de même (sans seuil)",
                      "au": au})
-    st = _st(perim)
+    st = "trou_source" if ts and _st(perim) == "complet" else _st(perim)
     return {"comparaisons": _compte(len(rows), st), "statut": st}
 
 
@@ -1070,7 +1107,7 @@ def _paroles(ctx, f, acteur, perim, commun, idx) -> dict:
                   date="date",
                   couverture=_couv("paroles", "complet", f"Extraits ({LONGUEUR_EXTRAIT} premiers "
                                    f"caractères) et lien au paragraphe, semestre {sem}.", len(ls), len(ls),
-                                   pts, au=au),
+                                   points_de_l_annee(ctx, pts, str(sem)[:4]), au=au),
                   colonnes=COLS_EXTRAITS, extra={"semestre": sem, "ordre": "chronologique"})
     liste_sujets = sorted(sujets.values(), key=lambda s: s["sujet_id"])
     for s in liste_sujets:

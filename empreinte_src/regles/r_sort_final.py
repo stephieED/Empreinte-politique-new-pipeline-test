@@ -21,9 +21,9 @@ celle de la législature (R-ETAPE) et le sort celui du dossier."""
 from .r_etape import UNE_CHAMBRE, adoptions_definitives, decisions
 
 NOM = "R-SORT-FINAL"
-VERSION = 1
+VERSION = 2
 DEPEND = ("R-ETAPE", "R-49-3", "R-LOIS")
-SORTIES = ("etat_dossier",)
+SORTIES = ("etat_dossier", "conclusion_non_classee")
 DESCRIPTION = (
     "Le sort d'un texte est celui de son dossier, lu dans la conclusion des décisions des deux "
     "chambres : promulgué, adopté définitivement, retiré, rejeté, ou non connu. Il peut différer du "
@@ -78,6 +78,7 @@ def appliquer(ctx):
                         CASE WHEN p.dossier IS NULL THEN 'pas_de_texte_depose'
                              WHEN d.procedure_code = '7' AND dr.dossier IS NOT NULL THEN 'revision_constitutionnelle'
                              WHEN dr.dossier IS NULL THEN 'aucune_decision_en_seance'
+                             WHEN dr.issue IS NULL THEN 'conclusion_non_classee'
                              ELSE 'aucune_decision_finale' END END AS raison_sort,
                    a.motif AS motif_adoption, coalesce(a.acte, rj.acte) AS acte_decisif,
                    dr.conclusion AS derniere_conclusion, dr.date AS date_derniere_decision,
@@ -102,6 +103,15 @@ def appliquer(ctx):
                CASE WHEN et.dossier IS NULL THEN 'aucun_acte_date' ELSE et.raison END AS raison_etape,
                s.type_texte, s.procedure_code, s.titre, s.url_loi, s.source_url
         FROM s LEFT JOIN etape_dossier et USING (dossier)""")
+    # Codes de conclusion qu'aucune liste de R-ETAPE ne classe : nommés, jamais devinés (#45).
+    ctx.ecrire("conclusion_non_classee", f"""
+        SELECT conclusion_code, any_value(conclusion_libelle) AS conclusion_libelle,
+               count(*) AS decisions, count(DISTINCT dossier) AS dossiers,
+               list(DISTINCT dossier ORDER BY dossier)[:5] AS exemples,
+               count(DISTINCT dossier) FILTER (dossier IN (
+                   SELECT dossier FROM etat_dossier WHERE raison_sort = 'conclusion_non_classee'))
+                   AS dossiers_dont_c_est_la_derniere_decision
+        FROM ({decisions(ctx)}) WHERE issue IS NULL GROUP BY 1 ORDER BY 1""")
     n = ctx.un("SELECT count(DISTINCT dossier) FROM etat_dossier")
     connu = ctx.un("SELECT count(DISTINCT dossier) FROM etat_dossier WHERE sort <> 'non_connu'")
     prom = ctx.un("SELECT count(DISTINCT dossier) FROM etat_dossier WHERE sort = 'promulgue'")
