@@ -72,3 +72,26 @@ def test_point_collecte_mais_pas_encore_lu(tmp_path, extrait_agenda, pa_agenda):
     assert pq.read_table(tmp_path / "z2" / "an_agenda__reunion.parquet").num_rows == 0
     b = Lecture(e, str(tmp_path / "z2"), CFG).executer(an_agenda)
     assert b["lues"] == 6
+
+
+def test_cache_reconnait_une_version_a_son_empreinte(tmp_path, extrait_agenda, pa_agenda):
+    """Issue #44 : un essai a lu une version N que l'entrepôt n'a pas gardée ; la nuit suivante,
+    une autre version reçoit le même numéro N avec d'autres octets. Le cache, indexé par
+    (point, uid, version), la disait déjà lue ; indexé aussi par l'empreinte, il la relit."""
+    import pyarrow as pa
+    e = _ranger(tmp_path, pa_agenda, extrait_agenda)
+    z2 = tmp_path / "z2"
+    Lecture(e, str(z2), CFG).executer(an_agenda)
+    assert Lecture(e, str(z2), CFG).executer(an_agenda)["lues"] == 0      # déjà lues : rien
+    # Le cache garde les mêmes numéros de version, avec les empreintes d'autres octets.
+    p = z2 / "an_agenda__versions.parquet"
+    t = pq.read_table(p).to_pylist()
+    assert all(r["e"] for r in t)
+    autre = [{**r, "e": "autre-contenu"} if k == 0 else r for k, r in enumerate(t)]
+    pq.write_table(pa.Table.from_pylist(autre), p)
+    assert Lecture(e, str(z2), CFG).executer(an_agenda)["lues"] == 1      # celle-là est relue
+    # Un cache d'avant ce changement (sans empreinte) : tout est relu une fois.
+    pq.write_table(pa.Table.from_pylist([{k: v for k, v in r.items() if k != "e"} for r in t]), p)
+    assert Lecture(e, str(z2), CFG).executer(an_agenda)["lues"] == 6
+    rows = pq.read_table(z2 / "an_agenda__reunion.parquet").to_pylist()
+    assert len(rows) == 6                                                  # pas de doublon

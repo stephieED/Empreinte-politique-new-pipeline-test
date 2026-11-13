@@ -123,3 +123,34 @@ def test_extraction_et_texte(lus):
     textes = [p["texte"] for p in par.values() if p["texte"]]
     assert any("\n" in t for t in textes)                     # <br/> → saut de ligne
     assert not any(t != t.strip() or "  " in t for t in textes)   # mise en forme XML ôtée
+
+
+def test_paragraphe_publie_deux_fois_sous_le_meme_identifiant(tmp_path):
+    """#30 : 370 comptes rendus de la XVe publient deux fois la fin de séance sous le même
+    `id_syceron`. Le second a l'occurrence 1 et sa clé de fait finit par `#1` ; les autres clés
+    ne changent pas."""
+    import re
+    with zipfile.ZipFile(EXTRAIT) as z:
+        n = z.namelist()[0]
+        xml = z.read(n)
+    p = re.search(rb"<paragraphe .*?</paragraphe>", xml, re.S)
+    double = xml[:p.end()] + p.group(0) + xml[p.end():]
+    chemin = tmp_path / "double.zip"
+    with zipfile.ZipFile(chemin, "w") as z:
+        z.writestr(n, double)
+    r = an_comptes_rendus.lire(MembreLu("an-syceron-l17", "an", "comptes_rendus", "x", n, 1, "x",
+                                        double, "etalab-2.0"))["intervention"]
+    ids = re.search(rb'id_syceron="([^"]+)"', p.group(0)).group(1).decode()
+    assert [x["occurrence"] for x in r if x["id_syceron"] == ids] == [0, 1]
+    assert all(x["occurrence"] == 0 for x in r if x["id_syceron"] != ids)
+
+    e = Entrepot(str(tmp_path / "e"))
+    e.versionner(PA, f"R{e.generation}", depaqueter(str(chemin), "zip"), complet=True)
+    e.clore("test")
+    Lecture(Entrepot(str(tmp_path / "e")), str(tmp_path / "z2"), CFG).executer(an_comptes_rendus)
+    res = exporter(str(tmp_path / "z2"), [an_comptes_rendus], str(tmp_path / "export"))
+    assert res["cles_en_double"] == 0
+    cles = [c for c in pq.read_table(tmp_path / "export" / "faits.parquet", columns=["cle_fait"])
+            .column("cle_fait").to_pylist() if f"|{ids}" in c]
+    cr = cles[0].split("|")[1]
+    assert sorted(cles) == [f"intervention|{cr}|{ids}", f"intervention|{cr}|{ids}#1"]

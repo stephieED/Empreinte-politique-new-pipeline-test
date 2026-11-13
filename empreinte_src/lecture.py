@@ -146,11 +146,20 @@ class Lecture:
         return os.path.join(self.dossier, f"{lecteur.NOM}__{table}.parquet")
 
     def _cache(self, lecteur) -> set:
-        """Versions (point, uid, version) déjà lues par cette version du lecteur."""
+        """Versions (point, uid, version, empreinte) déjà lues par cette version du lecteur.
+
+        L'empreinte en fait partie (issue #44) : le numéro de version ne dépend pas du contenu (le
+        précédent plus un). Un essai, ou une nuit dont l'écriture a échoué, lit une version N que
+        l'entrepôt ne garde pas ; la nuit suivante, une autre version reçoit le même numéro N avec
+        d'autres octets. Sans l'empreinte, le cache la disait déjà lue. Un cache d'avant ce
+        changement (sans empreinte) ne reconnaît rien : tout est relu une fois."""
         p = os.path.join(self.dossier, f"{lecteur.NOM}__versions.parquet")
         if not os.path.exists(p):
             return set()
-        return {(r["p"], r["u"], r["n"]) for r in pq.read_table(p).to_pylist()
+        t = pq.read_table(p)
+        if "e" not in t.column_names:
+            return set()
+        return {(r["p"], r["u"], r["n"], r["e"]) for r in t.to_pylist()
                 if r["lecteur_version"] == lecteur.VERSION}
 
     def executer(self, mod, points: list[str] | None = None, limite: int | None = None) -> dict:
@@ -164,7 +173,7 @@ class Lecture:
         if limite:
             versions = versions[:limite]
         deja = self._cache(mod)
-        cle = lambda r: (r["point_acces"], r["uid"], r["version"])
+        cle = lambda r: (r["point_acces"], r["uid"], r["version"], r["empreinte"])
         a_lire = [r for r in versions if cle(r) not in deja]
         tmp = {t: self._chemin(mod, t) + ".tmp" for t in mod.TABLES}
         schemas = {t: schema_complet(mod.TABLES[t]) for t in mod.TABLES}
@@ -241,7 +250,7 @@ class Lecture:
                                                                  ("n", pa.int32())])))
         # Un lecteur qui lit un gros membre par lots (archive de la XIVe en un fichier) a pu écrire
         # des lots avant de tomber en erreur : ces lignes partielles sont retirées.
-        con.register("ill", pa.Table.from_pylist([{"p": p_, "u": u, "n": n} for p_, u, n in rates],
+        con.register("ill", pa.Table.from_pylist([{"p": p_, "u": u, "n": n} for p_, u, n, _ in rates],
                                                  schema=pa.schema([("p", pa.string()), ("u", pa.string()),
                                                                    ("n", pa.int32())])))
         lignes = {}
@@ -266,9 +275,9 @@ class Lecture:
             lignes[t] = pq.ParquetFile(final).metadata.num_rows
         con.close()
         lues = sorted((deja | {cle(r) for r in a_lire}) - rates)
-        self.illisibles |= rates
-        pq.write_table(pa.Table.from_pylist([{"p": p_, "u": u, "n": n, "lecteur_version": mod.VERSION}
-                                             for (p_, u, n) in lues]),
+        self.illisibles |= {x[:3] for x in rates}
+        pq.write_table(pa.Table.from_pylist([{"p": p_, "u": u, "n": n, "e": e_, "lecteur_version": mod.VERSION}
+                                             for (p_, u, n, e_) in lues]),
                        os.path.join(self.dossier, f"{mod.NOM}__versions.parquet"))
         b = {"lecteur": f"{mod.NOM}@{mod.VERSION}", "versions": len(versions),
              "lues": len(a_lire), "illisibles": illisibles, "exemples_illisibles": exemples,

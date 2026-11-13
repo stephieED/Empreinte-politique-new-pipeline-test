@@ -17,6 +17,29 @@ jobs:
       - run: pip install -q -e ".[test]"
       - run: python -m pytest -q
 
+  workflows:
+    # Le shell écrit dans les workflows est vérifié (issue #47) : actionlint lit les workflows et
+    # passe chaque bloc `run:` à shellcheck (installé sur ubuntu-latest). Une continuation `\`
+    # suivie d'une espace ou d'un commentaire, une variable non citée, une expression `${{ }}`
+    # recopiée dans un script : la commande serait coupée ou détournée sans que rien ne le dise.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: actionlint et shellcheck
+        env:
+          V: "1.7.7"      # version épinglée (19/01/2025) ; archive vérifiée par les empreintes publiées avec elle
+        run: |
+          set -euo pipefail
+          base="https://github.com/rhysd/actionlint/releases/download/v${V}"
+          curl -fsSLO "$base/actionlint_${V}_linux_amd64.tar.gz"
+          curl -fsSLO "$base/actionlint_${V}_checksums.txt"
+          grep " actionlint_${V}_linux_amd64.tar.gz\$" "actionlint_${V}_checksums.txt" | sha256sum -c -
+          tar xzf "actionlint_${V}_linux_amd64.tar.gz" actionlint
+          shellcheck --version | head -2
+          ./actionlint -color
+
   documentation:
     # Documentation du code, tirée des docstrings par pdoc ; déposée comme artefact (pas de
     # déploiement sur le dépôt d'essai).

@@ -23,8 +23,12 @@ on:
 permissions:
   contents: read
 
+# Une file pour la nuit et les mises à jour qui écrivent (`quotidien`, `complet`) ; chaque essai a
+# la sienne et part tout de suite (13/11/2026) : il n'écrit rien, et six essais s'attendaient les
+# uns les autres. Un essai ne doit pas déborder sur la nuit (20 h 30 UTC) : il lirait l'entrepôt
+# pendant qu'elle l'écrit (faux échec possible, jamais de publication abîmée).
 concurrency:
-  group: mise-a-jour
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'essai' && format('essai-{0}', github.run_id) || 'mise-a-jour' }}
   cancel-in-progress: false
 
 env:
@@ -61,15 +65,15 @@ jobs:
             FAIRE=$(python -m empreinte_src.planification --depot "$GITHUB_REPOSITORY")
           fi
           # La nuit est décidée avant le rattrapage : une étape accessoire ne doit pas l'empêcher (#41).
-          echo "faire=$FAIRE" >> "$GITHUB_OUTPUT"
-          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
-          echo "points=$POINTS" >> "$GITHUB_OUTPUT"
+          { echo "faire=$FAIRE"; echo "mode=$MODE"; echo "points=$POINTS"; } >> "$GITHUB_OUTPUT"
           # Une erreur de l'API rend {"erreur": …} : la nuit continue sans rattrapage, l'erreur va au rapport.
           R=$(python -m empreinte_src.rattrapage --depot "$GITHUB_REPOSITORY" --run-actuel "$GITHUB_RUN_ID" || echo '{"erreur": "rattrapage : sortie en erreur"}')
           echo "Rattrapage : ${R}"
-          echo "rattrapage_run=$(echo "$R" | python -c 'import json,sys; print(json.load(sys.stdin).get("run",""))')" >> "$GITHUB_OUTPUT"
-          echo "rattrapage_nom=$(echo "$R" | python -c 'import json,sys; print(json.load(sys.stdin).get("nom",""))')" >> "$GITHUB_OUTPUT"
-          echo "rattrapage_erreur=$(echo "$R" | python -c 'import json,sys; print(json.load(sys.stdin).get("erreur","").replace(chr(10)," "))')" >> "$GITHUB_OUTPUT"
+          {
+            echo "rattrapage_run=$(echo "$R" | python -c 'import json,sys; print(json.load(sys.stdin).get("run",""))')"
+            echo "rattrapage_nom=$(echo "$R" | python -c 'import json,sys; print(json.load(sys.stdin).get("nom",""))')"
+            echo "rattrapage_erreur=$(echo "$R" | python -c 'import json,sys; print(json.load(sys.stdin).get("erreur","").replace(chr(10)," "))')"
+          } >> "$GITHUB_OUTPUT"
 
   collecter:
     needs: preparer
@@ -151,7 +155,7 @@ jobs:
           key: entrepot-${{ github.run_id }}
 
   calculer:
-    needs: [collecter]
+    needs: [preparer, collecter]
     runs-on: ubuntu-latest
     timeout-minutes: 330
     permissions:
@@ -193,11 +197,14 @@ jobs:
           /usr/bin/time -v -o sortie/time-calculer.txt \
             empreinte calculer --entrepot entrepot --z2 z2 --z3 z3 --decisions decisions \
               --sortie sortie --rapport sortie/rapport.json \
-              --faits-precedents "$(ls precedent/faits-publies-g*.parquet 2>/dev/null | head -1)"
+              --faits-precedents "$(find precedent -maxdepth 1 -name 'faits-publies-g*.parquet' 2>/dev/null | head -1)"
           # Durée seulement : le pic de `time -v` ne vaut que pour la dernière étape (le traitement
           # remet le pic à zéro à chaque étape) ; le vrai pic est imprimé par la commande.
           grep -E "Elapsed" sortie/time-calculer.txt || true
       - name: Garder les faits lus
+        # Pas pour un essai : ses faits sont lus avec le code de sa branche, et la nuit reprend le
+        # cache le plus récent (issue #44, seconde moitié).
+        if: needs.preparer.outputs.mode != 'essai'
         uses: actions/cache/save@v4
         with:
           path: z2
