@@ -754,3 +754,15 @@ Branche `etape-2-restes-41-44`. Les issues #41, #42 et #44 ont été rouvertes �
 | --- | --- | --- |
 | `planification` : trois essais ; si le manifeste reste illisible, la nuit se fait (`true`), l'erreur au journal de la tâche ; le workflow retombe aussi sur `true` | #41 : sur une nuit planifiée, la planification appelle l'API avant d'écrire `faire` ; une erreur y supprimait la nuit et l'alerte. Au pis, le second déclenchement refait une nuit déjà faite | 2 (2.3) |
 | Lecture : seules les versions encore portées par l'entrepôt restent inscrites comme lues | #44 : une version sortie de l'entrepôt perd ses lignes mais restait « lue » ; revenue avec les mêmes octets, elle n'aurait plus aucun fait (déduit du code, non observé). Le second point de la réouverture (« les essais sur `main` sauvent toujours le cache ») ne tient pas : essai sur `main` 43467867327 du 13/11, étape « Garder les faits lus » sautée, aucun cache `z2-` | 2 (2.5) |
+
+## A9 : un compteur à 0 toujours signalé, identités partagées appariées (13/11/2026, soir)
+
+Branche `etape-2-a9-compteurs`, issue #42 rouverte, décision Q35 révisée (« Nombre à 0 : toujours »).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Un nombre qui passe à 0 ou à rien est signalé même seul ; le seuil (1 % ou 50) ne vaut plus que pour les autres champs vidés | relecture du 13/11 : `positions_textes` d'un candidat, 165 → 0 (1 fait sur 638), ne déclenchait rien ; c'est le cas même de l'issue | 2 (2.8.2 A9) |
+| Plusieurs faits sous une même identité s'apparient par les champs discriminants de leur valeur (`institution`, `date`, `legislature`, `role`…) ; seuls les doublons restants sont écartés | 203 des 638 `compte_candidat` partageaient leur identité (un compte par institution) : `mandats` 6 → 0 passait inaperçu | — |
+| Connexion DuckDB de A9 sous la limite de mémoire du traitement ; extraction des discriminants pour les seules identités partagées | première version tuée en local (mémoire) ; mesurée ensuite : 41 s, 2,2 Go, g10 contre `main` du 13/11 : mêmes 3 signalements que l'après-midi | 4 |
+
+Restent hors de A9 : les faits sans identifiant (94 `actes_compte`) et `parole_sujet`, dont le numéro d'ordre se décale.
