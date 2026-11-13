@@ -30,8 +30,8 @@ Sénat. Rattachements :
 **Wikipédia** (article « Candidatures à l'élection présidentielle française de 2027 ») reste lu,
 pour deux usages : la date de déclaration (la ligne qui cite le même article, ou à défaut le même
 nom écrit que celui inscrit dans `nom_wikipedia`), et un **détecteur** : un candidat que
-Wikipédia dit déclaré et que la liste ne cite pas, ou que la liste dit déclaré et Wikipédia
-retiré, est un écart (table `candidature_ecart_wikipedia`, avertissement A9). L'écart n'ajoute ni
+Wikipédia dit déclaré et que la liste ne cite pas ou dit retiré, ou que la liste dit déclaré et
+Wikipédia retiré, est un écart (table `candidature_ecart_wikipedia`, avertissement A9). L'écart n'ajoute ni
 ne retire personne : seule une nouvelle décision le fait.
 """
 
@@ -261,11 +261,13 @@ def appliquer(ctx):
               ON (w.titre IS NOT NULL AND c.article = w.titre)
               OR (w.titre IS NULL AND c.article IS NULL AND c.nom_wikipedia = w.nom))
         SELECT CASE WHEN statut_liste IS NULL THEN 'declare_par_wikipedia_absent_de_la_liste'
+                    WHEN statut_wp = 'declaree' THEN 'declare_selon_wikipedia_retire_dans_la_liste'
                     ELSE 'retire_selon_wikipedia_declare_dans_la_liste' END AS ecart,
                coalesce(nom_liste, nom_wp) AS nom, nom_wp AS nom_wikipedia, titre AS article_frwiki,
                statut_wp AS statut_wikipedia, statut_liste
         FROM lies
         WHERE (statut_wp = 'declaree' AND statut_liste IS NULL)
+           OR (statut_wp = 'declaree' AND statut_liste = 'retiree')
            OR (statut_wp = 'retiree' AND statut_liste = 'declaree')
         ORDER BY 1, 2""")
 

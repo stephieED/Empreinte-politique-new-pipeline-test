@@ -459,6 +459,8 @@ class Controles:
         if self._a("candidature_ecart_wikipedia"):
             libelle = {"declare_par_wikipedia_absent_de_la_liste":
                            "déclaré selon Wikipédia, absent de la liste en vigueur",
+                       "declare_selon_wikipedia_retire_dans_la_liste":
+                           "déclaré selon Wikipédia, retiré dans la liste en vigueur",
                        "retire_selon_wikipedia_declare_dans_la_liste":
                            "retiré selon Wikipédia, déclaré dans la liste en vigueur"}
             objets += [f"{nom}" + (f" ([[{art}]])" if art else "") + f" : {libelle.get(e, e)}"

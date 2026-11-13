@@ -358,20 +358,23 @@ def test_ecarts_avec_wikipedia(tmp_path):
     z2 = tmp_path / "z2"
     _ecrire(z2, wp_candidatures, "candidature", [
         _cand("A", "Article A", rang=0), _cand("B", "Article B", rang=1),
-        _cand("C", "Article C", statut="retiree", rang=2), _cand("D", None, rang=3, personne_source="D")])
+        _cand("C", "Article C", statut="retiree", rang=2), _cand("D", None, rang=3, personne_source="D"),
+        _cand("F", "Article F", rang=4)])
     _ecrire_decision(tmp_path / "d" / "candidature", [
         {"nom": "A", "statut": "declaree", "article_frwiki": "Article A"},
         {"nom": "C", "statut": "declaree", "article_frwiki": "Article C"},
         {"nom": "D", "statut": "declaree", "nom_wikipedia": "D"},
-        {"nom": "E", "statut": "declaree"}])
+        {"nom": "E", "statut": "declaree"},
+        {"nom": "F", "statut": "retiree", "article_frwiki": "Article F"}])
     ctx, bilan, _ = _relier(z2, tmp_path / "z3", tmp_path / "r", [r_candidatures, r_identite],
                             decisions=tmp_path / "d")
     e = [(r["ecart"], r["nom"]) for r in _lignes(ctx, "SELECT * FROM candidature_ecart_wikipedia")]
     assert e == [("declare_par_wikipedia_absent_de_la_liste", "B"),
+                 ("declare_selon_wikipedia_retire_dans_la_liste", "F"),
                  ("retire_selon_wikipedia_declare_dans_la_liste", "C")]
     # Un écart n'ajoute ni ne retire personne.
     assert {r["nom"] for r in _lignes(ctx, "SELECT nom FROM candidat WHERE publie")} == {"A", "C", "D", "E"}
-    assert bilan["R-CANDIDATURES"]["couverture"]["ecarts_avec_wikipedia"] == [2, 3]
+    assert bilan["R-CANDIDATURES"]["couverture"]["ecarts_avec_wikipedia"] == [3, 4]
 
 
 def test_statut_inconnu_dans_la_decision_echoue(tmp_path):
