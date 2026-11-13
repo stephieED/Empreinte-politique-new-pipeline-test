@@ -100,11 +100,14 @@ def verifier(con, generation: int, recuperer, nb_scrutins: int = 20, legislature
 
 
 def recuperateur(user_agent: str, delai_s: float = 20.0):
+    """Rend une fonction `recuperer(url)` qui lit une page avec une session HTTP (en-tête
+    `User-Agent` donné, délai d'attente de `delai_s` secondes)."""
     import requests
     session = requests.Session()
     session.headers["User-Agent"] = user_agent
 
     def recuperer(url):
+        """Rend le texte de la page `url`, ou `None` si la réponse n'est pas un 200 ou est vide."""
         r = session.get(url, timeout=delai_s)
         return r.text if r.status_code == 200 and r.text else None
     return recuperer

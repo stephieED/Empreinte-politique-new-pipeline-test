@@ -42,10 +42,17 @@ class RegistreModifie(Exception):
 
 
 def per(n: int) -> str:
+    """Rend l'identifiant interne de personne de numéro `n`, sur six chiffres : `per(7)` donne
+    `per:000007`."""
     return f"per:{n:06d}"
 
 
 class RegistreIdentites:
+    """Registre des identités de personnes (`per:NNNNNN`), ouvert sur le dossier `registres/` de
+    l'entrepôt `dossier` (voir la description du module).
+
+    À l'ouverture, il lit les attributions, les fusions et le compteur s'ils existent (sinon il part
+    de zéro). `attribuer` et `separer` le complètent en mémoire ; rien n'est écrit avant `sauver`."""
     PREFIXE = "per"
     FICHIERS = {"attribution": "attribution.parquet", "fusion": "fusion.parquet",
                 "compteur": "compteur.json"}
@@ -87,6 +94,8 @@ class RegistreIdentites:
         return p
 
     def numero(self, source: str, uid: str) -> str | None:
+        """Rend le numéro retenu (alias suivis) de l'identifiant `uid` de la source `source`, ou `None`
+        s'il n'a pas d'attribution ouverte."""
         a = self._ouvertes.get((source, uid))
         return self.resoudre(a["per"]) if a else None
 
@@ -136,6 +145,8 @@ class RegistreIdentites:
 
     # -- persistance -----------------------------------------------------------------------
     def sauver(self):
+        """Écrit les attributions, les fusions et le compteur dans `registres/` (et le registre des
+        lignées s'il a été ouvert). Ne rend rien."""
         pq.write_table(pa.Table.from_pylist(self.attributions, schema=SCHEMA_ATTRIBUTION),
                        os.path.join(self.dossier, self.FICHIERS["attribution"]))
         pq.write_table(pa.Table.from_pylist(self.fusions, schema=SCHEMA_FUSION),
@@ -162,6 +173,7 @@ class RegistreLignees(RegistreIdentites):
 
     @property
     def lignees(self):
+        """Un registre de lignées n'a pas lui-même de registre de lignées : lève `AttributeError`."""
         raise AttributeError("un registre de lignées n'a pas de sous-registre")
 
     def adresse(self, lig: str) -> str | None:
@@ -198,6 +210,8 @@ class RegistreLignees(RegistreIdentites):
         return p
 
     def sauver(self):
+        """Écrit le registre comme `RegistreIdentites.sauver`, puis les adresses inscrites
+        (`lignee_adresse.parquet`). Ne rend rien."""
         super().sauver()
         pq.write_table(pa.Table.from_pylist(self.adresses, schema=SCHEMA_ADRESSE),
                        os.path.join(self.dossier, self.FICHIERS["adresse"]))

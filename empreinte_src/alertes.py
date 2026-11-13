@@ -52,6 +52,13 @@ def _gh(*args):
 
 
 def synchroniser(depot: str, sujets: dict[str, str]) -> dict:
+    """Met les issues d'alerte du dépôt `depot` en accord avec `sujets` (`{clé: texte}`), avec `gh`.
+
+    L'étiquette `alerte` est créée au besoin. Chaque sujet a une issue titrée `[alerte] <clé>` :
+    créée si elle n'est pas ouverte, réécrite si le texte a changé (une empreinte du texte est
+    cachée dans le corps), laissée telle quelle sinon. Une issue d'alerte ouverte dont la clé n'est
+    plus dans `sujets` est fermée avec un commentaire. Rend les clés par sort :
+    `{"creees", "mises_a_jour", "fermees", "inchangees"}`."""
     subprocess.run(["gh", "label", "create", ETIQUETTE, "-R", depot, "--force", "--color", "B60205",
                     "--description", "Alerte du traitement nocturne"], capture_output=True, text=True)
     ouvertes = json.loads(_gh("issue", "list", "-R", depot, "--label", ETIQUETTE, "--state", "open",

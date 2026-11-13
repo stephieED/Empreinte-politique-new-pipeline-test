@@ -205,6 +205,8 @@ def mesurer(nuit: dict, points_deja_releves: set) -> dict:
 
 
 def mesurer_toutes(nuits: list[dict]) -> list[dict]:
+    """Rend les mesures de chaque nuit (`mesurer`), dans l'ordre de `nuits` : les points déjà relevés
+    s'accumulent d'une nuit à la suivante."""
     vus: set = set()
     return [mesurer(n, vus) for n in nuits]
 
@@ -257,6 +259,11 @@ def _table(entetes, lignes):
 
 
 def rendre(mesures: list[dict], depot: str, genere_le: str | None = None) -> str:
+    """Rend le rapport de mesures en markdown : un en-tête qui dit la méthode et la population, puis
+    un tableau par mesure (durées et pics par mise à jour et par étape du calcul, octets et durées
+    par source, objets nouveaux par famille, taille de l'entrepôt, écritures dans les releases,
+    poids des fiches de candidat, premier remplissage, déploiement). `genere_le` vaut la date
+    courante par défaut."""
     genere_le = genere_le or datetime.now(timezone.utc).strftime("%d/%m/%Y à %H h %M UTC")
     calc = [m for m in mesures if m.get("etapes_calcul")]
     serie = ("**Aucune de ces nuits ne compte encore dans la série des sept nuits** : le périmètre de "

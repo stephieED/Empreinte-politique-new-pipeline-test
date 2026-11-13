@@ -76,9 +76,11 @@ class Ligne:
         setattr(self, k, v)
 
     def get(self, k, defaut=None):
+        """Rend la valeur du champ `k`, ou `defaut` s'il n'existe pas (comme `dict.get`)."""
         return getattr(self, k, defaut)
 
     def keys(self):
+        """Rend les noms des champs de l'index, dans l'ordre du schéma."""
         return _CHAMPS_INDEX
 
     def __eq__(self, autre):
@@ -86,10 +88,12 @@ class Ligne:
 
 
 def maintenant() -> str:
+    """Rend la date et l'heure UTC courantes, à la seconde, au format ISO 8601."""
     return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat()
 
 
 def sha256_fichier(chemin: str) -> str:
+    """Rend l'empreinte SHA-256 (en hexadécimal) du fichier `chemin`, lu par blocs de 1 Mio."""
     h = hashlib.sha256()
     with open(chemin, "rb") as f:
         for b in iter(lambda: f.read(1 << 20), b""):
@@ -99,6 +103,9 @@ def sha256_fichier(chemin: str) -> str:
 
 @dataclass
 class Bilan:
+    """Ce qu'a donné le rangement d'une archive (`Entrepot.versionner`) : nombre de nouvelles
+    versions, de membres inchangés, de retraits, de réapparitions, de doublons d'uid et de membres
+    lus. `exemples` garde au plus cinq uid par catégorie (`nouvelles`, `retraits`)."""
     nouvelles: int = 0
     inchanges: int = 0
     retraits: int = 0
@@ -109,6 +116,12 @@ class Bilan:
 
 
 class Entrepot:
+    """L'entrepôt local ouvert sur le dossier `dossier` (voir la description du module).
+
+    À l'ouverture, il crée les sous-dossiers manquants, lit le manifeste, l'index et le journal des
+    relevés, et prépare la génération suivante (`generation`). `segment_max` borne la taille d'un
+    fichier d'octets, `morceau_max` celle d'un morceau : un membre plus gros est découpé en morceaux.
+    Rien n'est écrit sur le disque avant `clore`."""
     def __init__(self, dossier: str, segment_max: int = 90 << 20, morceau_max: int = 64 << 20):
         self.dossier = dossier
         self.segment_max = segment_max
@@ -163,6 +176,8 @@ class Entrepot:
         return rows
 
     def dernier_releve(self, point_acces: str, complet_seulement=False) -> dict | None:
+        """Rend le dernier relevé du point d'accès dont l'issue est `nouveau` ou `inchange`, ou
+        `None`. Avec `complet_seulement`, seuls les relevés complets comptent."""
         for r in reversed(self._releves):
             if r["point_acces"] == point_acces and (r["complet"] or not complet_seulement):
                 if r["issue"] in ("nouveau", "inchange"):
@@ -170,6 +185,8 @@ class Entrepot:
         return None
 
     def presents(self, point_acces: str) -> dict[str, dict]:
+        """Rend `{uid: ligne}` pour la dernière version de chaque membre du point d'accès, quand elle est
+        présente (pas retirée à la source)."""
         out = {}
         for (p, uid), i in self._derniere.items():
             if p == point_acces and self._index[i]["etat"] == PRESENT:
@@ -178,6 +195,8 @@ class Entrepot:
 
     # -- écriture d'un relevé -----------------------------------------------------------
     def enregistrer_releve(self, releve: dict):
+        """Ajoute un relevé au journal (Z0), réduit aux champs de `CHAMPS_RELEVE` (les autres sont
+        ignorés, les absents valent `None`) et daté de la génération en cours. Ne rend rien."""
         r = {k: releve.get(k) for k in CHAMPS_RELEVE}
         r["generation"] = self.generation
         self._releves.append(r)
@@ -221,6 +240,8 @@ class Entrepot:
         return changes
 
     def qualifiant_a_jour(self, pa_cfg: dict) -> bool:
+        """Vrai si la règle d'uid (`qualifier_uid`) notée au manifeste pour ce point d'accès est celle de
+        sa configuration actuelle ; sinon l'historique est à requalifier (`requalifier`)."""
         return self.manifeste.get("qualifiants", {}).get(pa_cfg["id"]) == pa_cfg.get("qualifier_uid")
 
     def versionner(self, pa_cfg: dict, releve_id: str, membres, complet: bool,
@@ -451,6 +472,8 @@ class Entrepot:
 
     # -- reconstruction (P2) -------------------------------------------------------------
     def membres_du_releve(self, releve_id: str) -> list[dict]:
+        """Rend la liste des membres reçus lors du relevé `releve_id` (uid, chemin, taille, crc32,
+        empreinte), lue dans les fichiers `membres/` de toutes les générations présentes."""
         out = []
         for nom in sorted(os.listdir(os.path.join(self.dossier, "membres"))):
             t = pq.read_table(os.path.join(self.dossier, "membres", nom),
