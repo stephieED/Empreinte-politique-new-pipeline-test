@@ -66,6 +66,8 @@ pip install -e ".[test]"
 python -m pytest -q                          # sans réseau
 empreinte collecter --entrepot entrepot --points an-agenda-l17
 empreinte reconstruire --entrepot entrepot --releve <id d'un relevé>
+# rapport de mesures (commande, section 5) : relit l'artefact `rapport` de chaque nuit
+empreinte rapport-mesures --depot <propriétaire/dépôt> --cache mesures --sortie rapport-de-mesures.md
 ```
 
 ## Documentation
