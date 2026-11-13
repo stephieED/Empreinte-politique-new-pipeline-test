@@ -23,6 +23,14 @@ def _gh(*args, capture=True, check=True):
     return subprocess.run(["gh", *args], capture_output=capture, text=True, check=check)
 
 
+RELEASE_BRUTES = "archives-brutes"
+
+
+def _release_de(rel: str) -> str:
+    """Release d'un fichier de l'entrepôt : les archives brutes à part (décision du 13/11/2026)."""
+    return RELEASE_BRUTES if rel.startswith("brutes/") else RELEASE
+
+
 def nom_actif(rel: str) -> str:
     return rel.replace("/", "__")
 
@@ -43,9 +51,11 @@ def manifeste_distant(depot: str) -> dict | None:
             return json.load(f)
 
 
-def restaurer(depot: str, dossier: str, avec_blobs: bool = False, avec_membres: bool = False) -> dict | None:
+def restaurer(depot: str, dossier: str, avec_blobs: bool = False, avec_membres: bool = False,
+              avec_brutes: bool = False) -> dict | None:
     """Rapatrie la génération courante. Sans les octets (blobs) par défaut : la collecte n'en
-    a pas besoin, elle compare des empreintes."""
+    a pas besoin, elle compare des empreintes. Jamais les archives brutes (`brutes/`, release
+    `archives-brutes`) sauf demande : elles ne servent qu'à refaire un découpage."""
     os.makedirs(dossier, exist_ok=True)
     man = manifeste_distant(depot)
     if man is None:
@@ -55,12 +65,14 @@ def restaurer(depot: str, dossier: str, avec_blobs: bool = False, avec_membres: 
             continue
         if rel.startswith("membres/") and not avec_membres:
             continue
+        if rel.startswith("brutes/") and not avec_brutes:
+            continue
         cible = os.path.join(dossier, rel)
         if os.path.exists(cible) and _sha(cible) == info["sha256"]:
             continue                       # déjà là (cache de GitHub Actions)
         os.makedirs(os.path.dirname(cible), exist_ok=True)
         with tempfile.TemporaryDirectory() as d:
-            _gh("release", "download", RELEASE, "-R", depot, "-p", nom_actif(rel), "-D", d)
+            _gh("release", "download", _release_de(rel), "-R", depot, "-p", nom_actif(rel), "-D", d)
             os.replace(os.path.join(d, nom_actif(rel)), cible)
         if _sha(cible) != info["sha256"]:
             raise RuntimeError(f"empreinte fausse après téléchargement : {rel}")
@@ -108,7 +120,13 @@ def publier(depot: str, dossier: str) -> dict:
         p = os.path.join(dossier, rel)
         if not os.path.exists(p):
             raise RuntimeError(f"fichier attendu absent de la copie locale : {rel}")
-        mesures.append(_envoyer(depot, p, nom_actif(rel)))
+        release = _release_de(rel)
+        if release != RELEASE and _gh("release", "view", release, "-R", depot, check=False).returncode != 0:
+            _gh("release", "create", release, "-R", depot, "--title", "Archives brutes",
+                "--notes", "Archives reçues dont seule une partie est découpée dans l'entrepôt (archive "
+                           "globale du Journal officiel), gardées à l'octet pour pouvoir refaire le "
+                           "découpage. Empreintes : manifeste de l'entrepôt. Licence de chaque source.")
+        mesures.append(_envoyer(depot, p, nom_actif(rel), release=release))
     rates = [m["actif"] for m in mesures if not m["reussi"]]
     if rates:
         raise RuntimeError(f"envoi échoué pour {rates} : le manifeste n'est pas remplacé")
