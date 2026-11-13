@@ -17,7 +17,11 @@ toute l'archive, et ancre de la page publique). Le lecteur **lit, il n'attribue 
   successifs : un point de niveau n remplace les points de niveau ≥ n déjà ouverts). Les
   suspensions (`nivpoint="99"`) sont des points comme les autres pour la source : elles sont
   gardées, avec leur `code_grammaire` ;
-- `ordre_absolu_seance` est restitué, mais la republication le renumérote : ce n'est pas une clé.
+- `ordre_absolu_seance` est restitué, mais la republication le renumérote : ce n'est pas une clé ;
+- `occurrence` : le rang du paragraphe parmi ceux qui portent le même `id_syceron` dans le compte
+  rendu (0 pour le premier). 370 comptes rendus de la XVe publient deux fois la fin de séance sous
+  le même identifiant (« La séance est levée… », puis la signature du service du compte rendu) :
+  le second a l'occurrence 1, et sa clé de fait finit par `#1` (alerte `export:doublons`, #30).
 
 Le texte est celui des nœuds texte du `<texte>` : les espaces de mise en forme du XML sont
 réduits à un seul, `<br/>` devient un saut de ligne, les balises d'italique et d'exposant sont
@@ -31,7 +35,7 @@ from lxml import etree
 from ..lecture import pa_id
 
 NOM = "an_comptes_rendus"
-VERSION = 1
+VERSION = 2
 TYPES = ("comptes_rendus",)
 
 ORATEUR = pa.struct([("id", pa.string()), ("nom", pa.string()), ("qualite", pa.string())])
@@ -51,7 +55,7 @@ TABLES = {
     ]),
     "intervention": pa.schema([
         ("compte_rendu", pa.string()), ("seance", pa.string()), ("date", pa.string()),
-        ("id_syceron", pa.string()), ("ordre_absolu_seance", pa.int32()),
+        ("id_syceron", pa.string()), ("occurrence", pa.int32()), ("ordre_absolu_seance", pa.int32()),
         ("id_preparation", pa.string()), ("ordinal_prise", pa.string()),
         ("orateur", pa.string()), ("orateur_nom", pa.string()), ("qualite", pa.string()),
         ("orateurs", pa.list_(ORATEUR)), ("id_mandat", pa.string()),
@@ -135,6 +139,7 @@ def lire(m):
     interventions = []
     contenu = racine.find(NS + "contenu")
     ouverts: dict[int, dict] = {}       # points ouverts, par niveau
+    vus: dict[str, int] = {}            # paragraphes déjà lus, par id_syceron
     if contenu is not None:
         for el in contenu.iter(NS + "point", NS + "paragraphe"):
             a = el.attrib
@@ -154,9 +159,12 @@ def lire(m):
             extraction = parent if parent is not None and parent.tag == NS + "interExtraction" else None
             texte_el = el.find(NS + "texte")
             ids = a.get("id_syceron")
+            occurrence = vus.get(ids, 0)
+            vus[ids] = occurrence + 1
             interventions.append({
                 "compte_rendu": uid, "seance": seance, "date": date,
-                "id_syceron": ids, "ordre_absolu_seance": _int(a.get("ordre_absolu_seance")),
+                "id_syceron": ids, "occurrence": occurrence,
+                "ordre_absolu_seance": _int(a.get("ordre_absolu_seance")),
                 "id_preparation": a.get("id_preparation"), "ordinal_prise": a.get("ordinal_prise"),
                 "orateur": a.get("id_acteur") or None,
                 "orateur_nom": orateurs[0]["nom"] if orateurs else None,
@@ -196,8 +204,9 @@ def lire(m):
 EXPORT = {
     "compte_rendu": {"type": "compte_rendu", "cle": ["uid"],
                      "ids": {"compte_rendu": "uid", "reunion": "seance"}, "date": "date"},
-    # Clé du modèle (1.2.2) : an:<uid du compte rendu>#<id_syceron>.
-    "intervention": {"type": "intervention", "cle": ["compte_rendu", "id_syceron"],
+    # Clé du modèle (1.2.2) : an:<uid du compte rendu>#<id_syceron> ; `#<occurrence>` en plus pour
+    # un paragraphe publié une seconde fois sous le même identifiant (#30).
+    "intervention": {"type": "intervention", "cle": ["compte_rendu", "id_syceron"], "rang": "occurrence",
                      "ids": {"compte_rendu": "compte_rendu", "reunion": "seance",
                              "acteur": "orateur", "autre": "id_syceron"},
                      "date": "date"},

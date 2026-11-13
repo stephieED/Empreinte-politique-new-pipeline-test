@@ -58,3 +58,19 @@ def test_l_acquis_d_un_essai_n_est_jamais_rattrape():
     # Le rattrapage ne reconnaît que `acquis-gNNNNNN`.
     assert "acquis-g(\\d{6})" in open(rattrapage.__file__).read()
     assert not re.fullmatch(r"acquis-g(\d{6})", "essai-g000003")
+
+
+def test_essais_en_parallele_la_nuit_en_file():
+    """13/11/2026 : chaque essai a sa propre file ; la nuit et les mises à jour qui écrivent gardent
+    la file unique `mise-a-jour`."""
+    g = _wf()["concurrency"]["group"]
+    assert "inputs.mode == 'essai'" in g and "format('essai-{0}', github.run_id)" in g and "'mise-a-jour'" in g
+    assert _wf()["concurrency"]["cancel-in-progress"] is False
+
+
+def test_un_essai_ne_garde_pas_les_faits_lus():
+    """Issue #44 : la nuit reprend le cache de Z2 le plus récent ; un essai l'écrirait avec le code
+    de sa branche."""
+    etapes = {e.get("name"): e for e in _wf()["jobs"]["calculer"]["steps"]}
+    assert etapes["Garder les faits lus"]["if"] == "needs.preparer.outputs.mode != 'essai'"
+    assert "preparer" in _wf()["jobs"]["calculer"]["needs"]
