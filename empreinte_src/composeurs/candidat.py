@@ -516,7 +516,8 @@ def _carriere(ctx, f, c, commun):
         l["gouvernement_nom"] = g["nom"] if g else None
         l["licence"] = (lic_an if l.get("source") == "an" else commun["lic"].get(PA_PE)
                         if l.get("source") == "pe" else commun["lic"].get(PA_RNE)
-                        if l.get("source") == "rne" else commun["lic"].get(PA_SENAT))
+                        if l.get("source") == "rne" else None
+                        if l.get("source") == "sycomore" else commun["lic"].get(PA_SENAT))
         if l["licence"]:
             f.licences.add(l["licence"])
         ecr_ids = {"acteur": "acteur", "mandat": "mandat", "organe": "groupe"}

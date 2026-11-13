@@ -23,8 +23,11 @@ Une ligne par période, toutes institutions :
   Le numéro de la législature européenne est dans le libellé, jamais dans `legislature` (qui est
   celle de l'Assemblée).
 - **Mandats locaux** (`local`) : R-MANDAT-LOCAL (Répertoire national des élus, depuis 2020 ;
-  fin des mandats municipaux 2020-2026 déduite au 15/03/2026 et signalée). Mandats de député
-  antérieurs à 2002 : hors source (Sycomore non collecté). Ces absences sont des lignes de `couverture_carriere`, pas des
+  fin des mandats municipaux 2020-2026 déduite au 15/03/2026 et signalée).
+- **Assemblée avant 2002** (`assemblee_avant_2002`) : les mandats de député antérieurs au
+  19/06/2002 lus dans Sycomore (faits seulement ; décision Q36 du 13/11/2026), par l'identifiant
+  Sycomore que Wikidata déclare (P1045). Ceux d'après viennent de l'archive des acteurs : Sycomore
+  n'est pas lu au-delà, pour qu'un mandat ne figure pas deux fois. Ces absences sont des lignes de `couverture_carriere`, pas des
   périodes inventées.
 
 `lien` ne pointe que vers une fiche publiée : `legislature/<14 à 17>` (module `perimetre`),
@@ -34,7 +37,7 @@ from ..perimetre import LEGISLATURES, LEGISLATURES_GOUVERNEMENTS
 from .r_candidatures import vue_ou_vide
 
 NOM = "R-CARRIERE"
-VERSION = 3
+VERSION = 4
 DEPEND = ("R-IDENTITE", "R-MANDAT-LOCAL", "R-DEPUTES", "R-APPARTENANCE", "R-COMPOSITION", "R-GOUVERNEMENTS",
           "R-HEMICYCLE")
 SORTIES = ("carriere", "couverture_carriere")
@@ -47,7 +50,9 @@ DESCRIPTION = (
     "voit son mandat suspendu, pas terminé : la frise le montre. Le groupe affiché est celui "
     "auquel il appartenait à chaque date, et pour le Sénat avec le nom que le groupe portait "
     "alors. Les mandats locaux viennent du Répertoire national des élus, depuis 2020. Les mandats de "
-    "député antérieurs à 2002 ne sont pas encore collectés : la fiche le dit au lieu de les taire.")
+    "député antérieurs à juin 2002 viennent de Sycomore, la base historique de l'Assemblée, dont nous "
+    "ne reprenons que les faits (dates, département, groupe), avec le lien de la fiche.")
+DEBUT_ARCHIVE = "2002-06-19"
 ORDINAL = "CASE WHEN {n} = 1 THEN '1re' ELSE {n} || 'e' END"
 
 LEGISLATURES_PUBLIEES = LEGISLATURES
@@ -106,6 +111,12 @@ def appliquer(ctx):
         "SELECT count(*) > 0 FROM pe_eurodeputes__eurodepute")
     rne_collecte = ctx.existe("rne_elus__mandat_local") and ctx.un(
         "SELECT count(*) > 0 FROM rne_elus__mandat_local")
+    syc_collecte = ctx.existe("sycomore__mandat_sycomore") and ctx.un(
+        "SELECT count(*) > 0 FROM sycomore__mandat_sycomore")
+    syc = vue_ou_vide(ctx, "sycomore__mandat_sycomore", {
+        "identifiant": "VARCHAR", "chambre": "VARCHAR", "legislature": "VARCHAR", "debut": "VARCHAR",
+        "fin": "VARCHAR", "departement": "VARCHAR", "groupe": "VARCHAR", "prov_url": "VARCHAR"})
+    syc_id = vue_ou_vide(ctx, "sycomore__identifiant_sycomore", {"element": "VARCHAR", "identifiant": "VARCHAR"})
     loc = vue_ou_vide(ctx, "mandat_local_candidat", {
         "per": "VARCHAR", "fonction": "VARCHAR", "collectivite": "VARCHAR", "debut": "VARCHAR",
         "fin": "VARCHAR", "fin_raison": "VARCHAR", "fichier": "VARCHAR", "code_collectivite": "VARCHAR",
@@ -116,8 +127,14 @@ def appliquer(ctx):
         WHERE naissance IS NOT NULL AND nom IS NOT NULL
         UNION SELECT DISTINCT per FROM {loc}""")
 
-    ctx.x("""CREATE OR REPLACE TEMP TABLE _car_c AS
-        SELECT per, acteur, matricule_senat, sycomore, acteur_connu_an, eurodepute FROM candidat""")
+    # Identifiant Sycomore : celui de la grande requête Wikidata (R-CANDIDATURES), sinon celui du
+    # point sycomore-fiches pour l'élément retenu.
+    ctx.x(f"""CREATE OR REPLACE TEMP TABLE _car_c AS
+        SELECT c.per, c.acteur, c.matricule_senat,
+               coalesce(c.sycomore, (SELECT min(i.identifiant) FROM {syc_id} i
+                                     WHERE i.element = c.element_wikidata)) AS sycomore,
+               c.acteur_connu_an, c.eurodepute
+        FROM candidat c""")
 
     # --- Assemblée : périodes en fonction et suspensions ----------------------------------
     ctx.x(f"""CREATE OR REPLACE TEMP TABLE _car_an AS
@@ -281,6 +298,16 @@ def appliquer(ctx):
             FROM {segments("_car_pe", "_car_gpe")} s
             LEFT JOIN (SELECT personne, any_value(genre) AS genre FROM {pe_fiche} GROUP BY 1) f
               ON f.personne = s.acteur),
+        syc AS (
+            SELECT c.per, 'assemblee_avant_2002', m.debut::DATE, coalesce(m.fin::DATE, {FIN_OUVERTE}),
+                   'Député' || CASE WHEN m.legislature IS NOT NULL THEN ' · ' || m.legislature ELSE '' END
+                   || CASE WHEN m.departement IS NOT NULL THEN ' · ' || m.departement ELSE '' END,
+                   NULL::INTEGER, NULL, NULL, NULL, m.groupe,
+                   CASE WHEN m.groupe IS NULL THEN 'non_etabli' ELSE 'groupe' END, NULL::INTEGER, NULL,
+                   NULL, NULL, 'sycomore', 'en_fonction', NULL, 'sycomore:' || m.identifiant || ':' || m.debut,
+                   NULL, m.departement, NULL, NULL, m.prov_url
+            FROM {syc} m JOIN _car_c c ON c.sycomore = m.identifiant
+            WHERE m.chambre = 'assemblee' AND m.debut IS NOT NULL AND m.debut < '{DEBUT_ARCHIVE}'),
         loc AS (
             SELECT l.per, 'local', l.debut::DATE, coalesce(l.fin::DATE, {FIN_OUVERTE}),
                    l.fonction || CASE WHEN l.collectivite IS NOT NULL THEN ' · ' || l.collectivite ELSE '' END,
@@ -294,7 +321,7 @@ def appliquer(ctx):
                siege, siege_date, raison_siege, lien, source, etat, qualite, mandat, acteur,
                circonscription, cause_fin, fin_raison, source_url
         FROM (SELECT * FROM an UNION ALL SELECT * FROM gv UNION ALL SELECT * FROM sen
-              UNION ALL SELECT * FROM pe UNION ALL SELECT * FROM loc)
+              UNION ALL SELECT * FROM pe UNION ALL SELECT * FROM loc UNION ALL SELECT * FROM syc)
         ORDER BY per, debut, institution""")
 
     # --- Couverture, candidat par candidat et institution par institution -------------------
@@ -308,7 +335,9 @@ def appliquer(ctx):
               WHEN 'assemblee' THEN CASE WHEN c.acteur IS NULL THEN 'aucun_identifiant'
                                          WHEN NOT coalesce(c.acteur_connu_an, false) THEN 'identifiant_absent_de_la_source'
                                          WHEN n.lignes > 0 THEN 'complet' ELSE 'relu_aucun' END
-              WHEN 'assemblee_avant_2002' THEN 'hors_source'
+              WHEN 'assemblee_avant_2002' THEN CASE WHEN c.sycomore IS NULL THEN 'aucun_identifiant'
+                                     WHEN NOT {str(bool(syc_collecte)).lower()} THEN 'hors_source'
+                                     WHEN n.lignes > 0 THEN 'complet' ELSE 'relu_aucun' END
               WHEN 'gouvernement' THEN CASE WHEN c.acteur IS NULL THEN 'aucun_identifiant'
                                             WHEN NOT coalesce(c.acteur_connu_an, false) THEN 'identifiant_absent_de_la_source'
                                             WHEN n.lignes > 0 THEN 'complet' ELSE 'relu_aucun' END
@@ -327,8 +356,11 @@ def appliquer(ctx):
                                          WHEN NOT coalesce(c.acteur_connu_an, false) THEN 'Identifiant déclaré par Wikidata absent de l''archive de l''Assemblée.'
                                          WHEN n.lignes > 0 THEN 'Mandats depuis le 19/06/2002 (archive des acteurs de l''Assemblée).'
                                          ELSE 'Aucun mandat de député depuis le 19/06/2002 dans l''archive de l''Assemblée.' END
-              WHEN 'assemblee_avant_2002' THEN 'Mandats de député antérieurs au 19/06/2002 : hors source (Sycomore non collecté)'
-                   || CASE WHEN c.sycomore IS NOT NULL THEN ' ; fiche Sycomore déclarée : ' || c.sycomore ELSE '' END || '.'
+              WHEN 'assemblee_avant_2002' THEN CASE
+                   WHEN c.sycomore IS NULL THEN 'Aucune fiche Sycomore déclarée par Wikidata : aucun mandat de député antérieur au 19/06/2002 connu de nos sources.'
+                   WHEN NOT {str(bool(syc_collecte)).lower()} THEN 'Mandats de député antérieurs au 19/06/2002 : hors source (Sycomore non collecté) ; fiche Sycomore déclarée : ' || c.sycomore || '.'
+                   WHEN n.lignes > 0 THEN 'Mandats de député antérieurs au 19/06/2002, lus dans Sycomore (faits seulement ; fiche ' || c.sycomore || ').'
+                   ELSE 'Fiche Sycomore ' || c.sycomore || ' lue : aucun mandat de député antérieur au 19/06/2002.' END
               WHEN 'gouvernement' THEN CASE WHEN n.lignes > 0 THEN 'Fonctions depuis le 17/05/2007 (archive des acteurs de l''Assemblée) ; avant : hors source.'
                                             WHEN c.acteur IS NULL THEN 'Aucun identifiant de l''Assemblée déclaré : aucune fonction gouvernementale connue.'
                                             ELSE 'Aucune fonction gouvernementale depuis le 17/05/2007 ; avant : hors source.' END
@@ -357,7 +389,8 @@ def appliquer(ctx):
     seg = ctx.un("SELECT count(*) FROM carriere WHERE institution IN ('assemblee', 'senat') AND etat = 'en_fonction'")
     seg_grp = ctx.un("""SELECT count(*) FROM carriere WHERE institution IN ('assemblee', 'senat')
                         AND etat = 'en_fonction' AND groupe_statut <> 'non_etabli'""")
-    syc = ctx.un("SELECT count(*) FROM _car_c WHERE sycomore IS NOT NULL")
+    syc_ids = ctx.un("SELECT count(*) FROM _car_c WHERE sycomore IS NOT NULL")
+    syc_per = ctx.un("SELECT count(DISTINCT per) FROM carriere WHERE institution = 'assemblee_avant_2002'")
     pe_per = ctx.un("SELECT count(DISTINCT per) FROM carriere WHERE institution = 'parlement_europeen'")
     loc_per = ctx.un("SELECT count(DISTINCT per) FROM carriere WHERE institution = 'local'")
     pe_ids = ctx.un("SELECT count(*) FROM _car_c WHERE eurodepute IS NOT NULL")
@@ -368,6 +401,6 @@ def appliquer(ctx):
             "candidats_avec_fonction_gouvernementale_depuis_2007": (gv, n),
             "mandats_de_senateur_lus" if senat_collecte else "senat_non_collecte": (sen_, sen_ids),
             "periode_avec_groupe_etabli": (seg_grp, seg),
-            "mandats_anterieurs_a_2002_hors_source_sycomore_declare": (syc, n),
+            "mandats_anterieurs_a_2002_lus_dans_sycomore": (syc_per, syc_ids),
             "mandats_europeens_lus": (pe_per, pe_ids),
             "mandats_locaux_lus": (loc_per, n)}
