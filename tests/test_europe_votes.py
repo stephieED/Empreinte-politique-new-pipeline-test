@@ -157,6 +157,9 @@ def test_lecteur_votes_et_listes(tmp_path):
     ("Motion for a resolution (text as a whole)", "ensemble"), ("Vote final", "ensemble"),
     ("Demande de procéder au vote sur les amendements", "procedure"),
     ("Renvoi (article 59, paragraphe 4 du règlement)", "procedure"), ("Antrag der ECR-Fraktion", "procedure"),
+    ("approbation", "ensemble"), ("vote : approbation", "ensemble"), ("Proposition modifiée", "ensemble"),
+    ("proposition Commission", "ensemble"), ("AFCO résolution", "ensemble"), ("par. 10", "partie"),
+    ("cons. B/1", "partie"), ("Vote procédural", "procedure"), ("Modification de l'ordre du jour", "procedure"),
     ("Gaza", "non_etablie")])
 def test_nature_du_vote(objet, nature):
     import duckdb

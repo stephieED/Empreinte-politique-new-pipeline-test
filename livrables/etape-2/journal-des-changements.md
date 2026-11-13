@@ -754,3 +754,23 @@ Branche `etape-2-restes-41-44`. Les issues #41, #42 et #44 ont été rouvertes �
 | --- | --- | --- |
 | `planification` : trois essais ; si le manifeste reste illisible, la nuit se fait (`true`), l'erreur au journal de la tâche ; le workflow retombe aussi sur `true` | #41 : sur une nuit planifiée, la planification appelle l'API avant d'écrire `faire` ; une erreur y supprimait la nuit et l'alerte. Au pis, le second déclenchement refait une nuit déjà faite | 2 (2.3) |
 | Lecture : seules les versions encore portées par l'entrepôt restent inscrites comme lues | #44 : une version sortie de l'entrepôt perd ses lignes mais restait « lue » ; revenue avec les mêmes octets, elle n'aurait plus aucun fait (déduit du code, non observé). Le second point de la réouverture (« les essais sur `main` sauvent toujours le cache ») ne tient pas : essai sur `main` 43467867327 du 13/11, étape « Garder les faits lus » sautée, aucun cache `z2-` | 2 (2.5) |
+## Volet européen, lot 3 : votes nominatifs avant juillet 2019, depuis Parltrack (13/11/2026)
+
+Branche `etape-2-europe-parltrack`. Décision Q3 du 13/11/2026 (« Les deux, raccordées en 2019 ») :
+Parltrack pour les votes antérieurs au 02/07/2019.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Point `parltrack-votes` (format `fichier`, `ep_votes.json.zst` gardé à l'octet, ODbL 1.0) : requête conditionnelle, 304 tant que Parltrack ne bouge pas ; `robots.txt` de parltrack.org : aucune règle pour les robots en général (seuls des robots d'IA d'entraînement sont exclus) | Q3 | 2 (2.2) |
+| Lecteur `parltrack_votes` : lu en flux (zstandard), `vote_pt` et `position_pt` (positions `+`, `-`, `0` → `favor`, `against`, `abstention`, listes aplaties par groupe), mêmes noms que `pe_votes` | une seule règle pour les deux sources | 1 (1.4) |
+| R-VOTE-PE v2 : votes de Parltrack avant le 02/07/2019, du portail ensuite ; chaque ligne dit sa source (`source`, `source_point`) ; formes anciennes des libellés reconnues (« approbation », « Proposition modifiée », « par. 10 », « cons. B », « vote procédural »…) | Q3, Q33 | 1 (1.6) |
+| Fiche : licence de chaque vote selon sa source (ODbL pour Parltrack) ; couverture `complet` quand chaque période de mandat a sa source ; colonnes servies inchangées (schéma de #66) | cahier 2.2 | — |
+
+Mesures (13/11/2026) : fichier de 11,25 Mo (44 648 scrutins, dont 21 549 avant le 02/07/2019) ;
+lecture 37 s. Votes rattachés : Le Pen 10 670 (15/09/2004 → 17/05/2017), Philippot 8 470
+(17/07/2014 → 18/04/2019), Mélenchon 7 823 (25/11/2009 → 16/03/2017) ; aucun vote en double ; les
+deux sources se raccordent sans recouvrement (Maurel : Parltrack jusqu'au 18/04/2019, portail
+dès le 18/07/2019). Nature non établie : 85 votes de Le Pen sur 10 670, 71 de Mélenchon, 49 de
+Philippot. Les quatre candidats anciens ou actuels députés européens ont un volet européen
+`complet`.
+
