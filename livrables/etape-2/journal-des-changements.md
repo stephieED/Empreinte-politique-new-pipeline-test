@@ -775,3 +775,24 @@ Branche `etape-2-amendements-xiv-examen`, issue #111 (constat transmis par la se
 | --- | --- | --- |
 | Lecteur `an_amendements` (version 2) : l'examen d'un amendement de la XIVe est tiré de son uid, qui a la même grammaire qu'aux législatures suivantes (`AMANR5L14PO419610B1179P0D1N482` → `EXANR5L14PO419610B1179P0D1`) | #111 : le schéma de la XIVe n'a pas d'examen ; R-AMENDEMENT dédoublonnait par le seul numéro : 167 420 amendements lus, 22 159 gardés (g10). Après : 167 420 gardés ; Delphine Batho, 65 → 158 amendements de la XIVe (CE435 revient). Relecture des amendements une fois (≈ 3 min en local) | 1 (1.6 R-AMENDEMENT) |
 | C6 compte une section avec ses paquets (`amendements-2013` et `amendements-2013-1`, `-2`… : numéro de paquet après une année ou un semestre) | premier essai de la branche (43477541508) refusé par C6 : 21 sections « tombées à 0 », dont `lignee/droite-republicaine/amendements-2013` 551 → 0, parce qu'avec les amendements retrouvés l'année est découpée en paquets. Rejoué avec la correction : ni C1 ni C6 | 2 (2.8.1 C6) |
+
+## Volet européen, lot 3 : votes nominatifs avant juillet 2019, depuis Parltrack (13/11/2026)
+
+Branche `etape-2-europe-parltrack`. Décision Q3 du 13/11/2026 (« Les deux, raccordées en 2019 ») :
+Parltrack pour les votes antérieurs au 02/07/2019.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Point `parltrack-votes` (format `fichier`, `ep_votes.json.zst` gardé à l'octet, ODbL 1.0) : requête conditionnelle, 304 tant que Parltrack ne bouge pas ; `robots.txt` de parltrack.org : aucune règle pour les robots en général (seuls des robots d'IA d'entraînement sont exclus) | Q3 | 2 (2.2) |
+| Lecteur `parltrack_votes` : lu en flux (zstandard), `vote_pt` et `position_pt` (positions `+`, `-`, `0` → `favor`, `against`, `abstention`, listes aplaties par groupe), mêmes noms que `pe_votes` | une seule règle pour les deux sources | 1 (1.4) |
+| R-VOTE-PE v2 : votes de Parltrack avant le 02/07/2019, du portail ensuite ; chaque ligne dit sa source (`source`, `source_point`) ; formes anciennes des libellés reconnues (« approbation », « Proposition modifiée », « par. 10 », « cons. B », « vote procédural »…) | Q3, Q33 | 1 (1.6) |
+| Fiche : licence de chaque vote selon sa source (ODbL pour Parltrack) ; couverture `complet` quand chaque période de mandat a sa source ; colonnes servies inchangées (schéma de #66) | cahier 2.2 | — |
+
+Mesures (13/11/2026) : fichier de 11,25 Mo (44 648 scrutins, dont 21 549 avant le 02/07/2019) ;
+lecture 37 s. Votes rattachés : Le Pen 10 670 (15/09/2004 → 17/05/2017), Philippot 8 470
+(17/07/2014 → 18/04/2019), Mélenchon 7 823 (25/11/2009 → 16/03/2017) ; aucun vote en double ; les
+deux sources se raccordent sans recouvrement (Maurel : Parltrack jusqu'au 18/04/2019, portail
+dès le 18/07/2019). Nature non établie : 85 votes de Le Pen sur 10 670, 71 de Mélenchon, 49 de
+Philippot. Les quatre candidats anciens ou actuels députés européens ont un volet européen
+`complet`.
+

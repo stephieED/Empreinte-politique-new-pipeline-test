@@ -69,7 +69,7 @@ PA_AMO, PA_SCRUTINS, PA_DOSSIERS = "an-amo30-l17", "an-scrutins-l17", "an-dossie
 PA_AMENDEMENTS, PA_SYCERON = "an-amendements-l17", "an-syceron-l17"
 PA_QUESTIONS = ("an-questions-ecrites-l17", "an-questions-gouvernement-l17", "an-questions-orales-l17")
 PA_WP, PA_WD, PA_SENAT = "wp-candidatures-2027", "wd-identifiants-parlementaires", "senat-export"
-PA_PE, PA_PE_VOTES = "pe-eurodeputes", "pe-votes"
+PA_PE, PA_PE_VOTES, PA_PARLTRACK = "pe-eurodeputes", "pe-votes", "parltrack-votes"
 PA_RNE = "rne-cm"                  # répertoire national des élus (tous ses points : Licence Ouverte)
 DEBUT_VOTES_PE = "2019-07-02"      # portail du PE : votes nominatifs à partir de la 9e législature (Q3)
 
@@ -275,7 +275,7 @@ def _commun(ctx, au) -> dict:
     lic = {}
     for t in ("an_acteurs__mandat", "an_scrutins__scrutin", "an_dossiers__dossier",
               "an_amendements__amendement", "an_comptes_rendus__intervention", "an_questions__question",
-              "senat_export__mandat", "wd_identifiants__identifiant_externe", "pe_eurodeputes__eurodepute", "pe_votes__vote_pe",
+              "senat_export__mandat", "wd_identifiants__identifiant_externe", "pe_eurodeputes__eurodepute", "pe_votes__vote_pe", "parltrack_votes__vote_pt",
               "rne_elus__mandat_local",
               "wp_candidatures__candidature"):
         if _vue(ctx, t):
@@ -1217,48 +1217,59 @@ def _questions(ctx, f, acteur, perim, commun, idx) -> dict:
 COLS_VOTES_PE = ["date", "heure", "vote", "numero", "seance", "libelle", "document_ref", "objet",
                  "rubrique", "nature", "position", "raison_position", "intention", "resultat", "pour",
                  "contre", "abstention", "methode", "eurodepute", "source_url", "licence"]
+# (la source de chaque ligne se lit dans `licence` et `source_url` : colonnes inchangées, pour que le
+# schéma des fichiers servis, C4, reste celui des votes du portail)
 
 
 def _europe(ctx, f, c, carriere, commun) -> dict | None:
     """Votes nominatifs au Parlement européen, un fichier par année (`europe-votes-<année>`), et
-    un index `europe` (années, lignes, couverture). Rien pour un candidat sans identifiant
-    européen : sa frise le dit déjà (`aucun_identifiant`)."""
+    un index `europe` (années, lignes, couverture). Deux sources raccordées au 02/07/2019
+    (décision Q3) : Parltrack avant, le portail du PE ensuite ; la licence de chaque ligne suit sa
+    source. Rien pour un candidat sans identifiant européen : sa frise le dit déjà."""
     if not c.get("eurodepute"):
         return None
-    au, pts = commun["au"], [PA_PE_VOTES]
+    au = commun["au"]
     mandats = [l for l in carriere if l["institution"] == "parlement_europeen"]
     avant = any(l["debut"] and l["debut"] < DEBUT_VOTES_PE for l in mandats)
     apres = any(not l["fin"] or l["fin"] >= DEBUT_VOTES_PE for l in mandats)
+    lu_avant = _vue(ctx, "parltrack_votes__vote_pt")
+    lu_apres = _vue(ctx, "pe_votes__vote_pe")
+    pts = ([PA_PARLTRACK] if avant else []) + ([PA_PE_VOTES] if apres else [])
     if not _vue(ctx, "vote_personne_pe"):
         f.section("europe", [], None, couverture=_absente("europe_votes", ["vote_personne_pe"], pts, au))
         return {"statut": "non_relu", "detail": "Votes au Parlement européen : règle absente."}
     rows = _lignes(ctx, "SELECT * FROM vote_personne_pe WHERE per = ? ORDER BY date, heure, numero",
                    [c["per"]])
-    lic = commun["lic"].get(PA_PE_VOTES)
     for r in rows:
-        r["licence"] = lic
+        r["licence"] = commun["lic"].get(r.get("source_point"))
     n_ens = sum(1 for r in rows if r["nature"] == "ensemble")
     n_non = sum(1 for r in rows if r["nature"] == "non_etablie")
-    lu = (f"Votes nominatifs publiés par le Parlement européen depuis le {_fr(DEBUT_VOTES_PE)} "
-          f"({len(rows)}, dont {n_ens} sur l'ensemble d'un texte ; nature non établie pour {n_non}). "
-          "Un vote où la personne ne figure pas n'est pas montré.")
+    sources = []
+    if avant:
+        sources.append(f"avant le {_fr(DEBUT_VOTES_PE)} : Parltrack (licence ODbL, figé depuis le 24/07/2026)"
+                       if lu_avant else f"avant le {_fr(DEBUT_VOTES_PE)} : non collectés (Parltrack)")
+    if apres:
+        sources.append(f"depuis le {_fr(DEBUT_VOTES_PE)} : portail du Parlement européen"
+                       if lu_apres else f"depuis le {_fr(DEBUT_VOTES_PE)} : non collectés (portail du PE)")
+    lu = (f"Votes nominatifs publiés par le Parlement européen ({len(rows)}, dont {n_ens} sur l'ensemble "
+          f"d'un texte ; nature non établie pour {n_non}) ; " + " ; ".join(sources) + ". Un vote où la "
+          "personne ne figure pas n'est pas montré.")
+    couverts = [x for x, besoin in ((lu_avant, avant), (lu_apres, apres)) if besoin]
     if not mandats:
         statut, detail = "non_etabli", "Aucun mandat de député européen lu : votes non rattachés."
-    elif apres and avant:
-        statut, detail = "partiel", (lu + f" Votes antérieurs au {_fr(DEBUT_VOTES_PE)} : non collectés "
-                                          "dans l'essai (Parltrack, lot à venir).")
-    elif apres:
+    elif all(couverts):
         statut, detail = "complet", lu
+    elif any(couverts):
+        statut, detail = "partiel", lu
     else:
-        statut, detail = "non_collecte", (f"Mandats de député européen antérieurs au {_fr(DEBUT_VOTES_PE)} : "
-                                          "leurs votes ne sont pas publiés par le portail du Parlement "
-                                          "européen, et Parltrack n'est pas encore collecté (lot à venir).")
+        statut, detail = "non_collecte", lu
     par_annee = defaultdict(list)
     for r in rows:
         par_annee[str(r["date"])[:4]].append(r)
     index = []
     for annee, lignes in sorted(par_annee.items()):
-        cv = _couv("europe_votes", statut, detail, len(lignes), None, pts, au=au)
+        p_an = sorted({r["source_point"] for r in lignes if r.get("source_point")}) or pts
+        cv = _couv("europe_votes", statut, detail, len(lignes), None, p_an, au=au)
         f.section(f"europe-votes-{annee}", lignes, "position_vote_pe",
                   ids={"acteur": "eurodepute", "scrutin": "vote", "reunion": "seance"}, date="date",
                   couverture=cv, colonnes=COLS_VOTES_PE,
