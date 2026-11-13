@@ -87,6 +87,18 @@ def test_amendements_xive_schema_ancien_lus_par_lots(tmp_path):
         "14", "7 (Rect)", "PIONANR5L14B0013", "PO644420")
     assert x["date_depot"] == "2014-02-14" and x["auteur"] and x["expose_sommaire"]
     assert all(s["amendement"] in a for s in t["signature"])
+    # Examen tiré de l'uid (le schéma de la XIVe n'en a pas) : sans lui, R-AMENDEMENT fondait les
+    # amendements de même numéro sur des textes différents (13/11/2026).
+    assert x["examen"] == "EXANR5L14SEA644420B0013P0D1"
+    assert all(v["examen"] and v["uid"].startswith(v["examen"].replace("EXANR", "AMANR")) for v in a.values())
+
+
+def test_examen_xive_tire_de_l_uid():
+    from empreinte_src.lecteurs.an_amendements import _examen_xiv
+    assert _examen_xiv("AMANR5L14PO419610B1179P0D1N482") == "EXANR5L14PO419610B1179P0D1"
+    assert _examen_xiv("AMANR5L14SEA644420BTC4418P0D1N1") == "EXANR5L14SEA644420BTC4418P0D1"
+    assert _examen_xiv("AMANR5L17PO419604B0118P0D1N000001") is None
+    assert _examen_xiv(None) is None
 
 
 def test_irrecevable_xive_sans_article_n_est_pas_devine():
