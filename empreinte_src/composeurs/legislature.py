@@ -341,13 +341,17 @@ def _compteurs(ctx, leg, au, lic, gouvs) -> list[dict]:
                      [numero, au])
         dernier = ctx.un("SELECT max(date) FROM scrutin_nature WHERE legislature = ? AND date <= ?",
                          [numero, au])
-        out.append(_compte(
+        # Trous de l'archive (R-CONTINUITE-SCRUTINS) : le compte porte sur ce que l'archive contient.
+        from ..regles.r_continuite_scrutins import date_des_donnees, marquer, trous
+        ts = trous(ctx, numero)
+        out.append(marquer(_compte(
             "votes_solennels", sum(c for _, c in rows), au, _regle(ctx, "scrutin_nature"),
             "Scrutins publics solennels (type lu dans le code du scrutin, jamais dans son libellé).",
             detail=f"Dernier scrutin publié le {_date_fr(dernier)}.",
             points=_points(ctx, "an_scrutins__scrutin"), licences=lic_an,
             par_nature=[{"nature": k, "scrutins": c} for k, c in rows],
-            dernier_scrutin_publie=dernier))
+            dernier_scrutin_publie=dernier), ts))
+        out[-1]["au"] = date_des_donnees(out[-1]["au"], ts)
 
     # 49.3 : textes adoptés sans vote ; engagements distincts. Jamais une position de vote.
     if not _manquantes(ctx, "engagement_49_3", "etat_dossier"):
