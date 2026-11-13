@@ -137,6 +137,10 @@ class Lecture:
         # l'entrepôt chaque nuit, sans encore produire de faits (mise en service par étapes).
         self.non_lus = {p["id"] for p in config["points_acces"] if p.get("lire") is False}
         self.bilan: list[dict] = []
+        # Versions qu'un lecteur n'a pas pu lire cette fois : (point, uid, version). Leurs lignes
+        # déjà écrites sont retirées, elles ne sont pas inscrites comme lues (relues la prochaine
+        # fois), et C1 ne tient pas pour expliquée la perte de leurs faits (issue #39).
+        self.illisibles: set[tuple] = set()
 
     def _chemin(self, lecteur, table):
         return os.path.join(self.dossier, f"{lecteur.NOM}__{table}.parquet")
@@ -167,7 +171,7 @@ class Lecture:
         ecrivains = {t: pq.ParquetWriter(tmp[t], schemas[t], compression="zstd") for t in mod.TABLES}
         try:
             # 2. Lecture des versions nouvelles, lot par lot.
-            illisibles, exemples = 0, []
+            illisibles, exemples, rates = 0, [], set()
             par_empreinte: dict[str, list] = {}
             for r in a_lire:
                 par_empreinte.setdefault(r["empreinte"], []).append(r)
@@ -211,6 +215,7 @@ class Lecture:
                                 nb_sortie, octets_tampon = 0, 0
                     except Exception as e:
                         illisibles += 1
+                        rates.add(cle(r))
                         if len(exemples) < 5:
                             exemples.append(f"{r['uid']}: {type(e).__name__}: {e} | "
                                             + " / ".join(traceback.format_exc(limit=3).splitlines()[-3:]))
@@ -234,6 +239,11 @@ class Lecture:
                                                 for x in a_lire],
                                                schema=pa.schema([("p", pa.string()), ("u", pa.string()),
                                                                  ("n", pa.int32())])))
+        # Un lecteur qui lit un gros membre par lots (archive de la XIVe en un fichier) a pu écrire
+        # des lots avant de tomber en erreur : ces lignes partielles sont retirées.
+        con.register("ill", pa.Table.from_pylist([{"p": p_, "u": u, "n": n} for p_, u, n in rates],
+                                                 schema=pa.schema([("p", pa.string()), ("u", pa.string()),
+                                                                   ("n", pa.int32())])))
         lignes = {}
         for t in mod.TABLES:
             cols = ", ".join(f'x."{c}"' if c not in ("prov_vu_du", "prov_vu_jusqu_au", "prov_etat")
@@ -247,13 +257,16 @@ class Lecture:
                     WHERE NOT EXISTS (SELECT 1 FROM r WHERE r.p = o.prov_point
                                       AND r.u = o.prov_uid AND r.n = o.prov_version)"""
             con.execute(f"""COPY (SELECT {cols} FROM ({sources}) x
-                            JOIN v ON v.p = x.prov_point AND v.u = x.prov_uid AND v.n = x.prov_version)
+                            JOIN v ON v.p = x.prov_point AND v.u = x.prov_uid AND v.n = x.prov_version
+                            WHERE NOT EXISTS (SELECT 1 FROM ill WHERE ill.p = x.prov_point
+                                              AND ill.u = x.prov_uid AND ill.n = x.prov_version))
                             TO '{final}.new' (FORMAT parquet, COMPRESSION zstd, ROW_GROUP_SIZE 20000)""")
             os.replace(final + ".new", final)
             os.unlink(tmp[t])
             lignes[t] = pq.ParquetFile(final).metadata.num_rows
         con.close()
-        lues = sorted(deja | {cle(r) for r in a_lire})
+        lues = sorted((deja | {cle(r) for r in a_lire}) - rates)
+        self.illisibles |= rates
         pq.write_table(pa.Table.from_pylist([{"p": p_, "u": u, "n": n, "lecteur_version": mod.VERSION}
                                              for (p_, u, n) in lues]),
                        os.path.join(self.dossier, f"{mod.NOM}__versions.parquet"))

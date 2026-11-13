@@ -31,7 +31,7 @@ import pyarrow as pa
 from .r_candidatures import vue_ou_vide
 
 NOM = "R-IDENTITE"
-VERSION = 2
+VERSION = 3
 DEPEND = ("R-CANDIDATURES",)
 SORTIES = ("candidat", "personne_identite", "correspondance")
 DESCRIPTION = (
@@ -62,7 +62,8 @@ def _groupe(r) -> list[tuple[str, str]]:
         g.append(("wikipedia-nom", r["nom_wikipedia"]))
     if not g:
         g.append(("liste-nom", r["nom_liste"]))
-    for src, col in (("wd", "element_wikidata"), ("an", "acteur"), ("senat", "matricule_senat")):
+    for src, col in (("wd", "element_wikidata"), ("an", "acteur"), ("senat", "matricule_senat"),
+                     ("pe", "eurodepute")):
         if r[col]:
             g.append((src, r[col]))
     return g
@@ -80,7 +81,7 @@ def appliquer(ctx):
 
     cur = ctx.con.execute("""SELECT personne_source, nom, nom_liste, nom_wikipedia, article_frwiki,
                                     element_wikidata, origine_element, acteur, matricule_senat,
-                                    rattachement FROM candidature""")
+                                    eurodepute, rattachement FROM candidature""")
     cols = [d[0] for d in cur.description]
     lignes = [dict(zip(cols, x)) for x in cur.fetchall()]
     groupes = [_groupe(r) for r in lignes]
@@ -89,7 +90,8 @@ def appliquer(ctx):
     # identifiants parlementaires en sont tirés par Wikidata.
     methode = {"wikipedia": "article_inscrit_par_decision", "wikipedia-nom": "nom_ecrit_par_wikipedia_inscrit_par_decision",
                "liste-nom": "nom_ecrit_par_la_liste_sans_rapprochement",
-               "an": "identifiant_declare_wikidata_P4123", "senat": "identifiant_declare_wikidata_P1808"}
+               "an": "identifiant_declare_wikidata_P4123", "senat": "identifiant_declare_wikidata_P1808",
+               "pe": "identifiant_declare_wikidata_P1186"}
 
     def meth(r, s):
         if s == "wd":
@@ -98,7 +100,7 @@ def appliquer(ctx):
         return methode[s]
     corr = [{"personne_source": r["personne_source"], "per": pers[g[0]], "source": s, "uid": u,
              "methode": meth(r, s),
-             "statut": "automatique" if s in ("an", "senat") or meth(r, s) == "lien_frwiki_de_l_element"
+             "statut": "automatique" if s in ("an", "senat", "pe") or meth(r, s) == "lien_frwiki_de_l_element"
                        else "validee"}
             for r, g in zip(lignes, groupes) for (s, u) in g]
     schema = pa.schema([(c, pa.string()) for c in
@@ -220,6 +222,7 @@ def appliquer(ctx):
                c."references", c.revision_wikipedia, c.date_declaration_source_url, c.statut_wikipedia,
                c.nom_liste, c.nom_wikipedia, c.parti, c.origine_element, c.rattachement_par_nom,
                c.source_liste, c.source_titre, c.date_liste, c.decision,
+               c.eurodepute, c.eurodepute_connu_pe,
                c.source_url, c.article_url, c.element_url, c.personne_source
         FROM candidature c JOIN b USING (personne_source)
         ORDER BY c.statut, c.nom""")

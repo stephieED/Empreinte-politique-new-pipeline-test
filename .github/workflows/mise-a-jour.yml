@@ -43,6 +43,7 @@ jobs:
       points: ${{ steps.plan.outputs.points }}
       rattrapage_run: ${{ steps.plan.outputs.rattrapage_run }}
       rattrapage_nom: ${{ steps.plan.outputs.rattrapage_nom }}
+      rattrapage_erreur: ${{ steps.plan.outputs.rattrapage_erreur }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -59,13 +60,16 @@ jobs:
             # Le second déclenchement s'arrête si une génération a déjà été écrite depuis 20 h.
             FAIRE=$(python -m empreinte_src.planification --depot "$GITHUB_REPOSITORY")
           fi
-          R=$(python -m empreinte_src.rattrapage --depot "$GITHUB_REPOSITORY" --run-actuel "$GITHUB_RUN_ID")
-          echo "Rattrapage : ${R}"
+          # La nuit est décidée avant le rattrapage : une étape accessoire ne doit pas l'empêcher (#41).
           echo "faire=$FAIRE" >> "$GITHUB_OUTPUT"
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
           echo "points=$POINTS" >> "$GITHUB_OUTPUT"
+          # Une erreur de l'API rend {"erreur": …} : la nuit continue sans rattrapage, l'erreur va au rapport.
+          R=$(python -m empreinte_src.rattrapage --depot "$GITHUB_REPOSITORY" --run-actuel "$GITHUB_RUN_ID" || echo '{"erreur": "rattrapage : sortie en erreur"}')
+          echo "Rattrapage : ${R}"
           echo "rattrapage_run=$(echo "$R" | python -c 'import json,sys; print(json.load(sys.stdin).get("run",""))')" >> "$GITHUB_OUTPUT"
           echo "rattrapage_nom=$(echo "$R" | python -c 'import json,sys; print(json.load(sys.stdin).get("nom",""))')" >> "$GITHUB_OUTPUT"
+          echo "rattrapage_erreur=$(echo "$R" | python -c 'import json,sys; print(json.load(sys.stdin).get("erreur","").replace(chr(10)," "))')" >> "$GITHUB_OUTPUT"
 
   collecter:
     needs: preparer
@@ -109,12 +113,16 @@ jobs:
         run: empreinte superposer --entrepot entrepot --depuis rattrapage/entrepot
       - id: collecte
         name: Relever, dépaqueter, versionner (E1, E2)
+        env:
+          # Par l'environnement, jamais recopié dans le script : le message peut contenir des guillemets.
+          RATTRAPAGE_ERREUR: ${{ needs.preparer.outputs.rattrapage_erreur }}
         run: |
           POINTS="${{ needs.preparer.outputs.points }}"
           mkdir -p sortie
           /usr/bin/time -v -o sortie/time-collecter.txt \
             empreinte collecter --entrepot entrepot --mode "${{ needs.preparer.outputs.mode }}" \
-              --rapport sortie/rapport.json --tmp "$RUNNER_TEMP" ${POINTS:+--points $POINTS}
+              --rapport sortie/rapport.json --tmp "$RUNNER_TEMP" ${POINTS:+--points $POINTS} \
+              ${RATTRAPAGE_ERREUR:+--rattrapage-erreur "$RATTRAPAGE_ERREUR"}
           # Durée seulement : le pic de `time -v` ne vaut que pour la dernière étape (le traitement
           # remet le pic à zéro à chaque étape) ; le vrai pic est imprimé par la commande.
           grep -E "Elapsed" sortie/time-collecter.txt || true
@@ -169,7 +177,9 @@ jobs:
           # La dernière publication réussie, pas la nuit précédente : une nuit refusée ne publie
           # pas ses faits, et la comparer désactivait C1 et C6 la nuit suivante (09 et 11/11/2026).
           mkdir -p precedent
-          NOM=$(python -m empreinte_src.distant derniere-publication --depot "$GITHUB_REPOSITORY")
+          # Une erreur de l'API n'est pas « aucune publication » : le calcul s'arrête (issue #40).
+          NOM=$(python -m empreinte_src.distant derniere-publication --depot "$GITHUB_REPOSITORY") || {
+            echo "::error::Dernière publication illisible : C1 et C6 ne peuvent pas être appliqués"; exit 1; }
           if [ -n "$NOM" ]; then
             gh release download export -R "$GITHUB_REPOSITORY" -p "$NOM" -D precedent
           else

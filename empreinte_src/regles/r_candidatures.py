@@ -13,7 +13,8 @@ statut `non_listee` : ses données ne sont pas détruites (cahier 4.1), elle n'e
 **L'identité** n'est jamais rattachée par le nom seul :
 
     élément Wikidata inscrit dans la décision  ->  identifiant Assemblée (P4123, `PA…`),
-                                                   Sénat (P1808), Sycomore (P1045)
+                                                   Sénat (P1808), Sycomore (P1045),
+                                                   député européen (P1186, point `pe-eurodeputes`)
 
 À défaut d'élément inscrit, l'article Wikipédia inscrit est suivi comme en version 1 (titre de
 l'article == lien frwiki d'un élément, après la seule normalisation de MediaWiki). La requête
@@ -36,7 +37,7 @@ ne retire personne : seule une nouvelle décision le fait.
 """
 
 NOM = "R-CANDIDATURES"
-VERSION = 2
+VERSION = 3
 DEPEND = ()
 SORTIES = ("candidature", "candidature_ecart_wikipedia")
 DESCRIPTION = (
@@ -116,6 +117,8 @@ def appliquer(ctx):
     wd = vue_ou_vide(ctx, "wd_identifiants__identifiant_externe", COLONNES_WD)
     an = vue_ou_vide(ctx, "an_acteurs__identite_source", {"uid": "VARCHAR"})
     sen = vue_ou_vide(ctx, "senat_export__identite_source", {"matricule": "VARCHAR"})
+    pe = vue_ou_vide(ctx, "pe_eurodeputes__identifiant_pe", {"element": "VARCHAR", "identifiant": "VARCHAR"})
+    pe_fiche = vue_ou_vide(ctx, "pe_eurodeputes__eurodepute", {"personne": "VARCHAR"})
 
     # Une ligne par personne : la liste la plus récente fait foi ; une personne d'une liste plus
     # ancienne absente de la dernière est « non listée ». Clé : l'élément inscrit, à défaut
@@ -169,6 +172,11 @@ def appliquer(ctx):
         FROM _cand c LEFT JOIN _el e USING (personne_source)
         LEFT JOIN {wd} w ON w.element = e.element
         GROUP BY 1""")
+    # Identifiant de député européen déclaré par Wikidata (P1186) pour l'élément retenu, lu par le
+    # point `pe-eurodeputes` (décision Q3 du 13/11/2026).
+    ctx.x(f"""CREATE OR REPLACE TEMP TABLE _pe AS
+        SELECT element AS pe_element, list_sort(list(DISTINCT identifiant)) AS pe_ids
+        FROM {pe} WHERE identifiant IS NOT NULL GROUP BY 1""")
     # Un identifiant déclaré pour deux candidats différents n'est retenu pour aucun.
     ctx.x("""CREATE OR REPLACE TEMP TABLE _partages AS
         SELECT id FROM (
@@ -226,6 +234,8 @@ def appliquer(ctx):
                CASE WHEN rattachement = 'wikidata' AND len(ids_senat) = 1 THEN ids_senat[1] END AS matricule_senat,
                CASE WHEN rattachement = 'wikidata' AND len(ids_sycomore) = 1 THEN ids_sycomore[1] END AS sycomore,
                CASE WHEN rattachement = 'wikidata' AND len(naissances) = 1 THEN naissances[1] END AS naissance_wikidata,
+               CASE WHEN len(pe_ids) = 1 THEN pe_ids[1] END AS eurodepute,
+               CASE WHEN len(pe_ids) = 1 THEN pe_ids[1] IN (SELECT personne FROM {pe_fiche}) END AS eurodepute_connu_pe,
                rattachement,
                CASE rattachement
                     WHEN 'aucun_element' THEN 'la liste n''inscrit ni élément Wikidata ni article pour ce nom'
@@ -250,7 +260,9 @@ def appliquer(ctx):
                     END AS article_url,
                CASE WHEN rattachement IN ('wikidata', 'sans_identifiant_parlementaire') AND len(elements) = 1
                     THEN 'https://www.wikidata.org/wiki/' || elements[1] END AS element_url
-        FROM t ORDER BY statut, nom""")
+        FROM t LEFT JOIN _pe ON len(t.elements) = 1 AND _pe.pe_element = t.elements[1]
+             AND t.rattachement IN ('wikidata', 'sans_identifiant_parlementaire')
+        ORDER BY statut, nom""")
 
     # Détecteur : écarts entre la liste et Wikipédia (jamais une entrée ni une sortie de liste).
     ctx.ecrire("candidature_ecart_wikipedia", """
@@ -279,10 +291,11 @@ def appliquer(ctx):
     an_ = ctx.un("SELECT count(*) FROM candidature WHERE acteur IS NOT NULL")
     an_connu = ctx.un("SELECT count(*) FROM candidature WHERE acteur_connu_an")
     sen_ = ctx.un("SELECT count(*) FROM candidature WHERE matricule_senat IS NOT NULL")
+    pe_ = ctx.un("SELECT count(*) FROM candidature WHERE eurodepute IS NOT NULL")
     date = ctx.un("SELECT count(*) FROM candidature WHERE statut = 'declaree' AND date_declaration IS NOT NULL")
     ecarts = ctx.un("SELECT count(*) FROM candidature_ecart_wikipedia")
     wp_decl = ctx.un("SELECT count(*) FROM _wp WHERE statut = 'declaree'")
-    for t in ("_cand", "_wp", "_cand_wp", "_el", "_ids", "_partages"):
+    for t in ("_cand", "_wp", "_cand_wp", "_el", "_ids", "_partages", "_pe"):
         ctx.x(f"DROP TABLE IF EXISTS {t}")
     return {"candidats_declares": (decl, n),
             "element_wikidata_retenu": (el, n),
@@ -291,5 +304,6 @@ def appliquer(ctx):
             "identifiant_assemblee_declare": (an_, n),
             "identifiant_assemblee_present_dans_l_archive": (an_connu, an_),
             "identifiant_senat_declare": (sen_, n),
+            "identifiant_parlement_europeen_declare": (pe_, n),
             "date_de_declaration_connue": (date, decl),
             "ecarts_avec_wikipedia": (ecarts, wp_decl)}

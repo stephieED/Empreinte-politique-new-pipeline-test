@@ -207,7 +207,7 @@ def test_candidat_sans_mandat_zemmour(reel):
     cov = {r["institution"]: r["statut"] for r in _lignes(
         ctx, "SELECT institution, statut FROM couverture_carriere WHERE per = ?", [z["per"]])}
     assert cov["assemblee"] == "aucun_identifiant" and cov["senat"] == "aucun_identifiant"
-    assert cov["parlement_europeen"] == "non_collecte" and cov["local"] == "non_collecte"
+    assert cov["parlement_europeen"] == "aucun_identifiant" and cov["local"] == "non_collecte"
     i = _lignes(ctx, "SELECT * FROM personne_identite WHERE per = ?", [z["per"]])[0]
     assert (i["nom"], i["prenom"], i["source_nom"]) == ("Zemmour", "Éric", "wikipedia")
     assert i["naissance"] is None and i["raison_naissance"] == "non connue de nos sources"

@@ -212,10 +212,23 @@ def publier_site(depot: str, dossier_site: str, generation: int) -> list[dict]:
         return [_envoyer(depot, archive, os.path.basename(archive), release="publication")]
 
 
-def derniere_publication(depot: str) -> str | None:
-    """Nom des faits publiés de la dernière publication réussie (release `export`), ou None."""
+def derniere_publication(depot: str, essais: int = 3, pause_s: float = 20) -> str | None:
+    """Nom des faits publiés de la dernière publication réussie (release `export`), ou None s'il
+    n'y en a jamais eu (release absente ou sans faits publiés).
+
+    Une erreur de l'API GitHub n'est **pas** « aucune publication » : elle passait pour un premier
+    calcul, et C1 et C6 étaient sautés sans rien dire (issue #40). Après `essais` tentatives, elle
+    lève une erreur : le calcul échoue, rien n'est publié, l'alerte « publication » le dit."""
     import re
-    r = _gh("release", "view", "export", "-R", depot, "--json", "assets", check=False)
+    import time
+    for k in range(essais):
+        r = _gh("release", "view", "export", "-R", depot, "--json", "assets", check=False)
+        if r.returncode == 0 or "release not found" in (r.stderr or "").lower():
+            break
+        if k + 1 < essais:
+            time.sleep(pause_s)
+    else:
+        raise RuntimeError(f"release `export` illisible après {essais} essais : {(r.stderr or '').strip()[:300]}")
     if r.returncode != 0:
         return None
     noms = sorted(a["name"] for a in json.loads(r.stdout).get("assets", [])
