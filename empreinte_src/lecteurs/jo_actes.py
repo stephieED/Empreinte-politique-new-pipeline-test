@@ -146,6 +146,9 @@ def _texte_html(contenu) -> str | None:
     morceaux = []
 
     def parcourir(e):
+        """Ajoute à `morceaux` le texte de l'élément `e` et de ses descendants, dans l'ordre, avec
+        un saut de ligne avant `br`, `p` et `div` et après `p` et `div` ; les commentaires XML sont
+        sautés."""
         if e.text:
             morceaux.append(e.text)
         for f in e:
@@ -258,6 +261,9 @@ def _sommaire(r, livraison):
     out = []
 
     def parcourir(noeud, chemin):
+        """Ajoute à `out` une ligne par lien vers un texte (`LIEN_TXT`) sous `noeud`, en descendant
+        dans les titres (`TM`) ; `chemin` est la suite des titres traversés, gardée comme
+        rubrique."""
         for e in noeud:
             if e.tag == "TM":
                 parcourir(e, chemin + [_t(e.find("TITRE_TM"))])
@@ -291,6 +297,11 @@ def _suppressions(octets, livraison):
 
 
 def lire(m):
+    """Lit un membre d'une livraison du JO (`m`, un `MembreLu`) et rend `{table: [lignes]}` selon
+    sa forme : la liste des suppressions (`liste_suppression_jorf.dat`) donne `suppression_jo` ; un
+    `TEXTE_VERSION` donne `acte_reglementaire` et `lien_acte_loi` ; un `TEXTELR` donne
+    `version_acte` ; un sommaire `JO` donne `sommaire_jo`. Les racines de `NON_LUS` (articles,
+    sections) rendent `{}` ; toute autre racine lève `ValueError`."""
     livraison = _livraison(m.chemin)
     if m.chemin.endswith("liste_suppression_jorf.dat"):
         return _suppressions(m.octets, livraison)
