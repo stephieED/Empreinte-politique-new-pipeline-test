@@ -440,6 +440,14 @@ class Controles:
             objets += [f"législature {n} en cours sans fiche" for (n,) in self._x(
                 "SELECT numero FROM legislature WHERE fin IS NULL ORDER BY 1")
                 if f"legislature/{n}" not in self.fiches]
+        if self._a("conclusion_non_classee"):
+            # Codes de conclusion non classés (R-ETAPE) : le sort de ces dossiers reste « non connu »
+            # au lieu d'être deviné ; la liste dit lesquels (issue #45).
+            objets += [f"conclusion {c} (« {l} ») non classée : {n} décisions, {d} dossiers "
+                       f"({k} dont c'est la dernière décision), dont {', '.join(ex)}"
+                       for c, l, n, d, ex, k in self._x(
+                           "SELECT conclusion_code, conclusion_libelle, decisions, dossiers, exemples, "
+                           "dossiers_dont_c_est_la_derniere_decision FROM conclusion_non_classee ORDER BY 1")]
         self._avertir("A7", "Entrées non résolues", objets)
 
     def a8_mandats_ouverts(self):

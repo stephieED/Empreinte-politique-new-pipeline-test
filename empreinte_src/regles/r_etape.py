@@ -19,7 +19,7 @@ La législature d'un acte est celle de son identifiant (`L17-…`) : un texte tr
 Sénat survit à la dissolution et a une ligne par législature où il a avancé."""
 
 NOM = "R-ETAPE"
-VERSION = 1
+VERSION = 2
 DEPEND = ()
 SORTIES = ("etape_dossier",)
 DESCRIPTION = (
@@ -29,14 +29,25 @@ DESCRIPTION = (
     "simple saisine d'une commission, posée le jour du dépôt, ne vaut pas examen. Les réunions et "
     "séances annoncées pour l'avenir ne comptent pas.")
 
-ADOPTION = "('TSORTF01', 'TSORTF02', 'TSORTF03', 'TSORTF05', 'TSORTF06', 'TSORTF18', 'TSORTF19')"
+# Codes de conclusion des décisions de séance, classés d'après leur libellé à la source (archive
+# des dossiers, g10 du 13/11/2026). Version 2 (issue #45) : TSORTF04 « adoptée définitivement »,
+# TSORTF12, TSORTF20, TSORTF21 « considérée comme définitive » / « adoptée » en application des
+# articles 151-3, 151-7 et 151-9 du Règlement, TSORTF14 « voté par les deux assemblées du Parlement
+# en termes identiques », TSORTF23 « modifié par le Sénat, considéré comme adopté… (49.3) » ;
+# TSORTF13 « rejeté définitivement ». Restent hors des deux listes, faute de sens établi :
+# TSORTMOT01 « Motion adoptée » (la source ne dit pas laquelle : rejet préalable ou renvoi en
+# commission) et TSORTFnull (sans libellé) : `issue` NULL, et R-SORT-FINAL les nomme
+# (`conclusion_non_classee`, avertissement A7).
+ADOPTION = ("('TSORTF01', 'TSORTF02', 'TSORTF03', 'TSORTF04', 'TSORTF05', 'TSORTF06', 'TSORTF12', "
+            "'TSORTF14', 'TSORTF18', 'TSORTF19', 'TSORTF20', 'TSORTF21', 'TSORTF23')")
 # Adoption « telle quelle » : sans modification par rapport au texte transmis (TSORTF02 et
-# TSORTF05 disent « modifié » / « avec modifications » : la navette continue).
-ADOPTION_CONFORME = "('TSORTF01', 'TSORTF03')"
+# TSORTF05 disent « modifié » / « avec modifications » : la navette continue ; TSORTF14 dit les
+# deux assemblées d'accord, « en termes identiques »).
+ADOPTION_CONFORME = "('TSORTF01', 'TSORTF03', 'TSORTF14')"
 # Lectures de la navette ordinaire, où une adoption sans modification du texte de l'autre
 # chambre clôt la navette (pas la nouvelle lecture, où chaque chambre vote son propre texte).
 NAVETTE = "('AN1', 'SN1', 'AN2', 'SN2', 'AN3', 'SN3')"
-REJET = "('TSORTF07', 'TSORTF24')"
+REJET = "('TSORTF07', 'TSORTF13', 'TSORTF24')"
 # Procédures à une seule chambre : résolutions (8) et résolutions de l'article 34-1 (22).
 UNE_CHAMBRE = "('8', '22')"
 
