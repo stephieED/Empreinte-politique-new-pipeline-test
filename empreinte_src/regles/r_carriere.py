@@ -342,7 +342,7 @@ def appliquer(ctx):
                                      ELSE 'Identifiant européen déclaré, aucun mandat lu dans le portail du Parlement européen.' END
               WHEN 'local' THEN CASE WHEN NOT {str(bool(rne_collecte)).lower()} THEN 'Répertoire national des élus non collecté.'
                                      WHEN c.per NOT IN (SELECT per FROM _car_loc_id) THEN 'Date de naissance inconnue de nos sources : un élu du répertoire, qui n''a pas d''identifiant, ne peut pas être rattaché à cette personne sans décision.'
-                                     WHEN n.lignes > 0 THEN 'Mandats en cours et mandats municipaux 2020-2026 du Répertoire national des élus (nom, prénom et date de naissance concordants) ; avant 2020 : hors source. La fin d''un mandat municipal de 2020 est déduite au 15/03/2026.'
+                                     WHEN n.lignes > 0 THEN 'Mandats en cours et mandats municipaux 2020-2026 du Répertoire national des élus, rattachés par ' || CASE WHEN c.per IN (SELECT per FROM {loc} WHERE methode = 'decision') THEN 'une décision (date de naissance inconnue de nos autres sources)' ELSE 'le nom, le prénom et la date de naissance' END || ' ; avant 2020 : hors source. La fin d''un mandat municipal de 2020 est déduite au 15/03/2026.'
                                      ELSE 'Aucun mandat dans ce que couvre le Répertoire national des élus (mandats en cours, mandats municipaux 2020-2026) ; avant 2020 et autres mandats terminés : hors source.' END
               ELSE 'Mandats locaux : non collectés dans l''essai.' END AS detail
         FROM c CROSS JOIN i
