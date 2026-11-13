@@ -834,3 +834,11 @@ mandats d'avant 2002 pour Retailleau (Vendée, 27/11/1994 → 21/04/1997), Dupon
 avec l'archive des acteurs (19/06/2002) ; 14 fiches lues sans mandat avant 2002 ; 27 candidats sans
 fiche Sycomore déclarée.
 
+
+## Nuit du 13/11 refusée par C4 : un paquet relève du schéma de sa section (13/11/2026, soir)
+
+Branche `etape-2-schema-paquets`. Nuit du 13/11 (exécution 43502893975) : acquis écrit, publication refusée par C4 (alerte #120) : `candidats/francois-ruffin/amendements-2023-1.json.gz`, section `candidats/amendements-N-N` absente du schéma.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| C4 : un paquet (`amendements-2023-1`, numéro après une année ou un semestre) relève du schéma de sa section (`amendements-N`) quand sa forme n'est pas déclarée ; les colonnes restent vérifiées | les amendements de la XVIe, relevés pour la première fois cette nuit, font dépasser un paquet aux amendements de 2023 de François Ruffin : forme absente de toutes les données d'où le schéma avait été tiré. Vérifié sur les fichiers servis de la nuit : 0 écart avec la correction | 2 (2.8.1 C4) |

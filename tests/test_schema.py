@@ -78,3 +78,19 @@ def test_schema_du_depot_bien_forme():
     assert set(s) == {"statuts_couverture", "vocabulaires", "colonnes"}
     assert "trou_source" in s["statuts_couverture"] and "suite_absente_des_archives" in s["vocabulaires"]["raison_sort"]
     assert all(isinstance(v, list) and v for v in s["colonnes"].values())
+
+
+def test_un_paquet_releve_du_schema_de_sa_section(tmp_path):
+    """Nuit du 13/11/2026 refusée par C4 : `candidats/francois-ruffin/amendements-2023-1` (les
+    amendements de la XVIe relevés pour la première fois font dépasser un paquet). Le schéma ne
+    connaissait que `candidats/amendements-N`."""
+    r = str(tmp_path / "site")
+    schema = {"colonnes": {"candidats/amendements-N": ["amendement", "sort_final"]},
+              "vocabulaires": SCHEMA["vocabulaires"], "statuts_couverture": ["complet"]}
+    for nom in ("amendements-2023-1", "amendements-2023-2", "amendements-2024"):
+        _ecrire(r, f"candidats/x/{nom}.json.gz", _section(["amendement", "sort_final"], [["A", "adopte"]]))
+    assert verifier(r, schema) == []
+    _ecrire(r, "candidats/x/amendements-2025-1.json.gz", _section(["amendement", "autre"], [["A", 1]]))
+    assert any("colonnes différentes" in x for x in verifier(r, schema))      # les colonnes comptent toujours
+    _ecrire(r, "candidats/x/votes-14.json.gz", _section(["scrutin"], [["V"]]))
+    assert any("« candidats/votes-N » absente du schéma" in x for x in verifier(r, schema))
