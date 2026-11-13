@@ -198,7 +198,8 @@ def publier_export(depot: str, dossier_export: str, generation: int) -> list[dic
 
 def publier_site(depot: str, dossier_site: str, generation: int) -> list[dict]:
     """Fichiers servis et page minimale de la nuit (release `publication`), en une archive.
-    Pas de déploiement (décision du 06/11/2026) : l'archive s'ouvre en local."""
+    La dernière archive est servie par Pages avec la documentation du code (workflow `pages.yml`,
+    décision du 13/11/2026) ; elle s'ouvre aussi en local."""
     import tarfile
     r = _gh("release", "view", "publication", "-R", depot, check=False)
     if r.returncode != 0:

@@ -51,7 +51,7 @@ Ce qu'écrit la tâche `ecrire`, une release par usage :
 | `entrepot` | l'**entrepôt** : relevés, index des versions, octets des fichiers reçus, registres d'identité. `manifeste.json` dit quelle est la génération courante et l'empreinte de chaque fichier |
 | `archives-brutes` | les archives reçues trop grosses pour être rechargées chaque nuit, gardées à l'octet près : l'archive globale du Journal officiel (1,75 Go, depuis 1861). Elles ne servent qu'à refaire un découpage ; `restaurer` ne les rapatrie que sur demande (`avec_brutes`) |
 | `export` | l'**export des faits** : les faits publiés de chaque nuit, et tous les faits lus de la dernière nuit (une ligne par fait, documenté dans [`docs/export.md`](docs/export.md)) |
-| `publication` | les fichiers servis et la page minimale de chaque nuit, en une archive (aucun déploiement Pages ici) |
+| `publication` | les fichiers servis et la page minimale de chaque nuit, en une archive ; la dernière est servie par Pages (voir plus bas) |
 
 Le contenu de l'entrepôt reste sous la licence de chaque source : Licence Ouverte pour
 l'Assemblée nationale, le Sénat et le Journal officiel ; CC BY-SA pour Wikipédia ; CC0 pour
@@ -71,6 +71,14 @@ fois dans `empreinte_src/perimetre.py` :
 | Candidats | la liste tenue dans `decisions/candidature/` ; volet européen pour les anciens eurodéputés |
 
 Les budgets des gouvernements ne sont pas collectés : leur section est vide et le dit.
+
+## Pages
+
+Le workflow `Pages` (`.github/workflows/pages.yml`) sert, à
+<https://stephieed.github.io/Empreinte-politique-new-pipeline-test/>, la documentation du code
+(pdoc) et la page minimale de contrôle avec les fichiers servis de la dernière publication. Il
+tourne après chaque mise à jour sur `main` et après chaque envoi de code sur `main`. Ce n'est pas
+le site : l'interface reste hors périmètre (décision du 13/11/2026).
 
 ## Lancer à la main
 
