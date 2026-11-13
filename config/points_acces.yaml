@@ -341,3 +341,17 @@ points_acces:
     format: pe_eurodeputes
     decisions: decisions
     licence: cc-by-4.0
+
+  # --- Parlement européen : décisions de chaque séance plénière depuis la législature ouverte le
+  # 02/07/2019 (votes nominatifs, député européen par député européen ; décision Q3 du 13/11/2026 ;
+  # avant : Parltrack). Une requête toutes les 2,1 s ; une séance déjà rangée n'est relue que si
+  # elle a moins de 60 jours ; premier remplissage ≈ 380 séances. Voir empreinte_src/collecte_pe.py.
+  - id: pe-votes
+    source: europarl
+    type: votes_pe
+    url: https://data.europarl.europa.eu/api/v2/meetings
+    format: pe_votes
+    depuis: "2019-07-02"
+    fenetre_jours: 60
+    budget_s: 2400
+    licence: cc-by-4.0
