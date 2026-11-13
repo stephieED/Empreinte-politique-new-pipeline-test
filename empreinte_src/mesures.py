@@ -43,3 +43,15 @@ class Mesures:
             pic = _pic_rss_ko()
             m["pic_memoire_mo"] = round(pic / 1024, 1) if pic else None
             self.etapes.append(m)
+
+    def pic(self) -> str:
+        """Pic de mémoire de la tâche : le plus haut des pics de ses étapes. Le pic du processus est
+        remis à zéro au début de chaque étape : `time -v`, qui le lit à la fin, ne voit que la
+        dernière (constaté le 13/11/2026 : 2 683 Mo selon `time -v`, 4 813 Mo en E4)."""
+        avec = [m for m in self.etapes if m.get("pic_memoire_mo") is not None]
+        if not avec:
+            return "Pic de mémoire : non mesuré."
+        m = max(avec, key=lambda x: x["pic_memoire_mo"])
+        nom = m["etape"] + (f" {m['point_acces']}" if m.get("point_acces") else "") + \
+            (f" {m['lecteur']}" if m.get("lecteur") else "")
+        return f"Pic de mémoire : {m['pic_memoire_mo']:,.0f} Mo (étape {nom})."

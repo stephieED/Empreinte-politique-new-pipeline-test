@@ -80,11 +80,12 @@ def cmd_collecter(a):
     rapport = {"generation": man["generation"], "base": man["base"], "mode": a.mode,
                "debut": debut, "fin": maintenant(), "code": man["code"],
                "releves": releves, "mesures": mesures.etapes,
+               **({"rattrapage_erreur": a.rattrapage_erreur} if getattr(a, "rattrapage_erreur", None) else {}),
                "entrepot_octets": sum(f["taille"] for f in man["fichiers"].values()),
                "entrepot_fichiers": len(man["fichiers"])}
     with open(a.rapport, "w") as f:
         json.dump(rapport, f, indent=1, ensure_ascii=False, default=str)
-    _resume(rapport)
+    _resume(rapport, mesures.pic())
 
 
 def cmd_calculer(a):
@@ -149,7 +150,10 @@ def cmd_calculer(a):
         ctrl.c2_liens({f["fiche"] for f in manifeste_site["fiches"]})
         ctrl.c4_interdits()
         ctrl.c5_couverture(rapport.get("releves", []))
-        changes = {r["uid"].split("@")[0] for r in e._index if r["vu_du"] == gen}
+        # Un fichier modifié cette nuit explique la perte de ses faits, sauf si le lecteur n'a pas
+        # pu le lire : la perte vient alors de nous, pas de la source, et C1 doit la voir (#39).
+        uids_illisibles = {u.split("@")[0] for _, u, _ in l.illisibles}
+        changes = {r["uid"].split("@")[0] for r in e._index if r["vu_du"] == gen} - uids_illisibles
         retirees = dict(ctx.x("""SELECT 'candidat/' || adresse, raison_non_publie FROM candidat
                                  WHERE NOT publie AND adresse IS NOT NULL
                                    AND statut IN ('retiree', 'non_listee')""")) if ctx.existe("candidat") else {}
@@ -227,7 +231,8 @@ def cmd_calculer(a):
     lignes += ["", f"Export : {ex.get('total', 0):,} faits, {ex.get('cles_en_double', 0)} clés en double.",
                f"Fiches : {len(manifeste_site['fiches'])} ; faits publiés : {nb_publies:,}.",
                "Contrôles : " + ("publication autorisée" if controles["publication_autorisee"]
-                                  else "**publication refusée** (" + ", ".join(controles["bloquantes"]) + ")")]
+                                  else "**publication refusée** (" + ", ".join(controles["bloquantes"]) + ")"),
+               mesures.pic()]
     texte = "\n".join(lignes)
     print(texte)
     if os.environ.get("GITHUB_STEP_SUMMARY"):
@@ -338,7 +343,7 @@ def cmd_reconstruire(a):
     sys.exit(0 if ok == len(membres) else 1)
 
 
-def _resume(rapport):
+def _resume(rapport, pic=""):
     """Résumé lisible dans la page de l'exécution GitHub."""
     lignes = [f"## Mise à jour — génération {rapport['generation']}", "",
               "| Point d'accès | Issue | Octets reçus | Nouvelles versions | Retraits | Durée (s) | Message |",
@@ -349,12 +354,22 @@ def _resume(rapport):
                       f"{r.get('nb_nouvelles_versions') or 0:,} | {r.get('nb_retraits') or 0:,} | "
                       f"{r.get('duree_s') or ''} | {msg} |")
     lignes += ["", f"Entrepôt : {rapport['entrepot_fichiers']} fichiers, "
-               f"{rapport['entrepot_octets'] / 1e6:.1f} Mo."]
+               f"{rapport['entrepot_octets'] / 1e6:.1f} Mo."] + ([pic] if pic else [])
     texte = "\n".join(lignes)
     print(texte)
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
             f.write(texte + "\n")
+
+
+def cmd_rapport_mesures(a):
+    """Rapport de mesures (commande, section 5) : relit le rapport de chaque nuit (artefact `rapport`)."""
+    from . import rapport_mesures as rm
+    nuits = rm.charger(a.cache) if a.hors_ligne else rm.recuperer(a.depot, a.cache)
+    texte = rm.rendre(rm.mesurer_toutes(nuits), a.depot)
+    with open(a.sortie, "w") as f:
+        f.write(texte)
+    print(f"{len(nuits)} nuits → {a.sortie}")
 
 
 def main(argv=None):
@@ -371,6 +386,8 @@ def main(argv=None):
     s = sp.add_parser("collecter", parents=[commun]); s.set_defaults(f=cmd_collecter)
     s.add_argument("--mode", default="quotidien"); s.add_argument("--points", nargs="*")
     s.add_argument("--tmp", default=None)
+    s.add_argument("--rattrapage-erreur", default=None,
+                   help="erreur de la recherche d'un acquis à rattraper (tâche preparer), mise au rapport")
     s = sp.add_parser("calculer", parents=[commun]); s.set_defaults(f=cmd_calculer)
     s.add_argument("--z2", default="z2"); s.add_argument("--sortie", default="sortie")
     s.add_argument("--z3", default="z3"); s.add_argument("--decisions", default="decisions")
@@ -383,6 +400,10 @@ def main(argv=None):
     s = sp.add_parser("alerter", parents=[commun]); s.set_defaults(f=cmd_alerter)
     s = sp.add_parser("reconstruire", parents=[commun]); s.set_defaults(f=cmd_reconstruire)
     s.add_argument("--releve", required=True)
+    s = sp.add_parser("rapport-mesures", parents=[commun]); s.set_defaults(f=cmd_rapport_mesures)
+    s.add_argument("--cache", required=True, help="dossier où garder les rapports téléchargés")
+    s.add_argument("--sortie", required=True, help="fichier Markdown à écrire")
+    s.add_argument("--hors-ligne", action="store_true", help="ne relire que le cache")
     a = p.parse_args(argv)
     os.makedirs(os.path.dirname(a.rapport) or ".", exist_ok=True)
     a.f(a)
