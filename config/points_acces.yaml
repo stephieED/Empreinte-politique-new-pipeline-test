@@ -465,6 +465,8 @@ points_acces:
     format: fichier
     uid: ep_mep_activities
     taille_min: 40000000
+    licence: odbl-1.0
+
   # --- Parltrack : votes nominatifs du Parlement européen de 2004 au 26/03/2026 (ODbL 1.0 ; figé
   # depuis le 24/07/2026). Décision Q3 du 13/11/2026 : Parltrack pour les votes antérieurs au
   # 02/07/2019 (législatures closes, que le gel ne touche pas) ; le portail du PE ensuite (point

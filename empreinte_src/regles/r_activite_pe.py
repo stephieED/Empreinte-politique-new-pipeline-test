@@ -48,7 +48,7 @@ def appliquer(ctx):
     if ctx.existe("parltrack_activites__activite_pt"):
         parts.append(f"""
             SELECT mep AS eurodepute, {fam} AS famille, type AS type_source, {role} AS role_pe,
-                   date, annee, date_raison, titre, reference, dossiers, commission,
+                   date, annee, date_raison, terme AS legislature_pe, titre, reference, dossiers, commission,
                    CASE WHEN texte IS NOT NULL THEN left(texte, 300) END AS extrait,
                    prov_url AS source_url, 'parltrack' AS source, 'parltrack-activites' AS source_point,
                    mep || ':' || type || ':' || rang AS activite
@@ -58,6 +58,7 @@ def appliquer(ctx):
         parts.append(f"""
             SELECT personne AS eurodepute, 'interventions' AS famille, 'speech' AS type_source,
                    NULL::VARCHAR AS role_pe, date, left(date, 4) AS annee, NULL::VARCHAR AS date_raison,
+                   NULL::VARCHAR AS legislature_pe,
                    debat AS titre, compte_rendu AS reference, NULL::VARCHAR AS dossiers,
                    NULL::VARCHAR AS commission, NULL::VARCHAR AS extrait, prov_url AS source_url,
                    'pe' AS source, 'pe-eurodeputes' AS source_point, intervention AS activite

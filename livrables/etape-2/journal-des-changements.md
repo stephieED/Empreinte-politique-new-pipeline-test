@@ -774,3 +774,22 @@ dès le 18/07/2019). Nature non établie : 85 votes de Le Pen sur 10 670, 71 de 
 Philippot. Les quatre candidats anciens ou actuels députés européens ont un volet européen
 `complet`.
 
+## Volet européen : activité hors votes (13/11/2026)
+
+Branche `etape-2-europe-activite` (sur `etape-2-europe-parltrack`). Décision Q37 du 13/11/2026 (« Tout,
+chacun dans sa section »).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Point `parltrack-activites` (`ep_mep_activities.json.zst`, ODbL, gardé à l'octet) ; point `pe-eurodeputes` : interventions en séance de chaque député européen déclaré (`speeches`, pages de 500 jusqu'au 204) | Q37 | 2 (2.2) |
+| Lecteurs `parltrack_activites` (date de republication du 22/11/2016 écartée : date relue dans l'adresse ou la référence, sinon l'année, sinon la législature ; champs publiés parfois en liste) et `pe_eurodeputes` v3 (`intervention_pe`) | cahier 3.4 | 1 (1.4) |
+| R-ACTIVITE-PE : interventions de Parltrack avant le 02/07/2019, du portail ensuite ; rapports (rôle : rapporteur, fictif, pour avis), résolutions, questions, explications de vote (extrait de 300 caractères), autres : Parltrack à toutes dates | Q37 | 1 (1.6) |
+| Fiche : six sections `europe-<famille>` (déclarées dans `config/schema_fichiers.yaml`) ; colonne `role_pe` (pas `role`, au vocabulaire fermé) ; couverture `partiel` après le gel de Parltrack (24/07/2026) et pour un trou du portail | cahier 4.2 ; C4 | 1 (1.7.2) |
+
+Mesures (13/11/2026, données réelles) : 6 425 activités pour les 6 personnes à identifiant européen,
+date établie pour 4 899 ; Mélenchon 2 158 interventions (2009-2017), Le Pen 808, Philippot 749 (et 766
+explications de vote, toutes sans date sûre : législature 8) ; Glucksmann 112 interventions au portail,
+**aucune avant le 06/07/2021 ni dans Parltrack** (trou de source, section `partiel`) ; 0 écart au schéma
+des fichiers servis. Défaut trouvé en route : une résolution de conflit de fusion avait effacé la
+licence du point `parltrack-activites` (corrigé, vérifié : chaque point a sa licence).
+

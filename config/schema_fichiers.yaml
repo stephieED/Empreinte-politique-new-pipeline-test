@@ -154,6 +154,102 @@ colonnes:
   - fichier
   - lignes
   - eurodepute
+  candidats/europe-autres:
+  - date
+  - annee
+  - legislature_pe
+  - date_raison
+  - titre
+  - reference
+  - role_pe
+  - type_source
+  - commission
+  - dossiers
+  - extrait
+  - activite
+  - eurodepute
+  - source_url
+  - licence
+  candidats/europe-explications:
+  - date
+  - annee
+  - legislature_pe
+  - date_raison
+  - titre
+  - reference
+  - role_pe
+  - type_source
+  - commission
+  - dossiers
+  - extrait
+  - activite
+  - eurodepute
+  - source_url
+  - licence
+  candidats/europe-interventions:
+  - date
+  - annee
+  - legislature_pe
+  - date_raison
+  - titre
+  - reference
+  - role_pe
+  - type_source
+  - commission
+  - dossiers
+  - extrait
+  - activite
+  - eurodepute
+  - source_url
+  - licence
+  candidats/europe-questions:
+  - date
+  - annee
+  - legislature_pe
+  - date_raison
+  - titre
+  - reference
+  - role_pe
+  - type_source
+  - commission
+  - dossiers
+  - extrait
+  - activite
+  - eurodepute
+  - source_url
+  - licence
+  candidats/europe-rapports:
+  - date
+  - annee
+  - legislature_pe
+  - date_raison
+  - titre
+  - reference
+  - role_pe
+  - type_source
+  - commission
+  - dossiers
+  - extrait
+  - activite
+  - eurodepute
+  - source_url
+  - licence
+  candidats/europe-resolutions:
+  - date
+  - annee
+  - legislature_pe
+  - date_raison
+  - titre
+  - reference
+  - role_pe
+  - type_source
+  - commission
+  - dossiers
+  - extrait
+  - activite
+  - eurodepute
+  - source_url
+  - licence
   candidats/europe-votes-N:
   - date
   - heure

@@ -35,19 +35,28 @@ LOT = 50_000
 
 def date_reelle(x: dict) -> tuple[str | None, str | None, str | None]:
     """(date, année, raison) : la date publiée, sauf la date de republication du 22/11/2016."""
-    d = str(x.get("date") or "")
+    d = _txt(x.get("date")) or ""
     if d and not (x.get("date-type") == "datePublished" and d.startswith(REPUBLICATION)):
         return d[:10], d[:4], None
-    for champ in (x.get("url") or "", x.get("reference") or ""):
+    for champ in (_txt(x.get("url")) or "", _txt(x.get("reference")) or ""):
         m = _JOUR.search(champ)
         if m:
             a, mo, j = m.groups()
             return f"{a}-{mo}-{j}", a, "date relue dans l'adresse ou la référence (date publiée : republication du 22/11/2016)"
-    m = _ANNEE.search(x.get("reference") or "")
+    m = _ANNEE.search(_txt(x.get("reference")) or "")
     if m:
         a = m.group(1) or m.group(2)
         return None, a, "date inconnue : seule l'année de la référence est sûre (date publiée : republication du 22/11/2016)"
     return None, None, "date inconnue (date publiée : republication du 22/11/2016)"
+
+
+def _txt(v):
+    """Un champ texte que Parltrack publie parfois en liste (une commission, plusieurs références)."""
+    if v is None:
+        return None
+    if isinstance(v, list):
+        return ", ".join(str(x) for x in v) or None
+    return str(v).strip() or None
 
 
 def _objets(octets):
@@ -72,11 +81,10 @@ def lire(m):
                 d, a, raison = date_reelle(x)
                 dos = x.get("dossiers")
                 lot.append({"mep": mep, "type": type_, "rang": k, "date": d, "annee": a, "date_raison": raison,
-                            "date_publiee": x.get("date"), "titre": (x.get("title") or "").strip() or None,
-                            "reference": x.get("reference"),
-                            "dossiers": ", ".join(dos) if isinstance(dos, list) else (str(dos) if dos else None),
-                            "commission": x.get("committee"), "terme": str(x.get("term") or "") or None,
-                            "texte": x.get("text"), "prov_url": x.get("url")})
+                            "date_publiee": _txt(x.get("date")), "titre": _txt(x.get("title")),
+                            "reference": _txt(x.get("reference")), "dossiers": _txt(dos),
+                            "commission": _txt(x.get("committee")), "terme": _txt(x.get("term")),
+                            "texte": _txt(x.get("text")), "prov_url": _txt(x.get("url"))})
                 if len(lot) >= LOT:
                     yield {"activite_pt": lot}
                     lot = []
