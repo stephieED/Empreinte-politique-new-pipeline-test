@@ -27,3 +27,18 @@ def test_le_second_declenchement_s_arrete_si_la_nuit_a_ecrit():
     assert not a_faire("2026-11-06T20:52:00+00:00", t(6, 23, 30))
     assert a_faire("2026-11-06T20:52:00+00:00", t(7, 20, 30))      # nuit suivante
     assert a_faire(None, t(6, 20, 30))
+
+
+def test_manifeste_illisible_la_nuit_se_fait(monkeypatch, capsys):
+    """Issue #41 (rouverte) : une erreur de l'API à la planification ne supprime pas la nuit."""
+    from empreinte_src import planification
+    appels = []
+
+    def illisible(depot):
+        appels.append(depot)
+        raise RuntimeError("lecture du manifeste distant impossible : HTTP 502")
+    monkeypatch.setattr(planification, "manifeste_distant", illisible)
+    monkeypatch.setattr("sys.argv", ["planification", "--depot", "o/d", "--pause", "0"])
+    planification.main()
+    out = capsys.readouterr()
+    assert out.out.strip() == "true" and len(appels) == 3 and "HTTP 502" in out.err

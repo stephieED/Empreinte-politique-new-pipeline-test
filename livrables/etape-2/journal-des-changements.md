@@ -745,3 +745,12 @@ part) : les blocs Mermaid restent tels quels dans le Markdown.
 
 Les écarts entre un schéma et le texte de la spécification ne sont pas tranchés ici : la
 spécification fait foi, et les écarts relevés sont listés dans la PR.
+
+## Restes de #41 et #44, issues rouvertes (13/11/2026)
+
+Branche `etape-2-restes-41-44`. Les issues #41, #42 et #44 ont été rouvertes à 16 h 34 UTC par une relecture du code (`main` fd1fa8a).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| `planification` : trois essais ; si le manifeste reste illisible, la nuit se fait (`true`), l'erreur au journal de la tâche ; le workflow retombe aussi sur `true` | #41 : sur une nuit planifiée, la planification appelle l'API avant d'écrire `faire` ; une erreur y supprimait la nuit et l'alerte. Au pis, le second déclenchement refait une nuit déjà faite | 2 (2.3) |
+| Lecture : seules les versions encore portées par l'entrepôt restent inscrites comme lues | #44 : une version sortie de l'entrepôt perd ses lignes mais restait « lue » ; revenue avec les mêmes octets, elle n'aurait plus aucun fait (déduit du code, non observé). Le second point de la réouverture (« les essais sur `main` sauvent toujours le cache ») ne tient pas : essai sur `main` 43467867327 du 13/11, étape « Garder les faits lus » sautée, aucun cache `z2-` | 2 (2.5) |
