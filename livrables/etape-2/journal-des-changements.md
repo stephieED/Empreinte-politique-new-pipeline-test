@@ -766,3 +766,11 @@ Branche `etape-2-a9-compteurs`, issue #42 rouverte, décision Q35 révisée (« 
 | Connexion DuckDB de A9 sous la limite de mémoire du traitement ; extraction des discriminants pour les seules identités partagées | première version tuée en local (mémoire) ; mesurée ensuite : 41 s, 2,2 Go, g10 contre `main` du 13/11 : mêmes 3 signalements que l'après-midi | 4 |
 
 Restent hors de A9 : les faits sans identifiant (94 `actes_compte`) et `parole_sujet`, dont le numéro d'ordre se décale.
+
+## Amendements de la XIVe : examen tiré de l'uid (13/11/2026, soir)
+
+Branche `etape-2-amendements-xiv-examen`, issue #111 (constat transmis par la session d'analyse, à la demande de la propriétaire).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Lecteur `an_amendements` (version 2) : l'examen d'un amendement de la XIVe est tiré de son uid, qui a la même grammaire qu'aux législatures suivantes (`AMANR5L14PO419610B1179P0D1N482` → `EXANR5L14PO419610B1179P0D1`) | #111 : le schéma de la XIVe n'a pas d'examen ; R-AMENDEMENT dédoublonnait par le seul numéro : 167 420 amendements lus, 22 159 gardés (g10). Après : 167 420 gardés ; Delphine Batho, 65 → 158 amendements de la XIVe (CE435 revient). Relecture des amendements une fois (≈ 3 min en local) | 1 (1.6 R-AMENDEMENT) |

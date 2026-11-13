@@ -32,7 +32,7 @@ import pyarrow as pa
 from ..lecture import en_flux, liste, pa_id, val
 
 NOM = "an_amendements"
-VERSION = 1
+VERSION = 2
 TYPES = ("amendements",)
 TABLES = {
     "amendement": pa.schema([
@@ -120,6 +120,12 @@ _ETATS_XIV = {"Discuté": "DI", "Retiré": "RT", "A discuter": "AC", "En traitem
               "Irrecevable": "IRRXIV"}
 
 
+def _examen_xiv(uid) -> str | None:
+    """Examen d'un amendement de la XIVe, tiré de son uid : préfixe `EXANR`, sans le numéro final."""
+    m = re.fullmatch(r"AMANR(5L14[A-Z]+\d+B[A-Z]*\d+P\d+D\d+)N\d+", uid or "")
+    return f"EXANR{m.group(1)}" if m else None
+
+
 def _depuis_xiv(a: dict) -> tuple[dict, str | None]:
     """Amendement au schéma de la XIVe → schéma courant ; rend aussi l'organe d'examen."""
     ident = _d(a.get("identifiant"))
@@ -143,6 +149,11 @@ def _depuis_xiv(a: dict) -> tuple[dict, str | None]:
         "uid": a.get("uid"), "legislature": ident.get("legislature"),
         "identification": {"numeroLong": a.get("numeroLong"), "numeroOrdreDepot": ident.get("numero"),
                            "numeroRect": ident.get("numRect")},
+        # Le schéma de la XIVe n'a pas d'examen ; il se lit dans l'uid, qui a la même grammaire
+        # qu'aux législatures suivantes (`AMANR5L14PO419610B1179P0D1N482` → examen
+        # `EXANR5L14PO419610B1179P0D1`). Sans lui, R-AMENDEMENT dédoublonnait par le seul numéro :
+        # 167 420 amendements lus, 22 159 gardés (g10 ; version 2 du lecteur, 13/11/2026).
+        "examenRef": _examen_xiv(a.get("uid")),
         "texteLegislatifRef": sais.get("refTexteLegislatif"),
         "amendementParentRef": a.get("amendementParent"),
         "signataires": {"auteur": {"typeAuteur": aut.get("typeAuteur"), "acteurRef": aut.get("acteurRef"),
