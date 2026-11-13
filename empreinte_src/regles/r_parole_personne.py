@@ -36,6 +36,10 @@ FIN_OUVERTE = "'9999-12-31'"
 
 
 def appliquer(ctx):
+    """Applique R-PAROLE-PERSONNE : écrit `parole_personne`, ce que chaque personne a dit en séance
+    (voir la description du module). Rend la couverture, `{nom: (numérateur, dénominateur)}` :
+    `paragraphe_attribue_au_texte_non_vide`, `qualite_etablie`, `qualite_ecrite_hors_presidence`,
+    `sujet_publie`, `dossier_etabli`, `lien_au_paragraphe`."""
     ctx.ecrire("parole_personne", f"""
         WITH a AS (
             SELECT a.acteur, a.compte_rendu, a.id_syceron, a.seance, a.date, a.preside, a.interruption,

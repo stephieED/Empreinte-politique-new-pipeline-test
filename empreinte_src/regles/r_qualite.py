@@ -34,6 +34,10 @@ DESCRIPTION = (
 
 
 def appliquer(ctx):
+    """Applique R-QUALITE : écrit `qualite_orateur`, le titre auquel parle l'orateur de chaque
+    paragraphe attribué (voir la description du module). Rend la couverture,
+    `{nom: (numérateur, dénominateur)}` : `qualite_etablie`,
+    `qualite_ecrite_par_le_compte_rendu_hors_presidence`."""
     ctx.ecrire("qualite_orateur", f"""
         WITH a AS (
             SELECT a.compte_rendu, a.id_syceron, a.acteur, a.date, a.preside, a.interruption,

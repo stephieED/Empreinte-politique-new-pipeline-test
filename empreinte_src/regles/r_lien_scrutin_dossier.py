@@ -37,6 +37,10 @@ def _norme(col: str) -> str:
 
 
 def appliquer(ctx):
+    """Applique R-LIEN-SCRUTIN-DOSSIER : écrit `lien_scrutin_dossier` (le dossier sur lequel porte
+    un scrutin) et `scrutin_non_relie`, voir la description du module. Rend la couverture,
+    `{nom: (numérateur, dénominateur)}` : `scrutin_relie`, `ensemble_relie`,
+    `lien_recoupe_par_deux_routes`, `desaccord_entre_routes`."""
     ctx.x(f"""CREATE OR REPLACE TEMP TABLE _routes AS
         WITH s AS (SELECT scrutin, seance, dossier_ref, {_norme('titre')} AS t FROM scrutin_nature),
         r1 AS (SELECT scrutin, 'reference_directe' AS route, 1 AS rang, dossier_ref AS dossier

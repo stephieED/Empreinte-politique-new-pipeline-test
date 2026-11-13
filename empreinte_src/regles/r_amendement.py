@@ -87,6 +87,12 @@ def table_sorts() -> str:
 
 
 def appliquer(ctx):
+    """Applique R-AMENDEMENT : écrit `amendement_canonique` (un amendement compté une fois, son
+    sort normalisé, la commission et le dossier visés) et `amendement_auteur` (ses signatures),
+    voir la description du module. Rend la couverture, `{nom: (numérateur, dénominateur)}` :
+    `amendements_distincts_sur_uid`, `sort_etabli`, `commission_etablie`, `dossier_etabli`,
+    `amendement_avec_copie`, `copies_divergentes`, `irrecevable_article_40`,
+    `irrecevable_article_45`, `banc_au_depot_declare`."""
     ctx.x(f"""CREATE OR REPLACE TEMP TABLE _am AS
         WITH sig AS (
             SELECT amendement, list(acteur ORDER BY rang) FILTER (role = 'cosignataire') AS cosignataires

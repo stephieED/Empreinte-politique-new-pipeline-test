@@ -77,6 +77,10 @@ def classe_qualite(x: str) -> str:
 
 
 def appliquer(ctx):
+    """Applique R-ORATEUR : écrit `intervention_attribuee`, la personne à qui chaque paragraphe
+    d'un compte rendu de séance est attribué (voir la description du module). Rend la couverture,
+    `{nom: (numérateur, dénominateur)}` : `paragraphe_attribue`,
+    `parole_hors_presidence_attribuee`."""
     repli = ", ".join(f"'{i}'" for i in IDENTIFIANTS_DE_REPLI)
     nom = "i.orateur_nom"
     n_nom = norm(nom)

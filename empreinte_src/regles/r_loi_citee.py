@@ -37,6 +37,9 @@ MOTIF = (r"\blois?\s+(?:organiques?\s+|constitutionnelles?\s+|de programmation\s
 
 
 def appliquer(ctx):
+    """Applique R-LOI-CITEE : écrit `acte_loi_citee`, les lois que le titre d'un acte du Journal
+    officiel cite par leur numéro (voir la description du module). Rend la couverture,
+    `{nom: (numérateur, dénominateur)}` : `titre_lu`, `loi_citee_identifiee`."""
     ctx.ecrire("acte_loi_citee", f"""
         WITH t AS (
             SELECT uid AS acte, id_jorf, nature, numero, prov_url,

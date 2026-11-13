@@ -29,6 +29,12 @@ DESCRIPTION = (
 
 
 def appliquer(ctx):
+    """Applique R-DERNIERE-LECTURE : écrit `derniere_lecture`, le vote retenu pour chaque texte
+    (voir la description du module) ; la sortie est écrite une première fois, puis réécrite avec la
+    colonne `votes_posterieurs_non_relies` (votes sur l'ensemble postérieurs au vote retenu et non
+    reliés au dossier). Rend la couverture, `{nom: (numérateur, dénominateur)}` :
+    `dossier_avec_derniere_lecture`, `derniere_lecture_sans_vote_posterieur_non_relie`,
+    `vote_ensemble_rattache_a_un_seul_dossier`."""
     ctx.ecrire("derniere_lecture", """
         WITH c AS (
             SELECT l.dossier, s.scrutin, s.date, s.numero, s.legislature, s.lecture, s.sort,

@@ -21,6 +21,10 @@ DESCRIPTION = (
 
 
 def appliquer(ctx):
+    """Applique R-PAROLES-GOUVERNEMENT : écrit `parole_gouvernement`, les prises de parole des
+    membres d'un gouvernement (voir la description du module). Rend la couverture,
+    `{nom: (numérateur, dénominateur)}` : `qualite_ecrite_par_le_compte_rendu`, `sujet_etabli`,
+    `texte_relie_a_son_dossier`, `qualite_gouvernementale_retenue`."""
     ctx.ecrire("parole_gouvernement", """
         SELECT DISTINCT m.gouvernement, q.acteur, q.compte_rendu, q.id_syceron, q.date,
                s.sujet, s.dossier, s.statut AS statut_sujet, s.type_sujet, s.lien_dossier,

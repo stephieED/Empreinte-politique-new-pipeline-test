@@ -32,6 +32,10 @@ CATEGORIE = r"(projet de loi|proposition de loi|proposition de resolution)"
 
 
 def appliquer(ctx):
+    """Applique R-ORIGINE : écrit `scrutin_classe`, chaque scrutin classé avec l'origine de son
+    texte (projet ou proposition), voir la description du module. Rend la couverture,
+    `{nom: (numérateur, dénominateur)}` : `origine_etablie`, `origine_etablie_ensemble`,
+    `origine_recoupee_par_le_document`."""
     ctx.ecrire("scrutin_classe", f"""
         WITH depot AS (
             SELECT dossier, any_value(substr(texte_associe, 1, 4)) AS type_texte

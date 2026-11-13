@@ -26,6 +26,9 @@ COMMISSIONS_AN = "('COMPER', 'CNPS')"
 
 
 def appliquer(ctx):
+    """Applique R-MATIERE : écrit `matiere`, la commission saisie au fond de chaque dossier (voir
+    la description du module). Rend la couverture, `{nom: (numérateur, dénominateur)}` :
+    `matiere_assemblee`, `senat_seulement`, `matiere_assemblee_ou_senat`."""
     ctx.ecrire("matiere", f"""
         WITH s AS (
             SELECT a.dossier, a.uid AS acte, a.code, a.organe, left(a.date, 10) AS date,

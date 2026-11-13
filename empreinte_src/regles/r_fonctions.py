@@ -101,6 +101,9 @@ def _q(s):
 
 
 def date_constat(ctx) -> str | None:
+    """Rend la date du constat : `ctx.date_reference` s'il est donné ; sinon la plus tardive des
+    dates de début et de fin des mandats `ASSEMBLEE` et `GP` ; `None` si la vue
+    `an_acteurs__mandat` n'existe pas."""
     if ctx.date_reference:
         return ctx.date_reference
     if not ctx.existe("an_acteurs__mandat"):
@@ -110,6 +113,10 @@ def date_constat(ctx) -> str | None:
 
 
 def appliquer(ctx):
+    """Applique R-FONCTIONS : écrit `famille_organe`, `fonction_periode` et `fonction_personne`,
+    les fonctions exercées par chaque candidat dans les organes du Parlement (voir la description
+    du module). Rend la couverture, `{nom: (numérateur, dénominateur)}` :
+    `candidats_avec_fonction`, `periodes_source_classees_dans_une_famille`, `duree_etablie`."""
     familles = ", ".join(f"({_q(c)}, {_q(t)}, {_q(f)}, {_q(l)}, {r}, NULL)" for c, t, f, l, r in FAMILLES)
     exclus = ", ".join(f"({_q(c)}, {_q(t)}, 'exclu', NULL, NULL, {_q(x)})" for c, t, x in EXCLUS)
     ctx.ecrire("famille_organe", f"""

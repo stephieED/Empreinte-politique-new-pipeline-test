@@ -46,6 +46,10 @@ SEUIL = (3, 5)        # 60 %
 
 
 def appliquer(ctx):
+    """Applique R-FILIATION : écrit `filiation`, le verdict sur chaque paire de maillons de deux
+    législatures successives qui ont des députés en commun, décisions `filiation` comprises (voir
+    la description du module). Rend la couverture, `{nom: (numérateur, dénominateur)}` :
+    `paires_tranchees`, `maillons_qui_prennent_une_suite`."""
     n, d = SEUIL
     ctx.x("""CREATE OR REPLACE TEMP TABLE _fi_m AS
         SELECT DISTINCT m.maillon, m.legislature, a.acteur

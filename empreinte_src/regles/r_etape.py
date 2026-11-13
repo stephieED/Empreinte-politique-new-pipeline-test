@@ -53,6 +53,8 @@ UNE_CHAMBRE = "('8', '22')"
 
 
 def date_ref(ctx) -> str:
+    """Rend la date de référence du contexte (`ctx.date_reference`), à défaut la date du jour, au
+    format `AAAA-MM-JJ`."""
     import datetime
     return ctx.date_reference or datetime.date.today().isoformat()
 
@@ -110,6 +112,9 @@ def adoptions_definitives(ctx) -> str:
 
 
 def appliquer(ctx):
+    """Applique R-ETAPE : écrit `etape_dossier`, l'étape atteinte par chaque dossier dans chaque
+    législature (voir la description du module). Rend la couverture,
+    `{nom: (numérateur, dénominateur)}` : `etape_etablie`."""
     ref = date_ref(ctx)
     ctx.ecrire("etape_dossier", f"""
         WITH a AS (

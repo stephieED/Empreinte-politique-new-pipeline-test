@@ -30,6 +30,10 @@ TYPES = {"QE": "ecrite", "QG": "au_gouvernement", "QOSD": "orale_sans_debat"}
 
 
 def appliquer(ctx):
+    """Applique R-QUESTION-PERSONNE : écrit `question_personne`, les questions posées par chaque
+    député (voir la description du module). Rend la couverture, `{nom: (numérateur, dénominateur)}`
+    : `question_avec_auteur`, `date_etablie`, `ministere_interroge_publie`, `rubrique_publiee`,
+    `reponse_publiee`, `adresse_publique_verifiable`."""
     cas = " ".join(f"WHEN '{k}' THEN '{v}'" for k, v in TYPES.items())
     ctx.ecrire("question_personne", f"""
         SELECT q.auteur AS acteur, q.uid AS question, CASE q.type {cas} END AS type, q.type AS type_code,
