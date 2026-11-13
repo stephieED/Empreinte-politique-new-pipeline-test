@@ -168,6 +168,8 @@ def cmd_calculer(a):
                                    AND statut IN ('retiree', 'non_listee')""")) if ctx.existe("candidat") else {}
         ctrl.c1_c6_comparer(a.faits_precedents or None, os.path.join(a.sortie, "export", "faits-publies.parquet"),
                             uids_changes_a_la_source=changes, fiches_retirees=retirees)
+        ctrl.a9_valeurs_videes(a.faits_precedents or None,
+                               os.path.join(a.sortie, "export", "faits-publies.parquet"))
         # C3, C7 et avertissements : tables des règles et faits publiés de la candidate.
         ctrl.preparer(ctx.con, os.path.join(a.sortie, "export", "faits-publies.parquet"),
                       {f["fiche"] for f in manifeste_site["fiches"]}, manifeste_site["fiches"])
