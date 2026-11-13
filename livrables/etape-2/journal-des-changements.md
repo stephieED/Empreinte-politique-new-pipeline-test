@@ -726,3 +726,22 @@ Essai sur `main` après ces fusions (`43464134163`, 13/11/2026, 16 h 35 → 16 h
 #65, #67, #90, #93, #97 ensemble ; collecte limitée à Wikipédia, calcul sur tout l'entrepôt) :
 **publication autorisée** ; 0 clé en double ; 1 339 102 paragraphes attribués (+594) ; plus
 d'avertissement A3 ; 72 fiches, 1 882 957 faits publiés ; calcul 11 min 31 s, pic 4,7 Go (E4).
+
+
+## Documents illustrés fusionnés dans les spécifications (13/11/2026)
+
+Demande de la propriétaire, le 13/11/2026 : « dans document de conception, il faudrait mettre
+la section 6 dans la section 2 (peut-être au début). et la section 7 dans la section 1. L'idée
+étant que on ait les illustration à coté. Pour info, les diagramme flux sont visible en code et
+non en schéma compilé. Il faudrait aussi que les tables de matière soit accessible peut importe
+ou on se trouve pour facilité la navigation (pas que dans le doc de conception. » Choix : les
+illustrations à côté de chaque section. Les schémas dessinés et le sommaire viennent du passage
+de toute la documentation au format pdoc (décision de la propriétaire du 13/11/2026, traité à
+part) : les blocs Mermaid restent tels quels dans le Markdown.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Le document 6 (le processus, expliqué) est réparti dans le document 2 et le document 7 (le modèle, expliqué) dans le document 1 : chaque schéma et son texte sont sous un intertitre « En image » dans la section qu'ils illustrent ; les vues d'ensemble (6.1, 7.1) ouvrent les documents. Aucune section des documents 1 et 2 n'est renumérotée. Les fichiers 6 et 7 deviennent des notes qui disent où chaque partie est passée | lire la spécification et son illustration ensemble | 0 (liste des documents) |
+
+Les écarts entre un schéma et le texte de la spécification ne sont pas tranchés ici : la
+spécification fait foi, et les écarts relevés sont listés dans la PR.
