@@ -156,6 +156,24 @@ class Contexte:
                 WHERE x.prov_etat = 'present'""")
             self.x(f"CREATE VIEW {nom} AS {_une_archive(nom)}")
         self._charger_decisions(dossier_decisions)
+        self._borner_mandats()
+
+    def _borner_mandats(self):
+        """Décisions `borne_mandat` (Q23, 13/11/2026) : un mandat resté ouvert à la source dans un
+        organe clos prend la date de fin donnée par la décision. Toutes les règles lisent les mandats
+        par la vue `an_acteurs__mandat` : elles voient le mandat borné ; `fin_par_decision` le dit.
+        Une décision ne ferme qu'un mandat encore ouvert : si la source le ferme, elle est sans objet
+        (A7)."""
+        if not (self.existe("an_acteurs__mandat") and self.decisions.get("borne_mandat")):
+            return
+        self.x("CREATE OR REPLACE VIEW an_acteurs__mandat__source AS " + _une_archive("an_acteurs__mandat"))
+        self.x("""CREATE OR REPLACE VIEW an_acteurs__mandat AS
+            SELECT m.* REPLACE (coalesce(m.date_fin, d.fin) AS date_fin),
+                   m.date_fin IS NULL AND d.fin IS NOT NULL AS fin_par_decision,
+                   CASE WHEN m.date_fin IS NULL THEN d.fichier END AS decision_fin
+            FROM an_acteurs__mandat__source m
+            LEFT JOIN (SELECT mandat, any_value(fin) AS fin, any_value(fichier) AS fichier
+                       FROM decision_borne_mandat GROUP BY 1) d ON d.mandat = m.uid""")
 
     def _charger_decisions(self, dossier):
         import pyarrow as pa

@@ -1,0 +1,20 @@
+# Q23 (doc. 5) : mandats restés ouverts à la source dans un organe clos (avertissement A8, issue #12).
+# Décision de la propriétaire du 13/11/2026 : « borner ». Chaque mandat prend pour date de fin
+# celle de son organe ; la source n'est pas réécrite, l'entrepôt garde ce qu'elle publie.
+type: borne_mandat
+date: 2026-11-13
+motif: "Mandat sans date de fin dans un organe clos (Q23) : borné à la fin de l'organe."
+decisions:
+  # Gouvernement Bayrou (PO855052), clos le 09/09/2025 : mandats GOUVERNEMENT sans mandat
+  # MINISTERE apparié ; chaque personne a un autre mandat Bayrou correctement clos.
+  - {mandat: PM15855061, organe: PO855052, fin: "2025-09-09"}
+  - {mandat: PM15855066, organe: PO855052, fin: "2025-09-09"}
+  - {mandat: PM15855091, organe: PO855052, fin: "2025-09-09"}
+  - {mandat: PM15855100, organe: PO855052, fin: "2025-09-09"}
+  - {mandat: PM15855113, organe: PO855052, fin: "2025-09-09"}
+  - {mandat: PM15855122, organe: PO855052, fin: "2025-09-09"}
+  - {mandat: PM15855125, organe: PO855052, fin: "2025-09-09"}
+  # Mission auprès d'une ministre déléguée à l'industrie (PO268781), organe clos le 30/03/2004.
+  - {mandat: PM287498, organe: PO268781, fin: "2004-03-30"}
+  # Présidence de la République (PO382940), organe clos le 15/05/2012.
+  - {mandat: PM588892, organe: PO382940, fin: "2012-05-15"}

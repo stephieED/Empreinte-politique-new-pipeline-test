@@ -392,3 +392,36 @@ def test_hemicycle_legislature_close_depuis_son_archive_figee(tmp_path):
     assert h == [{"legislature": 16, "date": "2024-06-09", "acteur": "PA1", "siege": 42, "date_origine": "archive_figee"},
                  {"legislature": 17, "date": "2026-11-06", "acteur": "PA2", "siege": 7, "date_origine": "date_reference"}]
     assert bilan["R-HEMICYCLE"]["couverture"]["siege_legislatures_closes"] == [1, 1]
+
+
+def test_q23_mandat_ouvert_dans_un_organe_clos_borne_par_decision(tmp_path):
+    """Q23 (13/11/2026, « borner ») : un mandat sans fin dans un organe clos prend la fin donnée
+    par la décision ; A8 ne le signale plus ; si la source le ferme, la décision est sans objet (A7)."""
+    from empreinte_src.controles import Controles
+    organes = [_gouv("PO855052", "2024-12-14", "2025-09-09", abrege="BAYROU"),
+               {"uid": "PO838901", "type_organe": "ASSEMBLEE", "legislature": "17", "date_debut": "2024-07-18"}]
+    mandats = [{"uid": "PM15855061", "acteur": "PA1", "type_organe": "GOUVERNEMENT", "organe": "PO855052",
+                "qualite": "membre", "date_debut": "2024-12-24", "date_fin": None},
+               {"uid": "PM15855066", "acteur": "PA2", "type_organe": "GOUVERNEMENT", "organe": "PO855052",
+                "qualite": "membre", "date_debut": "2024-12-24", "date_fin": None}]
+    dec = tmp_path / "dec" / "borne_mandat"
+    dec.mkdir(parents=True)
+    (dec / "q23.yaml").write_text(
+        "type: borne_mandat\ndate: 2026-11-13\ndecisions:\n"
+        "  - {mandat: PM15855061, organe: PO855052, fin: '2025-09-09'}\n"
+        "  - {mandat: PM9, organe: PO855052, fin: '2025-09-09'}\n")
+    ctx, _ = _relier(_ecrire_z2(tmp_path / "z2", organes, mandats), tmp_path / "z3", decisions=tmp_path / "dec")
+    m = {r["uid"]: r for r in _lignes(ctx, "SELECT uid, date_fin, fin_par_decision FROM an_acteurs__mandat")}
+    assert (m["PM15855061"]["date_fin"], m["PM15855061"]["fin_par_decision"]) == ("2025-09-09", True)
+    assert m["PM15855066"]["date_fin"] is None                         # sans décision : inchangé
+    assert [r["mandat"] for r in _lignes(ctx, "SELECT mandat FROM mandat_ouvert_organe_clos")] == ["PM15855066"]
+    # La source garde ce qu'elle publie : la vue d'origine reste ouverte.
+    assert _lignes(ctx, "SELECT date_fin FROM an_acteurs__mandat__source WHERE uid = 'PM15855061'") == [{"date_fin": None}]
+    from empreinte_src.composition import Ecrivain
+    Ecrivain(str(tmp_path / "site"), "essai").ecrire_faits_publies(str(tmp_path / "vide.parquet"))
+    c = Controles(str(tmp_path))
+    c.preparer(ctx.con, str(tmp_path / "vide.parquet"), set())
+    c.a7_non_resolues(ctx.decisions)
+    a7 = [x for x in c.anomalies if x["controle"] == "A7"]
+    assert a7 and any("PM9 n'est plus ouvert à la source" in e for e in a7[0]["exemples"])
+    assert not any("PM15855061" in e for e in a7[0]["exemples"])

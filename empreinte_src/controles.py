@@ -438,6 +438,14 @@ class Controles:
                 paires = {(a, b) for a, b in self._x(f"SELECT {col_a}, {col_b} FROM {t}")}
                 objets += [f"décision {d.get('fichier')} sans objet : {d.get('avant')} → {d.get('apres')}"
                            for d in decisions.get(t, []) if (d.get("avant"), d.get("apres")) not in paires]
+        # Bornage d'un mandat (Q23) : sans objet si la source a fermé le mandat, ou ne le publie plus.
+        bornes = decisions.get("borne_mandat", [])
+        if bornes and self._a("an_acteurs__mandat__source"):
+            ouverts = {m for (m,) in self._x(
+                "SELECT uid FROM an_acteurs__mandat__source WHERE date_fin IS NULL AND uid IN (SELECT unnest(?::VARCHAR[]))",
+                [[d.get("mandat") for d in bornes]])}
+            objets += [f"décision {d.get('fichier')} sans objet : le mandat {d.get('mandat')} n'est plus ouvert à la source"
+                       for d in bornes if d.get("mandat") not in ouverts]
         if self._a("population"):
             pers = {r[0] for r in self._x("SELECT DISTINCT coalesce(per, '') FROM population")} | \
                    {r[0] for r in self._x("SELECT DISTINCT coalesce(acteur, '') FROM population")}
