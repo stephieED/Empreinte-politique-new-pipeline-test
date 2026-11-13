@@ -1,5 +1,6 @@
 """Description du traitement, tirée du code (issue #95) : la page « Le traitement, étape par
-étape » de la documentation (module `documentation.traitement`, écrit par `pages_doc`).
+étape » de la documentation (module `documentation.comprendre.traitement`, écrit par
+`pages_doc`).
 
 Une page en Markdown, lisible sans lire le code, écrite à chaque déploiement de Pages à partir de
 ce que le code déclare déjà :
@@ -247,7 +248,7 @@ def _titres(d: dict) -> dict[str, str]:
 
 
 def rendre(d: dict, commit: str | None = None, depot: str | None = None,
-           de: str = "documentation.traitement") -> str:
+           de: str = "documentation.comprendre.traitement") -> str:
     """Rend la page du traitement en Markdown à partir de `d` (voir `donnees`) : étapes et zones,
     périmètre, lecteurs avec leurs points d'accès et leurs tables, règles dans leur ordre
     d'application, contrôles bloquants puis avertissements. Les liens vers le code mènent aux

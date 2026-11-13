@@ -1,5 +1,5 @@
 """Description du traitement servie par Pages (`empreinte_src.methodologie`, issue #95) : tirée du
-code, complète, en Markdown pour pdoc (module `documentation.traitement`). Sans réseau."""
+code, complète, en Markdown pour pdoc (module `documentation.comprendre.traitement`). Sans réseau."""
 import re
 
 import pytest
@@ -117,10 +117,10 @@ def test_liens_de_la_page(page):
     for cible in internes:
         assert cible in ancres, cible
     # Les autres liens relatifs mènent à la documentation (pages pdoc), vue depuis
-    # `documentation/traitement.html`.
+    # `documentation/comprendre/traitement.html`.
     for lien in re.findall(r"\]\((\.\./[^)]+)\)", page):
-        assert lien.startswith(("../empreinte_src", "../documentation.html")), lien
-    assert "](../empreinte_src/controles.html#Controles." in page
+        assert lien.startswith(("../../empreinte_src", "../../documentation.html")), lien
+    assert "](../../empreinte_src/controles.html#Controles." in page
 
 
 def test_titres_des_docstrings_reprises_sous_ceux_de_la_page():
