@@ -45,6 +45,15 @@ Liens (`lien_acte_loi`) : on lit les liens dont le texte visé est de nature lé
 codes : 95 % des 125 860 liens de la livraison du 02/11 soir) ne servent pas au site : ils ne
 sont pas lus, mais leur nombre est gardé dans l'acte (`nb_liens`, `nb_liens_lus`).
 
+Travaux préparatoires (`travaux_preparatoires`, version 2, issue #35) : le bloc `TP` d'une loi
+(« Assemblée nationale : Proposition de loi n° 1817 ; Rapport … n° 2810 ; … (TA n° 290). Sénat :
+… n° 672 (2025-2026) ») est lu ligne à ligne, tel que publié : chambre (dernier intitulé
+« … : »), nature de la ligne, numéro du document, numéro du texte adopté (TA), session
+parlementaire du Sénat. Seul moyen de relier une loi à son dossier de l'Assemblée quand aucune
+archive de l'Assemblée ne publie la promulgation (17 dossiers de la XIVe : R-LOI-DOSSIER) ;
+l'Assemblée ne publie pas de NOR dans ses documents. Rien n'est déduit ici : la législature d'un
+numéro est l'affaire de la règle.
+
 Adresse publique : `https://www.legifrance.gouv.fr/jorf/id/{JORFTEXT…}` (acte, liens, plan) ;
 `ID_ELI` du sommaire pour un numéro du JO.
 """
@@ -54,7 +63,7 @@ import pyarrow as pa
 from lxml import etree
 
 NOM = "jo_actes"
-VERSION = 1
+VERSION = 2
 TYPES = ("jorf",)
 
 SENTINELLE = "2999-01-01"
@@ -97,6 +106,11 @@ TABLES = {
         ("num_jo", pa.string()), ("titre_jo", pa.string()), ("date_publication", pa.string()),
         ("acte", pa.string()), ("id_jorf", pa.string()), ("titre_sommaire", pa.string()),
         ("rubrique", pa.list_(pa.string())), ("niveau", pa.int32()),
+    ]),
+    "travaux_preparatoires": pa.schema([
+        ("acte", pa.string()), ("livraison", pa.string()), ("rang", pa.int32()),
+        ("chambre", pa.string()), ("nature", pa.string()), ("numero", pa.string()),
+        ("numero_ta", pa.string()), ("session", pa.string()), ("ligne", pa.string()),
     ]),
     "suppression_jo": pa.schema([
         ("livraison", pa.string()), ("rang", pa.int32()), ("chemin", pa.string()),
@@ -170,6 +184,42 @@ def _html(contenu) -> str | None:
     return s.strip() or None
 
 
+_CHAMBRES = (("assemblée nationale", "AN"), ("sénat", "SN"), ("congrès", "CONGRES"),
+             ("conseil constitutionnel", "CC"), ("commission mixte paritaire", "CMP"))
+_NATURES = (("proposition de loi", "proposition_de_loi"), ("projet de loi", "projet_de_loi"),
+            ("proposition de résolution", "proposition_de_resolution"), ("rapport", "rapport"),
+            ("texte de la commission", "texte_commission"), ("avis", "avis"),
+            ("discussion", "discussion"), ("décision", "decision"))
+
+
+def _travaux(r, acte, livraison, url) -> list[dict]:
+    """Lignes du bloc des travaux préparatoires, telles que publiées (voir l'en-tête)."""
+    import re
+    texte = _texte_html(r.find("TP/CONTENU"))
+    if not texte:
+        return []
+    out, chambre = [], None
+    for ligne in texte.split("\n"):
+        brut = ligne.strip(" -–;.")
+        bas = brut.lower()
+        if bas.endswith(":") and len(bas) < 60:
+            chambre = next((c for m, c in _CHAMBRES if m in bas), bas.rstrip(" :"))
+            continue
+        if bas.startswith("(1)") or bas.startswith("travaux préparatoires"):
+            continue
+        nature = next((n for m, n in _NATURES if bas.startswith(m) or f" {m}" in bas[:40]), "autre")
+        ta = re.search(r"\bTA n°\s*(\d+)", brut)
+        sans_ta = re.sub(r"\bTA n°\s*\d+", "", brut)
+        num = re.search(r"n°\s*(\d+)", sans_ta)
+        session = re.search(r"\((\d{4}-\d{4})\)", brut)
+        out.append({"acte": acte, "livraison": livraison, "rang": len(out), "chambre": chambre,
+                    "nature": nature, "numero": num.group(1) if num else None,
+                    "numero_ta": ta.group(1) if ta else None,
+                    "session": session.group(1) if session else None, "ligne": brut,
+                    "prov_url": url})
+    return out
+
+
 def _chronicle(r):
     return r.find("META/META_SPEC/META_TEXTE_CHRONICLE")
 
@@ -221,7 +271,8 @@ def _texte_version(r, livraison):
         "rectificatif": _texte_html(r.find("RECT/CONTENU")),
         "nb_liens": len(liens_xml), "nb_liens_lus": len(liens), "prov_url": url,
     }
-    return {"acte_reglementaire": [acte_l], "lien_acte_loi": liens}
+    return {"acte_reglementaire": [acte_l], "lien_acte_loi": liens,
+            "travaux_preparatoires": _travaux(r, acte, livraison, url)}
 
 
 def _texte_struct(r, livraison):
@@ -316,6 +367,8 @@ EXPORT = {
                      "ids": {"acte": "acte", "autre": "id_version"}, "date": "date_debut"},
     "sommaire_jo": {"type": "sommaire_jo", "cle": ["conteneur", "rang"],
                     "ids": {"acte": "acte", "autre": "conteneur"}, "date": "date_publication"},
+    "travaux_preparatoires": {"type": "travaux_preparatoires", "cle": ["acte", "rang"],
+                              "ids": {"acte": "acte", "autre": "numero"}, "date": None},
     # Chaque livraison a sa liste de suppressions : toutes sont des faits.
     "suppression_jo": {"type": "suppression_jo", "cle": ["livraison", "rang"],
                        "ids": {"autre": "id_jorf"}, "date": None, "toutes_versions": True},
