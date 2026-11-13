@@ -108,9 +108,11 @@ def lire(m):
 
 
 EXPORT = {
-    # Clé du doc. 1 (1.4, G) : le numéro de ligne se décale d'une publication à l'autre.
+    # Clé du doc. 1 (1.4, G), plus la date de début de la fonction : une même fonction peut être
+    # attribuée deux fois dans un mandat (23 adjoints et maires délégués dans les sortants de 2026).
+    # Pas le numéro de ligne, qui se décale d'une publication à l'autre.
     "mandat_local": {"type": "mandat_local",
                      "cle": ["fichier", "nom", "prenom", "naissance_publiee", "code_collectivite",
-                             "fonction", "debut_mandat"],
+                             "fonction", "debut_mandat", "debut_fonction"],
                      "ids": {"autre": "fichier"}, "date": "debut_mandat"},
 }
