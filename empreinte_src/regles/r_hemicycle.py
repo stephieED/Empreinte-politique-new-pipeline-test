@@ -44,6 +44,9 @@ EST_NI = "(o.sigle = 'NI' OR lower(o.libelle) IN ('non inscrit', 'non inscrits',
 
 
 def date_constat(ctx) -> tuple[str | None, str]:
+    """Rend `(date, origine)` : `(ctx.date_reference, "date_reference")` s'il est donné ; sinon la
+    plus tardive des dates de début, de fin et de prise de fonction des mandats `ASSEMBLEE` et
+    `GP`, avec `"derniere_date_de_la_source"`."""
     if ctx.date_reference:
         return ctx.date_reference, "date_reference"
     d = ctx.un(f"""SELECT max(x) FROM (
@@ -83,6 +86,10 @@ def _figees(ctx) -> list[tuple[int, str, str]]:
 
 
 def appliquer(ctx):
+    """Applique R-HEMICYCLE : écrit `hemicycle` (qui siège où) et `effectif_groupe` (l'effectif de
+    chaque groupe jour par jour), voir la description du module. Rend la couverture,
+    `{nom: (numérateur, dénominateur)}` : `siege_connu`, `groupe_ou_non_inscrit_etabli`,
+    `siege_legislatures_closes`."""
     d, origine = date_constat(ctx)
     jour = "NULL::VARCHAR" if d is None else f"'{d}'"
     figees = _figees(ctx)

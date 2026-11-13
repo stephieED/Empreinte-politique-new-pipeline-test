@@ -28,6 +28,11 @@ URL = "https://www.assemblee-nationale.fr/dyn/"
 
 
 def appliquer(ctx):
+    """Applique R-ORDRE-DU-JOUR : écrit `ordre_du_jour`, les points d'ordre du jour des séances
+    publiques, avec la commission saisie au fond quand la sortie `matiere` existe (sinon
+    `matiere_statut` vaut `matiere_absente`), voir la description du module. Rend la couverture,
+    `{nom: (numérateur, dénominateur)}` : `point_confirme_lie_a_un_dossier`,
+    `statut_de_seance_publie`, `commission_connue`. La dernière seulement si `matiere` existe."""
     if ctx.existe("matiere"):
         jointure = "LEFT JOIN (SELECT dossier, any_value(commission) AS commission, any_value(libelle) AS libelle, any_value(statut) AS statut FROM matiere GROUP BY 1) m ON m.dossier = b.dossier"
         cols = "m.commission, m.libelle AS commission_libelle, m.statut AS matiere_statut"

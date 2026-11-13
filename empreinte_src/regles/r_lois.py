@@ -31,11 +31,18 @@ def gouvernement_a(date_sql: str) -> str:
 
 
 def legislature_a(date_sql: str) -> str:
+    """Rend une sous-requête SQL qui donne le numéro de la législature en cours à la date
+    `date_sql` (une expression SQL) : celle qui a commencé le plus récemment parmi celles qui la
+    couvrent, une fin vide valant « en cours »."""
     return (f"(SELECT l.numero FROM legislature l WHERE l.debut <= {date_sql} "
             f"AND coalesce(l.fin, '9999-12-31') >= {date_sql} ORDER BY l.debut DESC LIMIT 1)")
 
 
 def appliquer(ctx):
+    """Applique R-LOIS : écrit `loi`, les lois promulguées lues dans les actes de promulgation des
+    dossiers, avec leur gouvernement et leur législature (voir la description du module). Rend la
+    couverture, `{nom: (numérateur, dénominateur)}` : `numero_de_loi_lu`, `gouvernement_etabli`,
+    `legislature_etablie`."""
     ctx.ecrire("loi", f"""
         WITH p AS (
             SELECT code_loi AS numero_loi, dossier, uid AS acte, left(date, 10) AS date_promulgation,

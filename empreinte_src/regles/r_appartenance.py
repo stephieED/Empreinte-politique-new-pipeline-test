@@ -42,6 +42,10 @@ FIN_OUVERTE = "'9999-12-31'"
 
 
 def appliquer(ctx):
+    """Applique R-APPARTENANCE : écrit `groupe` (les groupes de l'Assemblée, hors non-inscrits) et
+    `appartenance` (les périodes d'appartenance de chaque député), voir la description du module.
+    Rend la couverture, `{nom: (numérateur, dénominateur)}` : `mandat_gp_organe_connu`,
+    `position_declaree`."""
     ctx.ecrire("groupe", f"""
         SELECT o.uid AS organe, TRY_CAST(o.legislature AS INTEGER) AS legislature, o.sigle,
                o.libelle, o.date_debut AS debut, o.date_fin AS fin,

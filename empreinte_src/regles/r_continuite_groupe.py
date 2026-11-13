@@ -51,6 +51,10 @@ SEUIL = (4, 5)
 
 
 def appliquer(ctx):
+    """Applique R-CONTINUITE-GROUPE : écrit `continuite_groupe` (le verdict sur chaque paire
+    d'organes de groupe successifs, décisions `continuite_groupe` comprises) et `maillon` (les
+    chaînes d'organes reliés par une continuité), voir la description du module. Rend la
+    couverture, `{nom: (numérateur, dénominateur)}` : `paires_d_organes_tranchees`."""
     n, d = SEUIL
     ctx.x(f"""CREATE OR REPLACE TEMP TABLE _cg AS
         WITH g AS (SELECT organe, legislature, debut, coalesce(fin, '9999-12-31') AS fin FROM groupe),
@@ -109,6 +113,8 @@ def appliquer(ctx):
     parent: dict[str, str] = {}
 
     def racine(x):
+        """Rend la racine de `x` dans la forêt `parent` (union des liens retenus), en remontant les
+        parents ; un organe sans parent est sa propre racine."""
         while parent.get(x, x) != x:
             x = parent[x]
         return x

@@ -14,6 +14,10 @@ DESCRIPTION = ("Une législature commence et finit aux dates de l'organe « Asse
 
 
 def appliquer(ctx):
+    """Applique R-LEGISLATURES : écrit `legislature`, les législatures bornées par les dates de
+    l'organe Assemblée, avec le mode de fin donné par les décisions `fin_legislature` s'il y en a
+    (voir la description du module). Rend la couverture, `{nom: (numérateur, dénominateur)}` :
+    `mode_de_fin_etabli`."""
     fin = ("(SELECT any_value(mode) FROM decision_fin_legislature d WHERE d.legislature = CAST(o.legislature AS INTEGER))"
            if ctx.existe("decision_fin_legislature") else "NULL")
     ctx.ecrire("legislature", f"""

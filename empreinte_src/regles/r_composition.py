@@ -73,6 +73,10 @@ QUALITES_RATTACHEES = "('Ministre délégué', 'Secrétaire d''État', 'Haut-com
 
 
 def appliquer(ctx):
+    """Applique R-COMPOSITION : écrit `membre_gouvernement` (qui composait chaque gouvernement,
+    portefeuille par portefeuille) et `mandat_ouvert_organe_clos`, voir la description du module.
+    Rend la couverture, `{nom: (numérateur, dénominateur)}` : `tutelle_etablie`,
+    `mandat_gouvernement_apparie`, `mandats_gouvernement_dans_la_composition`."""
     # 1. Portefeuilles : mandats MINISTERE hors missions, dans un gouvernement connu.
     ctx.x(f"""CREATE OR REPLACE TEMP TABLE _ga_portefeuille AS
         SELECT m.uid AS mandat, m.acteur, o.organe_parent AS gouvernement, m.organe AS ministere,

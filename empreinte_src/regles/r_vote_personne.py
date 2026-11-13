@@ -40,6 +40,10 @@ FIN_OUVERTE = "'9999-12-31'"
 
 
 def appliquer(ctx):
+    """Applique R-VOTE-PERSONNE : écrit `vote_personne`, ce que chaque député a voté, une position
+    par texte (voir la description du module). Rend la couverture,
+    `{nom: (numérateur, dénominateur)}` : `matiere_etablie`, `origine_etablie`, `sort_final_connu`,
+    `groupe_a_la_date_etabli`, `periode_etablie`, `position_nommee_en_derniere_lecture`."""
     ctx.ecrire("vote_personne", f"""
         WITH retenus AS (
             SELECT d.scrutin, d.dossier, 'ensemble' AS nature, true AS derniere_lecture, NULL::VARCHAR[] AS dossiers
