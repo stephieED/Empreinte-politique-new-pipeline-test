@@ -423,6 +423,11 @@ colonnes:
   - raison_source_url
   - source_point
   - licence
+  - statut_seance
+  - raison_seance
+  - date_seance
+  - lien_seance
+  - intervenants
   candidats/votes:
   - scrutin
   - numero
