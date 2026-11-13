@@ -34,8 +34,8 @@ def a_faire(cree_le: str | None, maintenant: dt.datetime | None = None) -> bool:
 
 
 def main():
-    """Point d'entrée : lit le manifeste distant du dépôt `--depot` et écrit `true` si la mise à jour
-    est à faire (`a_faire`), `false` sinon."""
+    """Point d'entrée : lit le manifeste distant du dépôt `--depot` et écrit `true` si la mise à
+    jour est à faire (`a_faire`), `false` sinon."""
     p = argparse.ArgumentParser()
     p.add_argument("--depot", required=True)
     a = p.parse_args()

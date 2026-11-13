@@ -120,8 +120,8 @@ class Entrepot:
 
     À l'ouverture, il crée les sous-dossiers manquants, lit le manifeste, l'index et le journal des
     relevés, et prépare la génération suivante (`generation`). `segment_max` borne la taille d'un
-    fichier d'octets, `morceau_max` celle d'un morceau : un membre plus gros est découpé en morceaux.
-    Rien n'est écrit sur le disque avant `clore`."""
+    fichier d'octets, `morceau_max` celle d'un morceau : un membre plus gros est découpé en
+    morceaux. Rien n'est écrit sur le disque avant `clore`."""
     def __init__(self, dossier: str, segment_max: int = 90 << 20, morceau_max: int = 64 << 20):
         self.dossier = dossier
         self.segment_max = segment_max
@@ -185,8 +185,8 @@ class Entrepot:
         return None
 
     def presents(self, point_acces: str) -> dict[str, dict]:
-        """Rend `{uid: ligne}` pour la dernière version de chaque membre du point d'accès, quand elle est
-        présente (pas retirée à la source)."""
+        """Rend `{uid: ligne}` pour la dernière version de chaque membre du point d'accès, quand
+        elle est présente (pas retirée à la source)."""
         out = {}
         for (p, uid), i in self._derniere.items():
             if p == point_acces and self._index[i]["etat"] == PRESENT:
@@ -240,8 +240,9 @@ class Entrepot:
         return changes
 
     def qualifiant_a_jour(self, pa_cfg: dict) -> bool:
-        """Vrai si la règle d'uid (`qualifier_uid`) notée au manifeste pour ce point d'accès est celle de
-        sa configuration actuelle ; sinon l'historique est à requalifier (`requalifier`)."""
+        """Vrai si la règle d'uid (`qualifier_uid`) notée au manifeste pour ce point d'accès est
+        celle de sa configuration actuelle ; sinon l'historique est à requalifier
+        (`requalifier`)."""
         return self.manifeste.get("qualifiants", {}).get(pa_cfg["id"]) == pa_cfg.get("qualifier_uid")
 
     def versionner(self, pa_cfg: dict, releve_id: str, membres, complet: bool,

@@ -16,8 +16,8 @@ from typing import Iterator
 
 @dataclass
 class Membre:
-    """Un fichier sorti d'une archive : son `uid`, son `chemin` dans l'archive, ses `octets` exacts,
-    leur `taille`, leur `crc32` et leur `empreinte` SHA-256."""
+    """Un fichier sorti d'une archive : son `uid`, son `chemin` dans l'archive, ses `octets`
+    exacts, leur `taille`, leur `crc32` et leur `empreinte` SHA-256."""
     uid: str
     chemin: str        # chemin dans l'archive
     octets: bytes

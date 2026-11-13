@@ -51,8 +51,9 @@ class RegistreIdentites:
     """Registre des identités de personnes (`per:NNNNNN`), ouvert sur le dossier `registres/` de
     l'entrepôt `dossier` (voir la description du module).
 
-    À l'ouverture, il lit les attributions, les fusions et le compteur s'ils existent (sinon il part
-    de zéro). `attribuer` et `separer` le complètent en mémoire ; rien n'est écrit avant `sauver`."""
+    À l'ouverture, il lit les attributions, les fusions et le compteur s'ils existent (sinon il
+    part de zéro). `attribuer` et `separer` le complètent en mémoire ; rien n'est écrit avant
+    `sauver`."""
     PREFIXE = "per"
     FICHIERS = {"attribution": "attribution.parquet", "fusion": "fusion.parquet",
                 "compteur": "compteur.json"}
@@ -94,8 +95,8 @@ class RegistreIdentites:
         return p
 
     def numero(self, source: str, uid: str) -> str | None:
-        """Rend le numéro retenu (alias suivis) de l'identifiant `uid` de la source `source`, ou `None`
-        s'il n'a pas d'attribution ouverte."""
+        """Rend le numéro retenu (alias suivis) de l'identifiant `uid` de la source `source`, ou
+        `None` s'il n'a pas d'attribution ouverte."""
         a = self._ouvertes.get((source, uid))
         return self.resoudre(a["per"]) if a else None
 
@@ -173,7 +174,8 @@ class RegistreLignees(RegistreIdentites):
 
     @property
     def lignees(self):
-        """Un registre de lignées n'a pas lui-même de registre de lignées : lève `AttributeError`."""
+        """Un registre de lignées n'a pas lui-même de registre de lignées : lève
+        `AttributeError`."""
         raise AttributeError("un registre de lignées n'a pas de sous-registre")
 
     def adresse(self, lig: str) -> str | None:

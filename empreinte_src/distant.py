@@ -32,8 +32,8 @@ def _release_de(rel: str) -> str:
 
 
 def nom_actif(rel: str) -> str:
-    """Rend le nom d'actif de release d'un fichier de l'entrepôt : son chemin relatif `rel`, les `/`
-    remplacés par `__` (`a/b.parquet` donne `a__b.parquet`)."""
+    """Rend le nom d'actif de release d'un fichier de l'entrepôt : son chemin relatif `rel`, les
+    `/` remplacés par `__` (`a/b.parquet` donne `a__b.parquet`)."""
     return rel.replace("/", "__")
 
 

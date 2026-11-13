@@ -52,7 +52,8 @@ def _gh(*args):
 
 
 def synchroniser(depot: str, sujets: dict[str, str]) -> dict:
-    """Met les issues d'alerte du dépôt `depot` en accord avec `sujets` (`{clé: texte}`), avec `gh`.
+    """Met les issues d'alerte du dépôt `depot` en accord avec `sujets` (`{clé: texte}`), avec
+    `gh`.
 
     L'étiquette `alerte` est créée au besoin. Chaque sujet a une issue titrée `[alerte] <clé>` :
     créée si elle n'est pas ouverte, réécrite si le texte a changé (une empreinte du texte est

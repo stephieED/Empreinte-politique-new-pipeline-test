@@ -55,7 +55,8 @@ def romain(n: int) -> str:
 
 
 def nom_legislature(n: int) -> str:
-    """Rend le nom d'une législature : « XVIIe législature », « Ire législature » pour la première."""
+    """Rend le nom d'une législature : « XVIIe législature », « Ire législature » pour la
+    première."""
     return f"{romain(n)}{'re' if n == 1 else 'e'} législature"
 
 
