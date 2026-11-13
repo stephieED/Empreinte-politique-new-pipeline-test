@@ -357,6 +357,16 @@ def _resume(rapport):
             f.write(texte + "\n")
 
 
+def cmd_rapport_mesures(a):
+    """Rapport de mesures (commande, section 5) : relit le rapport de chaque nuit (artefact `rapport`)."""
+    from . import rapport_mesures as rm
+    nuits = rm.charger(a.cache) if a.hors_ligne else rm.recuperer(a.depot, a.cache)
+    texte = rm.rendre(rm.mesurer_toutes(nuits), a.depot)
+    with open(a.sortie, "w") as f:
+        f.write(texte)
+    print(f"{len(nuits)} nuits → {a.sortie}")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="empreinte")
     sp = p.add_subparsers(dest="cmd", required=True)
@@ -383,6 +393,10 @@ def main(argv=None):
     s = sp.add_parser("alerter", parents=[commun]); s.set_defaults(f=cmd_alerter)
     s = sp.add_parser("reconstruire", parents=[commun]); s.set_defaults(f=cmd_reconstruire)
     s.add_argument("--releve", required=True)
+    s = sp.add_parser("rapport-mesures", parents=[commun]); s.set_defaults(f=cmd_rapport_mesures)
+    s.add_argument("--cache", required=True, help="dossier où garder les rapports téléchargés")
+    s.add_argument("--sortie", required=True, help="fichier Markdown à écrire")
+    s.add_argument("--hors-ligne", action="store_true", help="ne relire que le cache")
     a = p.parse_args(argv)
     os.makedirs(os.path.dirname(a.rapport) or ".", exist_ok=True)
     a.f(a)
