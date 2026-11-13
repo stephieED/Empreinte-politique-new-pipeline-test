@@ -1,5 +1,8 @@
 """Documents de conception (`livrables/`) en HTML pour Pages (`empreinte_src.pages_livrables`) :
 sur un petit dossier écrit ici, sans réseau."""
+import os
+import re
+
 import pytest
 
 pytest.importorskip("markdown2")
@@ -81,3 +84,24 @@ def test_sans_dossier_rien_n_est_ecrit(tmp_path, capsys):
     assert not sortie.exists()
     pages_livrables.main([str(tmp_path / "absent"), str(sortie)])
     assert "rien à publier" in capsys.readouterr().out
+
+
+def test_vrais_livrables_sans_lien_mort(tmp_path):
+    """Le dossier `livrables/` du dépôt : chaque lien relatif d'une page mène à une page écrite
+    (ou, hors de `livrables/`, à la page d'accueil et à la description du traitement)."""
+    source = os.path.join(os.path.dirname(os.path.dirname(__file__)), "livrables")
+    if not os.path.isdir(source):
+        pytest.skip("pas de dossier livrables/")
+    sortie = tmp_path / "pages" / "livrables"
+    ecrits = pages_livrables.convertir(source, str(sortie))
+    assert len(ecrits) == len(pages_livrables.documents(source)) + 1
+    (tmp_path / "pages" / "index.html").write_text("", encoding="utf-8")
+    (tmp_path / "pages" / "traitement").mkdir()
+    (tmp_path / "pages" / "traitement" / "index.html").write_text("", encoding="utf-8")
+    for page in ecrits:
+        texte = open(page, encoding="utf-8").read()
+        for h in re.findall(r'href="([^"]+)"', texte):
+            if re.match(r"[a-z][a-z0-9+.-]*:", h, re.I) or h.startswith("#"):
+                continue
+            cible = os.path.normpath(os.path.join(os.path.dirname(page), h.partition("#")[0]))
+            assert os.path.isfile(cible), f"{page} : {h}"

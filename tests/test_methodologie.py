@@ -121,7 +121,7 @@ def test_page_autonome(page):
         assert cible in ancres, cible
     # Les liens vers la documentation du code restent dans Pages.
     for lien in re.findall(r'href="(\.\./[^"]+)"', page):
-        assert lien.startswith(("../doc/empreinte_src", "../index.html")), lien
+        assert lien.startswith(("../doc/empreinte_src", "../index.html", "../livrables/index.html")), lien
 
 
 def test_markdown_des_docstrings():

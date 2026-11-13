@@ -321,9 +321,9 @@ def rendre(d: dict, commit: str | None = None, depot: str | None = None) -> str:
         origine = (f' (commit <a href="{e(depot)}/commit/{e(commit)}"><code>{court}</code></a>)'
                    if depot else f" (commit <code>{court}</code>)")
     w(f'<p class="doux">Cette page est écrite à partir du code du traitement{origine}, à chaque '
-      "déploiement : ce qu'elle décrit est ce que le code déclare. Elle ne recopie aucun document "
-      f'de conception. Le code lui-même est décrit dans la <a href="{DOC}empreinte_src.html">'
-      "documentation du code</a>.</p>\n")
+      "déploiement : ce qu'elle décrit est ce que le code déclare. Les choix et leurs raisons sont "
+      'dans les <a href="../livrables/index.html">documents de conception</a> ; le code lui-même '
+      f'est décrit dans la <a href="{DOC}empreinte_src.html">documentation du code</a>.</p>\n')
     nb_bl = sum(1 for c in d["controles"] if c["bloquant"])
     w('<ol class="sommaire">'
       '<li><a href="#etapes">Les étapes</a></li>'
