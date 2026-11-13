@@ -130,6 +130,10 @@ class Controles:
         fiches_retirees = fiches_retirees or {}
         self.fiches_retirees_cette_nuit = {}
         if not faits_avant or not os.path.exists(faits_avant):
+            # Rien à comparer : dit, jamais silencieux (issue #40). Attendu au premier calcul
+            # seulement ; ensuite, le signe d'une publication précédente introuvable.
+            self._avertir("C1-C6", "Pertes non contrôlées : aucune publication précédente à comparer",
+                          ["C1 (pertes) et C6 (effondrement) non appliqués à cette publication"])
             return
         con = duckdb.connect()
         # Un fait se reconnaît à son identité (fiche, type, identifiants de source), pas à sa
