@@ -602,3 +602,105 @@ Branche `etape-2-essais-paralleles`, proposée par la session candidats, validé
 | Un essai n'enregistre plus le cache des faits lus (`z2-…`) | #44, seconde moitié : la nuit reprend le cache le plus récent, qu'un essai écrivait avec le code de sa branche | 2 (2.5) |
 
 Validé le 13/11 : deux essais lancés ensemble à 15 h 32 UTC (exécutions 43453567542 et 43453573057), en même temps qu'un troisième (PR #62) ; les trois réussis, aucun cache `z2-` enregistré par les deux premiers.
+
+## Pic de mémoire : le plus haut des étapes (13/11/2026)
+
+Branche `etape-2-pic-memoire`, PR #58. Défaut décrit plus haut (section Q23) : le `Maximum resident
+set size` de `time -v` n'est que le pic de la dernière étape.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| `Mesures.pic()` : le plus haut des pics des étapes d'une tâche, avec l'étape ; la collecte et le calcul l'impriment dans leur résumé ; le workflow ne cite plus que la durée de `time -v` | les pics cités jusqu'au 13/11 étaient des minorants (g10 : 2,6 Go selon `time -v`, 4,7 Go réels) | 4 (remplacé par le rapport de mesures) |
+
+Essai sur la branche (`43441446764`, 14 h 18 UTC) : publication autorisée ; « Pic de mémoire :
+4,460 Mo (étape E4) » affiché.
+
+## Comptes rendus : paragraphe publié deux fois sous le même identifiant (13/11/2026)
+
+Branche `etape-2-paragraphes-doubles`, PR #65, alerte #30 (`export:doublons`). Recommandation validée
+par la propriétaire le 13/11/2026.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Lecteur `an_comptes_rendus` version 2 : colonne `occurrence`, rang du paragraphe parmi ceux qui portent le même `id_syceron` dans le compte rendu (0 pour le premier) | 370 comptes rendus de la XVe publient deux fois la fin de séance sous le même identifiant (« La séance est levée… », puis la signature du service) : 370 clés en double dans l'export | 1 (1.2.2 : clé d'une prise de parole) |
+| Export : option `rang` de la déclaration `EXPORT` ; `#<rang>` ajouté à la clé à partir du second, la clé du premier ne change pas (`docs/export.md`) | les 1,49 million de clés existantes restent stables d'une nuit à l'autre | export (fait) |
+
+Essai sur la branche (`43451890423`, 15 h 22 UTC) : 2 861 comptes rendus relus par la version 2,
+aucun illisible ; **0 clé en double** ; 11 278 464 faits exportés et 1 882 326 faits publiés, comme
+avant ; publication autorisée ; calcul 7 min 06 s, pic 4,7 Go (E4).
+
+## Paroles prononcées sous un ancien nom (13/11/2026)
+
+Branche `etape-2-noms-anterieurs`, PR #67. Trouvé en analysant l'avertissement A6 (#11). Décision de
+la propriétaire du 13/11/2026 : deux noms par personne, l'actuel et, facultatif, un ancien ; une parole
+est rattachée si le nom écrit correspond à l'un ou à l'autre (« si l'identifiant ne change pas, on peut
+toujours faire le rattachement »).
+
+Analyse de A6 (entrepôt g10, export de l'essai `43441446764`) : les membres de groupe sans parole servie
+sont, pour la XVIIe (19), 6 entrés depuis juillet 2026, 10 aux mandats courts (2 jours à 4 mois,
+souvent des suppléants de ministres ; 3 n'ont parlé qu'après avoir quitté le groupe) et 3 présents
+toute la législature à qui la source n'attribue aucun paragraphe ; pour la XVIe (2), deux mandats
+courts ; pour la XVe, deux mandats courts et un nom changé (2 cas sur 5 non retrouvés par cette
+méthode).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-ORATEUR version 2 : le nom affiché est comparé au nom actuel **et** à tout nom publié pour le même identifiant dans une archive plus ancienne (`an_acteurs__identite_source__archives`, archive figée d'une législature close) ; colonne `nom_anterieur` | la règle exige que le nom écrit corresponde à l'état civil ; un député qui a changé de nom perdait ses paroles antérieures (`nom_discordant`) : PA721296, « Gouffier-Cha » en XVe, « Gouffier Valente » ensuite (567 paragraphes) ; PA719756, « Cloarec-Le Nabour » en XVe, « Le Nabour » ensuite (27). Un nom que la source n'a jamais donné à l'identifiant reste discordant (« Alice Rufo » sous l'identifiant de F. Ruffin ; « Arnaud Sanvert » sous celui de M. Simion, 1 paragraphe) | 1 (1.6 R-ORATEUR) |
+
+Essai sur la branche (`43457980715`, 15 h 58 UTC, en parallèle de celui de #90) : **594 paragraphes
+rattachés en plus** (1 338 508 → 1 339 102) et autant de faits publiés ; A6, XVe : 3 → 2 membres
+sans parole ; publication autorisée ; calcul 14 min 08 s, pic 4,6 Go.
+
+## A3 : seuls les écarts d'effectif inexpliqués sont nommés (13/11/2026)
+
+Branche `etape-2-a3-affine`, PR #90, avertissement A3 (#9). Décision de la propriétaire du 13/11/2026
+(« oui, affine A3 »), après analyse.
+
+Analyse (entrepôt g10) : 2 187 décomptes de groupe sur 193 821 ont un effectif publié différent de nos
+appartenances ; **aucun n'est inexpliqué**. 1 592 sont des **transitions** : au moins autant de membres
+entrent dans le groupe ou en sortent à 7 jours ou moins du scrutin que l'écart en compte (ministres
+remplacés par leurs suppléants le 22/10/2024 et le 13/11/2025 : un jour où les sortants ont quitté le
+groupe et les suppléants n'y sont pas encore inscrits ; création de R-UMP le 27/11/2012, où notre règle
+fait finir l'appartenance à l'UMP la veille). 595 portent sur un **organe hors de ses dates** :
+l'Assemblée rattache le décompte à un organe de groupe clos (groupe socialiste de la XVIe : organe clos
+le 18/10/2023, employé jusqu'au 14/03/2024, 581 décomptes ; SOC-A 8, UDI-AGIR 4, UDI-A-I 2). Rien ne
+change à l'écran : les 584 scrutins socialistes concernés sont servis dans `votes-16` de la lignée.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| A3 classe chaque écart (`transition`, `organe_hors_dates`, `inexplique`) ; seuls les inexpliqués sont nommés, les autres comptés dans le détail ; fenêtre de 7 jours réglable (`A3_FENETRE_TRANSITION` ; avec 3 jours, 75 écarts resteraient inexpliqués) | l'avertissement criait chaque nuit pour des écarts tous expliqués | 2 (2.8.2 A3) |
+
+Essai sur la branche (`43457985883`, 15 h 58 UTC) : **plus d'avertissement A3** ; publication
+autorisée ; calcul 11 min 33 s, pic 4,7 Go. L'issue #9 se ferme d'elle-même à la première nuit publiée
+avec ce code.
+
+## Pages du dépôt d'essai (13/11/2026)
+
+Décisions de la propriétaire du 13/11/2026 : « je pense que je vais activer la page du depot de test afin
+de visualiser à minima la doc », puis « Doc + page minimale » ; plus tard, publier aussi les livrables
+(cadrage). PR #93, puis #99 (issue #95, faite par un agent).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Workflow `pages.yml` : documentation du code (pdoc) et page minimale avec les fichiers servis de la dernière publication (archive de la release `publication`), après chaque mise à jour réussie sur `main` et chaque envoi de code ; seule la tâche `deployer` a les droits de Pages (`pages: write`, `id-token: write`), testé | voir la doc et ce que chargent les fiches sans télécharger d'artefact | 2 (2.12), migration (fait) |
+| Page `traitement/`, générée depuis le code (`methodologie.py`) : étapes E0–E8, périmètre, 12 lecteurs et leurs sources, 40 règles dans leur ordre avec leur description, 7 contrôles bloquants et 10 avertissements | la doc pdoc ne dit pas comment fonctionne le traitement (issue #95) | — |
+| Page `livrables/` : les documents de conception et de l'étape 2 convertis en HTML (`pages_livrables.py`, markdown2 épinglé) | décision du 13/11/2026 | — |
+
+Premier déploiement (13/11/2026, 16 h 08 UTC) : construction 29 s, déploiement 14 s ; 159 Mo, dont
+13 269 fichiers pour la page minimale (g10). Les fichiers servis `.json.gz` sont servis tels quels
+(`application/gzip`), la page minimale les décompresse : vérifié. Restes signalés par l'agent de #99 :
+10 contrôles sans docstring (C2, C4, C7, A1, A2, A4–A8), le même code A9 pour deux avertissements.
+
+## Livrables versés dans le dépôt ; doc. 4 remplacé par le rapport de mesures (13/11/2026)
+
+PR #97, fusionnée à 16 h 32 UTC. Décisions de la propriétaire du 13/11/2026 : « on remplace le point 4
+par le rapport de mesure », et, pour publier les livrables, « Déplacés dans le dépôt ».
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Les livrables vivent dans le dépôt (`livrables/` : docs 0 à 8, `etape-2/`, `annexes/mesures/`) ; chaque modification passe par une PR. L'ancien dossier hors dépôt est gelé (note `DEPLACE-DANS-LE-DEPOT.md`), rien n'y est supprimé ; identique au dépôt à la bascule (`diff -r`). `annexes/scripts/` n'est pas versé (non relu) | publication sur Pages, toujours à jour | 0 (LISEZMOI) |
+| Le doc. 4 (estimations) n'est pas réaligné : le rapport de mesures (`3-rapport-de-mesures.md`) le remplace | commande 1.4 : chaque estimation remplacée par une mesure | 4 |
+
+Les sessions « candidats » et « issues » ont confirmé n'avoir rien écrit dans l'ancien dossier après la
+bascule. Issues ouvertes le même jour : #94 (177 fonctions publiques sans docstring) et #95 (page
+« traitement », faite par #99).
