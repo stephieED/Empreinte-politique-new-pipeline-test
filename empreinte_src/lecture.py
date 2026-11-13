@@ -274,7 +274,11 @@ class Lecture:
             os.unlink(tmp[t])
             lignes[t] = pq.ParquetFile(final).metadata.num_rows
         con.close()
-        lues = sorted((deja | {cle(r) for r in a_lire}) - rates)
+        # Seules les versions que l'entrepôt porte encore restent inscrites comme lues : les lignes
+        # des autres viennent d'être retirées (jointure avec `v`). Une version sortie puis revenue
+        # avec les mêmes octets serait sinon tenue pour lue, sans aucune ligne (#44, rouverte).
+        presentes = {cle(r) for r in self.e._index if r["type"] in mod.TYPES}
+        lues = sorted(((deja & presentes) | {cle(r) for r in a_lire}) - rates)
         self.illisibles |= {x[:3] for x in rates}
         pq.write_table(pa.Table.from_pylist([{"p": p_, "u": u, "n": n, "e": e_, "lecteur_version": mod.VERSION}
                                              for (p_, u, n, e_) in lues]),
