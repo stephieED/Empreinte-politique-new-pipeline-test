@@ -37,7 +37,7 @@ ne retire personne : seule une nouvelle décision le fait.
 """
 
 NOM = "R-CANDIDATURES"
-VERSION = 3
+VERSION = 4
 DEPEND = ()
 SORTIES = ("candidature", "candidature_ecart_wikipedia")
 DESCRIPTION = (
@@ -119,6 +119,7 @@ def appliquer(ctx):
     sen = vue_ou_vide(ctx, "senat_export__identite_source", {"matricule": "VARCHAR"})
     pe = vue_ou_vide(ctx, "pe_eurodeputes__identifiant_pe", {"element": "VARCHAR", "identifiant": "VARCHAR"})
     pe_fiche = vue_ou_vide(ctx, "pe_eurodeputes__eurodepute", {"personne": "VARCHAR"})
+    nwd = vue_ou_vide(ctx, "pe_eurodeputes__naissance_wikidata", {"element": "VARCHAR", "naissance": "VARCHAR"})
 
     # Une ligne par personne : la liste la plus récente fait foi ; une personne d'une liste plus
     # ancienne absente de la dernière est « non listée ». Clé : l'élément inscrit, à défaut
@@ -175,8 +176,11 @@ def appliquer(ctx):
     # Identifiant de député européen déclaré par Wikidata (P1186) pour l'élément retenu, lu par le
     # point `pe-eurodeputes` (décision Q3 du 13/11/2026).
     ctx.x(f"""CREATE OR REPLACE TEMP TABLE _pe AS
-        SELECT element AS pe_element, list_sort(list(DISTINCT identifiant)) AS pe_ids
-        FROM {pe} WHERE identifiant IS NOT NULL GROUP BY 1""")
+        SELECT coalesce(a.element, b.element) AS pe_element, a.pe_ids, b.pe_naissances
+        FROM (SELECT element, list_sort(list(DISTINCT identifiant)) AS pe_ids
+              FROM {pe} WHERE identifiant IS NOT NULL GROUP BY 1) a
+        FULL JOIN (SELECT element, list_sort(list(DISTINCT naissance)) AS pe_naissances
+                   FROM {nwd} WHERE naissance IS NOT NULL GROUP BY 1) b USING (element)""")
     # Un identifiant déclaré pour deux candidats différents n'est retenu pour aucun.
     ctx.x("""CREATE OR REPLACE TEMP TABLE _partages AS
         SELECT id FROM (
@@ -233,7 +237,10 @@ def appliquer(ctx):
                CASE WHEN rattachement = 'wikidata' AND len(ids_an) = 1 THEN ids_an[1] END AS acteur,
                CASE WHEN rattachement = 'wikidata' AND len(ids_senat) = 1 THEN ids_senat[1] END AS matricule_senat,
                CASE WHEN rattachement = 'wikidata' AND len(ids_sycomore) = 1 THEN ids_sycomore[1] END AS sycomore,
-               CASE WHEN rattachement = 'wikidata' AND len(naissances) = 1 THEN naissances[1] END AS naissance_wikidata,
+               -- Date de naissance déclarée par Wikidata : par la grande requête (identifiant
+               -- parlementaire), sinon par la requête des éléments de la liste (point pe-eurodeputes).
+               CASE WHEN rattachement = 'wikidata' AND len(naissances) = 1 THEN naissances[1]
+                    WHEN len(naissances) = 0 AND len(pe_naissances) = 1 THEN pe_naissances[1] END AS naissance_wikidata,
                CASE WHEN len(pe_ids) = 1 THEN pe_ids[1] END AS eurodepute,
                CASE WHEN len(pe_ids) = 1 THEN pe_ids[1] IN (SELECT personne FROM {pe_fiche}) END AS eurodepute_connu_pe,
                rattachement,

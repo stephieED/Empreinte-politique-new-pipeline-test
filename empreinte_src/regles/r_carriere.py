@@ -22,8 +22,9 @@ Une ligne par période, toutes institutions :
   13/11/2026), découpés par le groupe politique européen à la date, avec son nom de l'époque.
   Le numéro de la législature européenne est dans le libellé, jamais dans `legislature` (qui est
   celle de l'Assemblée).
-- **Mandats locaux** : non collectés dans l'essai ; mandats de député antérieurs à 2002 : hors
-  source (Sycomore non collecté). Ces absences sont des lignes de `couverture_carriere`, pas des
+- **Mandats locaux** (`local`) : R-MANDAT-LOCAL (Répertoire national des élus, depuis 2020 ;
+  fin des mandats municipaux 2020-2026 déduite au 15/03/2026 et signalée). Mandats de député
+  antérieurs à 2002 : hors source (Sycomore non collecté). Ces absences sont des lignes de `couverture_carriere`, pas des
   périodes inventées.
 
 `lien` ne pointe que vers une fiche publiée : `legislature/<14 à 17>` (module `perimetre`),
@@ -33,8 +34,8 @@ from ..perimetre import LEGISLATURES, LEGISLATURES_GOUVERNEMENTS
 from .r_candidatures import vue_ou_vide
 
 NOM = "R-CARRIERE"
-VERSION = 2
-DEPEND = ("R-IDENTITE", "R-DEPUTES", "R-APPARTENANCE", "R-COMPOSITION", "R-GOUVERNEMENTS",
+VERSION = 3
+DEPEND = ("R-IDENTITE", "R-MANDAT-LOCAL", "R-DEPUTES", "R-APPARTENANCE", "R-COMPOSITION", "R-GOUVERNEMENTS",
           "R-HEMICYCLE")
 SORTIES = ("carriere", "couverture_carriere")
 DESCRIPTION = (
@@ -45,8 +46,8 @@ DESCRIPTION = (
     "dates. Un député entré au gouvernement "
     "voit son mandat suspendu, pas terminé : la frise le montre. Le groupe affiché est celui "
     "auquel il appartenait à chaque date, et pour le Sénat avec le nom que le groupe portait "
-    "alors. Les mandats de député antérieurs à 2002 et les mandats locaux ne sont pas encore "
-    "collectés : la fiche le dit au lieu de les taire.")
+    "alors. Les mandats locaux viennent du Répertoire national des élus, depuis 2020. Les mandats de "
+    "député antérieurs à 2002 ne sont pas encore collectés : la fiche le dit au lieu de les taire.")
 ORDINAL = "CASE WHEN {n} = 1 THEN '1re' ELSE {n} || 'e' END"
 
 LEGISLATURES_PUBLIEES = LEGISLATURES
@@ -103,6 +104,17 @@ def appliquer(ctx):
     pe_fiche = vue_ou_vide(ctx, "pe_eurodeputes__eurodepute", {"personne": "VARCHAR", "genre": "VARCHAR"})
     pe_collecte = ctx.existe("pe_eurodeputes__eurodepute") and ctx.un(
         "SELECT count(*) > 0 FROM pe_eurodeputes__eurodepute")
+    rne_collecte = ctx.existe("rne_elus__mandat_local") and ctx.un(
+        "SELECT count(*) > 0 FROM rne_elus__mandat_local")
+    loc = vue_ou_vide(ctx, "mandat_local_candidat", {
+        "per": "VARCHAR", "fonction": "VARCHAR", "collectivite": "VARCHAR", "debut": "VARCHAR",
+        "fin": "VARCHAR", "fin_raison": "VARCHAR", "fichier": "VARCHAR", "code_collectivite": "VARCHAR",
+        "source_url": "VARCHAR", "methode": "VARCHAR"})
+    # Identité recherchable dans le répertoire : nom, prénom et naissance connus, ou une décision.
+    ctx.x(f"""CREATE OR REPLACE TEMP TABLE _car_loc_id AS
+        SELECT DISTINCT per FROM personne_identite
+        WHERE naissance IS NOT NULL AND nom IS NOT NULL
+        UNION SELECT DISTINCT per FROM {loc}""")
 
     ctx.x("""CREATE OR REPLACE TEMP TABLE _car_c AS
         SELECT per, acteur, matricule_senat, sycomore, acteur_connu_an, eurodepute FROM candidat""")
@@ -268,14 +280,21 @@ def appliquer(ctx):
                    'pe', s.etat, NULL, s.mandat, s.acteur, NULL, NULL, NULL, s.source_url
             FROM {segments("_car_pe", "_car_gpe")} s
             LEFT JOIN (SELECT personne, any_value(genre) AS genre FROM {pe_fiche} GROUP BY 1) f
-              ON f.personne = s.acteur)
+              ON f.personne = s.acteur),
+        loc AS (
+            SELECT l.per, 'local', l.debut::DATE, coalesce(l.fin::DATE, {FIN_OUVERTE}),
+                   l.fonction || CASE WHEN l.collectivite IS NOT NULL THEN ' · ' || l.collectivite ELSE '' END,
+                   NULL::INTEGER, NULL, NULL, NULL, NULL, 'sans_objet', NULL::INTEGER, NULL, NULL, NULL,
+                   'rne', 'en_fonction', NULL, l.fichier || ':' || coalesce(l.code_collectivite, ''), NULL,
+                   NULL, NULL, l.fin_raison, l.source_url
+            FROM {loc} l WHERE l.debut IS NOT NULL)
         SELECT per, institution, strftime(d0, '%Y-%m-%d') AS debut,
                CASE WHEN d1 < {FIN_OUVERTE} THEN strftime(d1, '%Y-%m-%d') END AS fin,
                libelle, legislature, gouvernement, groupe, groupe_sigle, groupe_libelle, groupe_statut,
                siege, siege_date, raison_siege, lien, source, etat, qualite, mandat, acteur,
                circonscription, cause_fin, fin_raison, source_url
         FROM (SELECT * FROM an UNION ALL SELECT * FROM gv UNION ALL SELECT * FROM sen
-              UNION ALL SELECT * FROM pe)
+              UNION ALL SELECT * FROM pe UNION ALL SELECT * FROM loc)
         ORDER BY per, debut, institution""")
 
     # --- Couverture, candidat par candidat et institution par institution -------------------
@@ -296,6 +315,9 @@ def appliquer(ctx):
               WHEN 'senat' THEN CASE WHEN c.matricule_senat IS NULL THEN 'aucun_identifiant'
                                      WHEN NOT {str(bool(senat_collecte)).lower()} THEN 'non_collecte'
                                      WHEN n.lignes > 0 THEN 'complet' ELSE 'non_etabli' END
+              WHEN 'local' THEN CASE WHEN NOT {str(bool(rne_collecte)).lower()} THEN 'non_collecte'
+                                     WHEN c.per NOT IN (SELECT per FROM _car_loc_id) THEN 'non_etabli'
+                                     ELSE 'partiel' END
               WHEN 'parlement_europeen' THEN CASE WHEN c.eurodepute IS NULL THEN 'aucun_identifiant'
                                      WHEN NOT {str(bool(pe_collecte)).lower()} THEN 'non_collecte'
                                      WHEN n.lignes > 0 THEN 'complet' ELSE 'non_etabli' END
@@ -318,6 +340,10 @@ def appliquer(ctx):
                                      WHEN NOT {str(bool(pe_collecte)).lower()} THEN 'Portail du Parlement européen non collecté.'
                                      WHEN n.lignes > 0 THEN 'Mandats de député européen du portail du Parlement européen, toutes législatures.'
                                      ELSE 'Identifiant européen déclaré, aucun mandat lu dans le portail du Parlement européen.' END
+              WHEN 'local' THEN CASE WHEN NOT {str(bool(rne_collecte)).lower()} THEN 'Répertoire national des élus non collecté.'
+                                     WHEN c.per NOT IN (SELECT per FROM _car_loc_id) THEN 'Date de naissance inconnue de nos sources : un élu du répertoire, qui n''a pas d''identifiant, ne peut pas être rattaché à cette personne sans décision.'
+                                     WHEN n.lignes > 0 THEN 'Mandats en cours et mandats municipaux 2020-2026 du Répertoire national des élus, rattachés par ' || CASE WHEN c.per IN (SELECT per FROM {loc} WHERE methode = 'decision') THEN 'une décision (date de naissance inconnue de nos autres sources)' ELSE 'le nom, le prénom et la date de naissance' END || ' ; avant 2020 : hors source. La fin d''un mandat municipal de 2020 est déduite au 15/03/2026.'
+                                     ELSE 'Aucun mandat dans ce que couvre le Répertoire national des élus (mandats en cours, mandats municipaux 2020-2026) ; avant 2020 et autres mandats terminés : hors source.' END
               ELSE 'Mandats locaux : non collectés dans l''essai.' END AS detail
         FROM c CROSS JOIN i
         LEFT JOIN n ON n.per = c.per AND n.institution = i.institution
@@ -333,9 +359,10 @@ def appliquer(ctx):
                         AND etat = 'en_fonction' AND groupe_statut <> 'non_etabli'""")
     syc = ctx.un("SELECT count(*) FROM _car_c WHERE sycomore IS NOT NULL")
     pe_per = ctx.un("SELECT count(DISTINCT per) FROM carriere WHERE institution = 'parlement_europeen'")
+    loc_per = ctx.un("SELECT count(DISTINCT per) FROM carriere WHERE institution = 'local'")
     pe_ids = ctx.un("SELECT count(*) FROM _car_c WHERE eurodepute IS NOT NULL")
     for t in ("_car_c", "_car_an", "_car_gan", "_car_an_seg", "_car_sen", "_car_gsen", "_car_sen_susp",
-              "_car_pe", "_car_gpe"):
+              "_car_pe", "_car_gpe", "_car_loc_id"):
         ctx.x(f"DROP TABLE IF EXISTS {t}")
     return {"candidats_avec_mandat_de_depute_depuis_2002": (an_, n),
             "candidats_avec_fonction_gouvernementale_depuis_2007": (gv, n),
@@ -343,4 +370,4 @@ def appliquer(ctx):
             "periode_avec_groupe_etabli": (seg_grp, seg),
             "mandats_anterieurs_a_2002_hors_source_sycomore_declare": (syc, n),
             "mandats_europeens_lus": (pe_per, pe_ids),
-            "mandats_locaux_non_collectes": (0, n)}
+            "mandats_locaux_lus": (loc_per, n)}
