@@ -54,6 +54,35 @@ CHAMPS_RELEVE = [
     "nb_doublons", "date_source", "curseur", "message",
 ]
 PRESENT, RETIRE = "present", "retire_a_la_source"
+_CHAMPS_INDEX = tuple(SCHEMA_INDEX.names)
+# Champs aux valeurs très répétées : une seule chaîne en mémoire pour toutes les lignes.
+_REPETES = ("point_acces", "source", "type", "etat", "releve_id")
+
+
+class Ligne:
+    """Une ligne de l'index, compacte : ≈ 0,6 Ko au lieu de 1,7 Ko pour un dictionnaire (mesuré le
+    13/11/2026 : 1,36 Go pour 815 000 lignes, avant les 870 000 fichiers de l'archive globale du
+    JO). Elle se lit comme un dictionnaire (`r["uid"]`, `r["etat"] = …`)."""
+    __slots__ = _CHAMPS_INDEX
+
+    def __init__(self, **kw):
+        for k in _CHAMPS_INDEX:
+            setattr(self, k, kw.get(k))
+
+    def __getitem__(self, k):
+        return getattr(self, k)
+
+    def __setitem__(self, k, v):
+        setattr(self, k, v)
+
+    def get(self, k, defaut=None):
+        return getattr(self, k, defaut)
+
+    def keys(self):
+        return _CHAMPS_INDEX
+
+    def __eq__(self, autre):
+        return isinstance(autre, Ligne) and all(self[k] == autre[k] for k in _CHAMPS_INDEX)
 
 
 def maintenant() -> str:
@@ -90,6 +119,7 @@ class Entrepot:
             "generation": 0, "cree_le": None, "fichiers": {}, "precedent": None}
         self.generation_base = self.manifeste["generation"]
         self.generation = self.generation_base + 1      # celle que cette exécution produit
+        self._interne: dict[str, str] = {}
         self._index = self._lire_index()
         self._releves = self._lire_table("releves.parquet")
         self._empreintes_connues = {r["empreinte"] for r in self._index}
@@ -100,6 +130,11 @@ class Entrepot:
         self._blobs_taille = 0
         self._blobs_fichiers: list[str] = []
         self._membres: list[dict] = []
+        self._membres_ecrivain = None
+
+    def _i(self, v):
+        """Chaîne partagée pour une valeur répétée (point d'accès, type, état, relevé)."""
+        return v if v is None else self._interne.setdefault(v, v)
 
     # -- lecture ------------------------------------------------------------------------
     def _lire_json(self, nom):
@@ -113,8 +148,17 @@ class Entrepot:
         p = os.path.join(self.dossier, nom)
         return pq.read_table(p).to_pylist() if os.path.exists(p) else []
 
-    def _lire_index(self) -> list[dict]:
-        rows = self._lire_table("index.parquet")
+    def _lire_index(self) -> list[Ligne]:
+        p = os.path.join(self.dossier, "index.parquet")
+        if not os.path.exists(p):
+            return []
+        t = pq.read_table(p)
+        cols = {c: t.column(c).to_pylist() if c in t.column_names else [None] * t.num_rows
+                for c in _CHAMPS_INDEX}
+        del t
+        for c in _REPETES:
+            cols[c] = [self._i(v) for v in cols[c]]
+        rows = [Ligne(**dict(zip(_CHAMPS_INDEX, vals))) for vals in zip(*(cols[c] for c in _CHAMPS_INDEX))]
         rows.sort(key=lambda r: (r["point_acces"], r["uid"], r["version"]))
         return rows
 
@@ -194,6 +238,8 @@ class Entrepot:
             bilan.membres += 1
             self._membres.append({"releve_id": releve_id, "uid": uid, "chemin": m.chemin,
                                   "taille": m.taille, "crc32": m.crc32, "empreinte": m.empreinte})
+            if len(self._membres) >= 50_000:
+                self._vider_membres()
             i = self._derniere.get((point, uid))
             der = self._index[i] if i is not None else None
             if der is not None and der["etat"] == PRESENT and der["empreinte"] == m.empreinte:
@@ -218,16 +264,30 @@ class Entrepot:
                         bilan.exemples["retraits"].append(uid)
         return bilan
 
+    def _vider_membres(self, fin: bool = False):
+        """Liste des membres reçus (P2), écrite au fil de l'eau par lots : l'archive globale du JO
+        en apporte 870 000 d'un coup."""
+        if self._membres:
+            if self._membres_ecrivain is None:
+                self._membres_ecrivain = pq.ParquetWriter(
+                    os.path.join(self.dossier, "membres", f"membres-g{self.generation:06d}.parquet"),
+                    SCHEMA_MEMBRES, compression="zstd")
+            self._membres_ecrivain.write_table(pa.Table.from_pylist(self._membres, schema=SCHEMA_MEMBRES))
+            self._membres = []
+        if fin and self._membres_ecrivain is not None:
+            self._membres_ecrivain.close()
+            self._membres_ecrivain = None
+
     def prolonger(self, point_acces: str):
         """Relevé « inchangé » (304) sur un point dont le dernier relevé était complet."""
         for der in self.presents(point_acces).values():
             der["vu_jusqu_au"] = self.generation
 
     def _ajouter_version(self, pa_cfg, uid, empreinte, chemin, taille, etat, releve_id, version):
-        r = {"point_acces": pa_cfg["id"], "source": pa_cfg["source"], "type": pa_cfg["type"],
-             "uid": uid, "version": version, "empreinte": empreinte, "chemin": chemin,
-             "taille": taille, "etat": etat, "vu_du": self.generation,
-             "vu_jusqu_au": self.generation, "releve_id": releve_id}
+        r = Ligne(point_acces=self._i(pa_cfg["id"]), source=self._i(pa_cfg["source"]),
+                  type=self._i(pa_cfg["type"]), uid=uid, version=version, empreinte=empreinte,
+                  chemin=chemin, taille=taille, etat=self._i(etat), vu_du=self.generation,
+                  vu_jusqu_au=self.generation, releve_id=self._i(releve_id))
         self._index.append(r)
         self._derniere[(pa_cfg["id"], uid)] = len(self._index) - 1
 
@@ -330,14 +390,12 @@ class Entrepot:
             self._writer.close()
             self._writer = None
         d = self.dossier
-        pq.write_table(pa.Table.from_pylist(self._index, schema=SCHEMA_INDEX),
+        pq.write_table(pa.Table.from_pydict({c: [r[c] for r in self._index] for c in _CHAMPS_INDEX},
+                                            schema=SCHEMA_INDEX),
                        os.path.join(d, "index.parquet"), compression="zstd")
         pq.write_table(pa.Table.from_pylist(self._releves), os.path.join(d, "releves.parquet"),
                        compression="zstd")
-        if self._membres:
-            pq.write_table(pa.Table.from_pylist(self._membres, schema=SCHEMA_MEMBRES),
-                           os.path.join(d, "membres", f"membres-g{self.generation:06d}.parquet"),
-                           compression="zstd")
+        self._vider_membres(fin=True)
         gens = self._lire_table("generations.parquet")
         gens.append({"generation": self.generation, "date": maintenant(), "code": version_code})
         pq.write_table(pa.Table.from_pylist(gens), os.path.join(d, "generations.parquet"))
@@ -362,6 +420,17 @@ class Entrepot:
             json.dump(nouveau, f, indent=1, sort_keys=True, ensure_ascii=False)
         self.manifeste = nouveau
         return nouveau
+
+    def ranger_brute(self, nom: str, chemin: str) -> str:
+        """Garde à l'octet une archive reçue dont seule une partie est découpée (archive globale du
+        JO, décision du 13/11/2026). Elle est rangée dans `brutes/`, entre au manifeste avec son
+        empreinte, et la tâche d'écriture la dépose dans une release à part (`archives-brutes`),
+        qui n'est pas rapatriée chaque nuit. Rend son chemin relatif."""
+        import shutil
+        rel = os.path.join("brutes", nom)
+        os.makedirs(os.path.join(self.dossier, "brutes"), exist_ok=True)
+        shutil.move(chemin, os.path.join(self.dossier, rel))
+        return rel
 
     def actualiser_fichiers(self, chemins_relatifs: list[str]) -> dict:
         """Le registre des identités est enrichi par la tâche de calcul, après la collecte :
