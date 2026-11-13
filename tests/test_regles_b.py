@@ -531,3 +531,24 @@ def test_toutes_les_regles_rendent_leur_couverture(reel):
         c = b[nom]["couverture"]
         assert c and all(isinstance(n, int) and isinstance(d, int) and n <= d for n, d in c.values()), nom
         assert b[nom]["description"]
+
+
+def test_suite_absente_des_archives(tmp_path):
+    """Issue #35 : un dossier publié par la seule archive d'une législature close (XVIe ici), avec
+    des actes de la législature suivante, n'a pas « aucune décision finale » : sa suite n'est dans
+    aucune archive (cas réel : DLR5L14N35818, loi 2018-287, archive de la XIVe arrêtée au
+    22/03/2018)."""
+    pt = {"prov_point": "an-dossiers-l16"}
+    dossiers = [_dos("SA", "Texte poursuivi sous la XVIIe"), _dos("SB", "Texte resté en XVIe")]
+    actes = [
+        {**_depot("SA", "PIONSNR5S459B0009", "SN1-DEPOT", "2024-03-01"), "uid": "L16-SA-DI", **pt},
+        {**_decision("SA", "L16-SA-D1", "SN1-DEBATS-DEC", "TSORTF01", "2024-04-01"), **pt},
+        {**_acte("SA", "L17-SA-DIN", "DepotInitiativeNavette_Type", "AN1-DEPOT", "2024-09-20"), **pt},
+        {**_depot("SB", "PIONSNR5S459B0010", "SN1-DEPOT", "2024-03-01"), "uid": "L16-SB-DI", **pt},
+        {**_decision("SB", "L16-SB-D1", "SN1-DEBATS-DEC", "TSORTF01", "2024-04-02"), **pt},
+    ]
+    ctx, _ = _relier(_z2(tmp_path / "z2", actes=actes, dossiers=dossiers), tmp_path / "z3")
+    s = {x["dossier"]: (x["sort"], x["raison_sort"], x["fin_archive_du_dossier"])
+         for x in _lignes(ctx, "SELECT DISTINCT dossier, sort, raison_sort, fin_archive_du_dossier FROM etat_dossier")}
+    assert s == {"SA": ("non_connu", "suite_absente_des_archives", "2024-09-20"),
+                 "SB": ("non_connu", "aucune_decision_finale", None)}
