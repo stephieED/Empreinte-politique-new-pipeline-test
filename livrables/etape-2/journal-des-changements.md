@@ -704,3 +704,8 @@ par le rapport de mesure », et, pour publier les livrables, « Déplacés dans 
 Les sessions « candidats » et « issues » ont confirmé n'avoir rien écrit dans l'ancien dossier après la
 bascule. Issues ouvertes le même jour : #94 (177 fonctions publiques sans docstring) et #95 (page
 « traitement », faite par #99).
+
+Essai sur `main` après ces fusions (`43464134163`, 13/11/2026, 16 h 35 → 16 h 48 UTC, `fd1fa8a` :
+#65, #67, #90, #93, #97 ensemble ; collecte limitée à Wikipédia, calcul sur tout l'entrepôt) :
+**publication autorisée** ; 0 clé en double ; 1 339 102 paragraphes attribués (+594) ; plus
+d'avertissement A3 ; 72 fiches, 1 882 957 faits publiés ; calcul 11 min 31 s, pic 4,7 Go (E4).
