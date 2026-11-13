@@ -42,6 +42,8 @@ def documents(source: str) -> list[str]:
 
 
 def titre(texte: str, defaut: str) -> str:
+    """Rend le titre d'une page markdown : le texte de sa première ligne `# …`, ou `defaut` si elle
+    n'en a pas."""
     for l in texte.splitlines():
         if l.startswith("# "):
             return l[2:].strip()
@@ -58,6 +60,10 @@ def _relier(corps: str, chemin: str, publies: set[str]) -> str:
                          for i in range(1, d.count("/") + 1)}
 
     def lien(m):
+        """Réécrit un lien `<a href="…">` trouvé par le motif : une adresse absolue, une ancre ou
+        un chemin qui commence par `/` est gardé tel quel ; un `.md` publié devient sa page `.html`
+        (ancre gardée) ; un dossier publié mène à l'index ; sinon le lien est retiré et seul son
+        texte reste."""
         avant, cible, apres, texte = m.group(1) or " ", m.group(2), m.group(3), m.group(4)
         brut = html.unescape(cible)
         if re.match(r"^[a-z][a-z0-9+.-]*:", brut, re.I) or brut.startswith(("#", "/")):
@@ -131,6 +137,8 @@ def convertir(source: str, sortie: str) -> list[str]:
 
 
 def main(argv=None):
+    """Point d'entrée : convertit le dossier `source` en pages HTML dans `sortie` (`convertir`) et
+    écrit combien de pages ont été écrites, ou qu'il n'y a rien à publier."""
     ap = argparse.ArgumentParser(description="Convertit livrables/ en pages HTML (Pages).")
     ap.add_argument("source")
     ap.add_argument("sortie")

@@ -44,6 +44,10 @@ def _json(obj) -> bytes:
 
 
 class Fiche:
+    """Une fiche en cours d'écriture, ouverte par `Ecrivain.fiche`. Son identifiant est
+    `<type_fiche>/<adresse>` et ses fichiers vont dans le dossier `<type_fiche>s/<adresse>`. Elle
+    garde ses sections écrites, la couverture de chacune et les licences de ses faits jusqu'à
+    `fermer`."""
     def __init__(self, ecr: "Ecrivain", type_fiche: str, adresse: str, titre: str):
         self.ecr, self.type, self.adresse, self.titre = ecr, type_fiche, adresse, titre
         self.id = f"{type_fiche}/{adresse}"
@@ -54,6 +58,8 @@ class Fiche:
         self._entete: dict = {}
 
     def entete(self, donnees: dict):
+        """Ajoute `donnees` à l'en-tête de la fiche (`fiche.json.gz`), écrit à la fermeture ; une
+        clé déjà donnée est remplacée. Ne rend rien."""
         self._entete.update(donnees)
 
     def section(self, nom: str, lignes: list[dict], type_fait: str, ids: dict | None = None,
@@ -82,6 +88,9 @@ class Fiche:
         return info
 
     def fermer(self):
+        """Écrit l'en-tête `fiche.json.gz` (titre, date de génération, données d'en-tête, sections
+        avec leurs poids, couverture, licences) et ajoute la fiche à la liste de l'écrivain
+        (`fiches`), avec le poids de l'en-tête et de chaque section. Ne rend rien."""
         contenu = {"contrat": CONTRAT, "fiche": self.id, "type": self.type, "titre": self.titre,
                    "genere_le": self.ecr.genere_le, **self._entete,
                    "sections": self.sections, "couverture": self.couverture,
@@ -157,11 +166,15 @@ class Ecrivain:
         return c
 
     def fiche(self, type_fiche: str, adresse: str, titre: str) -> Fiche:
+        """Ouvre et rend une nouvelle `Fiche` ; elle sera fermée par `clore`."""
         f = Fiche(self, type_fiche, adresse, titre)
         self._ouvertes.append(f)
         return f
 
     def ecrire(self, chemin: str, contenu) -> dict:
+        """Écrit `contenu` en JSON compact, compressé en gzip (octets reproductibles), au chemin
+        `chemin` sous le dossier de la publication. Rend `{"brut", "gz", "sha256"}` (tailles avant
+        et après compression, empreinte du fichier compressé) et le garde pour le manifeste."""
         brut = _json(contenu)
         gz = gzip.compress(brut, compresslevel=9, mtime=0)      # mtime=0 : octets reproductibles
         p = os.path.join(self.racine, chemin)
@@ -173,6 +186,10 @@ class Ecrivain:
         return info
 
     def fait_publie(self, fiche: Fiche, section, type_fait, ligne, ids, date, source):
+        """Inscrit la ligne affichée `ligne` comme fait publié de la section `section` de `fiche` :
+        type, identifiants (`ids`, `{clé de l'export: colonne}`), valeur (la ligne en JSON), date
+        (colonne `date`) et source (colonne `source`). Avec `chemin_faits`, le lot est écrit dès
+        qu'il atteint `lot_faits` lignes. Ne rend rien."""
         r = {"fiche": fiche.id, "section": section, "type_fait": type_fait}
         for k in IDS:
             col = ids.get(k)
@@ -196,6 +213,9 @@ class Ecrivain:
         self.faits = []
 
     def clore(self) -> dict:
+        """Ferme les fiches encore ouvertes, écrit le catalogue des fiches (`catalogue.json.gz`) et
+        le manifeste de la publication (`manifeste.json` : chaque fichier avec ses poids et son
+        empreinte, chaque fiche). Rend le manifeste."""
         for f in self._ouvertes:
             f.fermer()
         catalogue = {"contrat": CONTRAT, "publication": self.id_publication,
@@ -228,6 +248,8 @@ class Ecrivain:
 
 
 def composeurs() -> list:
+    """Rend les modules du paquet `composeurs` (sauf ceux dont le nom commence par `_`) qui
+    déclarent `NOM`, `VERSION` et `composer`, triés par `NOM`."""
     import importlib
     import pkgutil
     from . import composeurs as paquet

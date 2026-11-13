@@ -78,6 +78,8 @@ def markdown(texte: str) -> str:
         para, items = [], []
 
         def vider():
+            """Ajoute à `sortie` le paragraphe en cours (`<p>`) puis la liste en cours (`<ul>`),
+            s'ils ne sont pas vides, et les vide."""
             if para:
                 sortie.append("<p>" + _inline(" ".join(para)) + "</p>")
                 para.clear()
@@ -100,6 +102,8 @@ def markdown(texte: str) -> str:
 
 
 def premier_paragraphe(texte: str | None) -> str:
+    """Rend le premier paragraphe de `texte` (une docstring), indentation commune retirée ; une
+    chaîne vide pour `None`."""
     return re.split(r"\n\s*\n", inspect.cleandoc(texte or ""))[0].strip()
 
 
@@ -142,6 +146,9 @@ def _type(t: pa.DataType) -> str:
 
 
 def lecteurs(config: str | None = CONFIG) -> list[dict]:
+    """Rend, pour chaque lecteur (`lecture.lecteurs()`), son nom, sa version, ses types, son
+    module, le premier paragraphe de sa docstring, les colonnes et types de ses tables, et les
+    points d'accès de ses types lus dans le fichier `config` (aucun si le fichier n'existe pas)."""
     from . import lecture
     points = []
     if config and os.path.exists(config):
@@ -159,6 +166,8 @@ def lecteurs(config: str | None = CONFIG) -> list[dict]:
 
 
 def colonnes_provenance() -> list[str]:
+    """Rend les noms des colonnes de provenance que le cadre de lecture ajoute à chaque ligne
+    (`lecture.COLONNES_PROVENANCE`)."""
     from .lecture import COLONNES_PROVENANCE
     return [n for n, _ in COLONNES_PROVENANCE]
 
@@ -245,6 +254,8 @@ def controles(chemin: str | None = None) -> list[dict]:
 
 
 def perimetre() -> dict:
+    """Rend la docstring du module `perimetre` (`doc`) et les plages de législatures des fiches
+    (`legislatures`), des prises de parole (`paroles`) et des gouvernements (`gouvernements`)."""
     from . import perimetre as p
     return {"doc": p.__doc__ or "",
             "legislatures": p.plage(p.LEGISLATURES), "paroles": p.plage(p.LEGISLATURES_PAROLES),
@@ -252,6 +263,8 @@ def perimetre() -> dict:
 
 
 def donnees(config: str | None = CONFIG) -> dict:
+    """Rend tout ce que la page décrit : `etapes`, `zones`, `perimetre`, `lecteurs` (avec les
+    points d'accès de `config`), `provenance`, `regles` et `controles`."""
     return {"etapes": etapes(), "zones": zones(), "perimetre": perimetre(),
             "lecteurs": lecteurs(config), "provenance": colonnes_provenance(),
             "regles": regles(), "controles": controles()}
@@ -306,6 +319,10 @@ def _codes(noms) -> str:
 
 
 def rendre(d: dict, commit: str | None = None, depot: str | None = None) -> str:
+    """Rend la page HTML complète du traitement à partir de `d` (voir `donnees`) : sommaire, étapes
+    et zones, périmètre, lecteurs avec leurs points d'accès et leurs tables, règles dans leur ordre
+    d'application, contrôles bloquants puis avertissements. Avec `commit`, la page dit de quel
+    commit elle vient (avec un lien si `depot`, l'adresse du dépôt, est donné)."""
     e = html.escape
     p = []
     w = p.append
@@ -446,6 +463,8 @@ def rendre(d: dict, commit: str | None = None, depot: str | None = None) -> str:
 
 def ecrire(dossier: str, config: str | None = CONFIG, commit: str | None = None,
            depot: str | None = None) -> str:
+    """Écrit la page (`rendre(donnees(config))`) dans `index.html` du dossier `dossier`, créé au
+    besoin, et rend son chemin."""
     os.makedirs(dossier, exist_ok=True)
     chemin = os.path.join(dossier, "index.html")
     with open(chemin, "w", encoding="utf-8") as f:
@@ -454,6 +473,8 @@ def ecrire(dossier: str, config: str | None = CONFIG, commit: str | None = None,
 
 
 def main(argv=None):
+    """Point d'entrée : écrit la page dans le dossier donné (`ecrire`, options `--config`,
+    `--commit`, `--depot`) et affiche son chemin."""
     ap = argparse.ArgumentParser(description="Écrit la description du traitement (Pages, traitement/).")
     ap.add_argument("dossier")
     ap.add_argument("--config", default=CONFIG)

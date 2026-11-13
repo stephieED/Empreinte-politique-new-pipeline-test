@@ -90,6 +90,9 @@ def _romain(n: int) -> str:
 # -- composer -------------------------------------------------------------------------------
 
 def composer(ctx, ecr):
+    """Compose la fiche de chaque lignée publiée (sortie `lignee`, par adresse), avec l'écrivain
+    `ecr` ; ne fait rien si `lignee`, `lignee_maillon` ou `appartenance` manque. Les comptes sont
+    arrêtés à `ctx.date_reference`, à défaut à la date du jour. Ne rend rien."""
     if not (_vue(ctx, "lignee") and _vue(ctx, "lignee_maillon") and _vue(ctx, "appartenance")):
         return
     au = ctx.date_reference or dt.date.today().isoformat()
@@ -580,6 +583,8 @@ def _amendements(ctx, f, l, ms, anciens, commun):
     agr: dict[tuple, dict] = {}
 
     def cle(com, annee):
+        """Rend le compteur d'amendements de la commission `com` pour l'année `annee` (dans `agr`),
+        créé à zéro s'il n'existe pas encore."""
         k = (com, annee)
         if k not in agr:
             agr[k] = {"commission": com, "commission_libelle": lib.get(com) if com else "Commission non établie",
