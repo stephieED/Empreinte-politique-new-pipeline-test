@@ -17,8 +17,9 @@ Ce que fait la règle (mesures `an-acteurs.md`, 2.2) :
   gouvernement, qui couvre ses dates (changement de portefeuille) ;
 - un mandat GOUVERNEMENT sans mandat MINISTERE n'entre pas dans la composition : la composition
   part des mandats MINISTERE. Les mandats restés ouverts dans un organe clos (7 dans le
-  gouvernement Bayrou) sont listés dans `mandat_ouvert_organe_clos` (avertissement A8 ; doc. 5,
-  Q23 : décision en attente) ;
+  gouvernement Bayrou) sont listés dans `mandat_ouvert_organe_clos` (avertissement A8). Q23,
+  tranchée le 13/11/2026 (« borner ») : une décision `borne_mandat` leur donne la fin de leur
+  organe (vue `an_acteurs__mandat`, liaison) ; ils ne sont plus signalés ;
 - un ministre délégué, un secrétaire d'État, un haut-commissaire n'ont **aucun champ** qui dise
   leur ministère de tutelle : il se lit dans le libellé (« … auprès du ministre de l'économie… »).
   La règle rattache le portefeuille quand le libellé désigne **un seul** ministre de plein
