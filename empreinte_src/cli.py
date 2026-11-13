@@ -84,7 +84,7 @@ def cmd_collecter(a):
                "entrepot_fichiers": len(man["fichiers"])}
     with open(a.rapport, "w") as f:
         json.dump(rapport, f, indent=1, ensure_ascii=False, default=str)
-    _resume(rapport)
+    _resume(rapport, mesures.pic())
 
 
 def cmd_calculer(a):
@@ -227,7 +227,8 @@ def cmd_calculer(a):
     lignes += ["", f"Export : {ex.get('total', 0):,} faits, {ex.get('cles_en_double', 0)} clés en double.",
                f"Fiches : {len(manifeste_site['fiches'])} ; faits publiés : {nb_publies:,}.",
                "Contrôles : " + ("publication autorisée" if controles["publication_autorisee"]
-                                  else "**publication refusée** (" + ", ".join(controles["bloquantes"]) + ")")]
+                                  else "**publication refusée** (" + ", ".join(controles["bloquantes"]) + ")"),
+               mesures.pic()]
     texte = "\n".join(lignes)
     print(texte)
     if os.environ.get("GITHUB_STEP_SUMMARY"):
@@ -338,7 +339,7 @@ def cmd_reconstruire(a):
     sys.exit(0 if ok == len(membres) else 1)
 
 
-def _resume(rapport):
+def _resume(rapport, pic=""):
     """Résumé lisible dans la page de l'exécution GitHub."""
     lignes = [f"## Mise à jour — génération {rapport['generation']}", "",
               "| Point d'accès | Issue | Octets reçus | Nouvelles versions | Retraits | Durée (s) | Message |",
@@ -349,7 +350,7 @@ def _resume(rapport):
                       f"{r.get('nb_nouvelles_versions') or 0:,} | {r.get('nb_retraits') or 0:,} | "
                       f"{r.get('duree_s') or ''} | {msg} |")
     lignes += ["", f"Entrepôt : {rapport['entrepot_fichiers']} fichiers, "
-               f"{rapport['entrepot_octets'] / 1e6:.1f} Mo."]
+               f"{rapport['entrepot_octets'] / 1e6:.1f} Mo."] + ([pic] if pic else [])
     texte = "\n".join(lignes)
     print(texte)
     if os.environ.get("GITHUB_STEP_SUMMARY"):
