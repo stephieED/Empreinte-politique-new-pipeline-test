@@ -39,9 +39,11 @@ import datetime as dt
 from collections import defaultdict
 
 from ..perimetre import LEGISLATURES, LEGISLATURES_PAROLES, PAROLES_DEPUIS, points
+from .candidat import points_de_l_annee
 from .candidat import (LONGUEUR_EXTRAIT, IndexMots, _couv, _decouper, _ecrire_mots, _fr, _lignes,
                        _semestre, _taille, _vue)
 from .gouvernement import _identites
+from ..regles.r_continuite_scrutins import date_des_donnees, marquer as marquer_trous
 
 NOM = "lignee"
 VERSION = 1
@@ -387,6 +389,13 @@ def _au_maillons(ms, au):
     return _au(max(m["fin"] for m in ms), au)
 
 
+def _trous_votes(ctx, ms, leg) -> list[dict]:
+    """Trous de l'archive des scrutins de la législature qui tombent pendant l'un des maillons
+    (R-CONTINUITE-SCRUTINS)."""
+    from ..regles.r_continuite_scrutins import couvre, trous
+    return [t for t in trous(ctx, leg) if any(couvre(t, m["debut"], m["fin"]) for m in ms)]
+
+
 def _garder(rows, cols):
     """Les seules colonnes servies : un fait publié ne porte que ce que la fiche affiche."""
     return [{c: r.get(c) for c in cols} for r in rows]
@@ -436,7 +445,8 @@ def _paroles(ctx, f, l, ms, anciens, commun, idx):
                   ids={"acteur": "acteur", "compte_rendu": "compte_rendu", "dossier": "dossier",
                        "autre": "id_syceron"}, date="date",
                   couverture=_couv("paroles", "complet", f"Extraits ({LONGUEUR_EXTRAIT} premiers caractères) "
-                                   f"et lien au paragraphe, semestre {sem}.", len(ls), len(ls), pts, au=au),
+                                   f"et lien au paragraphe, semestre {sem}.", len(ls), len(ls),
+                                   points_de_l_annee(ctx, pts, str(sem)[:4]), au=au),
                   colonnes=COLS_EXTRAITS, extra={"semestre": sem, "ordre": "chronologique"})
     liste = sorted(sujets.values(), key=lambda s: s["sujet_id"])
     for s in liste:
@@ -564,7 +574,7 @@ def _amendements(ctx, f, l, ms, anciens, commun):
                   couverture=_couv("amendements", "complet", f"Amendements déposés en {annee} par un membre, "
                                    "auteur principal, pendant son appartenance (copies dédoublonnées), avec "
                                    "l'adresse de sa page sur le site de l'Assemblée.", len(ls), len(ls),
-                                   pts, au=au),
+                                   points_de_l_annee(ctx, pts, annee), au=au),
                   colonnes=COLS_AMENDEMENTS, extra={"annee": annee, "ordre": "chronologique",
                                                     "aide_a_la_lecture": ["commission_libelle"]})
     agr: dict[tuple, dict] = {}
@@ -641,7 +651,8 @@ def _votes(ctx, f, l, ms, leg, commun, idx):
     pts = points("scrutins", [leg])
     if not ms:
         return
-    au = _au_maillons(ms, commun["au"])
+    ts = _trous_votes(ctx, ms, leg)
+    au = date_des_donnees(_au_maillons(ms, commun["au"]), ts)
     nom = f"votes-{leg}"
     if not (_vue(ctx, "an_scrutins__decompte_groupe") and _vue(ctx, "scrutin_classe")):
         f.section(nom, [], "vote_groupe", couverture=_absente("votes", pts, au, ["scrutin_classe"]))
@@ -673,12 +684,12 @@ def _votes(ctx, f, l, ms, leg, commun, idx):
     n_scr = ctx.un("SELECT count(*) FROM scrutin_classe WHERE legislature = ?", [leg])
     f.section(nom, rows, "vote_groupe", ids={"scrutin": "scrutin", "organe": "groupe", "dossier": "dossier"},
               date="date",
-              couverture=_couv("votes", "complet", f"Décompte publié par l'Assemblée pour le groupe sur {len(rows)} "
-                               f"scrutins de la législature (sur {n_scr}) : pour, contre, abstention, non-votants, "
+              couverture=marquer_trous(_couv("votes", "complet", f"Décompte publié par l'Assemblée pour le groupe sur {len(rows)} "
+                               f"scrutins de la législature (sur {n_scr} que contient l'archive) : pour, contre, abstention, non-votants, "
                                f"membres. Position majoritaire établie pour {etab} : publiée et concordante avec le "
                                "décompte (Q30) ; sinon « non établie », avec la raison. Aucun seuil de quorum "
                                "n'est appliqué ici : c'est un choix d'affichage.", etab, len(rows), pts, au=au,
-                               scrutins_de_la_legislature=n_scr),
+                               scrutins_de_la_legislature=n_scr), ts),
               colonnes=COLS_VOTES,
               extra={"ordre": "chronologique ; `derniere_lecture` permet de mettre les dernières lectures en tête",
                      "partages": {"une_seule_voix": "toutes les voix exprimées du groupe dans le même sens",
@@ -696,7 +707,8 @@ def _avec_qui(ctx, f, l, ms, leg, commun):
     pts = points("scrutins", [leg]) + [PA_AMO]
     if not ms:
         return
-    au = _au_maillons(ms, commun["au"])
+    ts = _trous_votes(ctx, ms, leg)
+    au = date_des_donnees(_au_maillons(ms, commun["au"]), ts)
     nom = f"avec-qui-{leg}"
     if not (_vue(ctx, "an_scrutins__decompte_groupe") and _vue(ctx, "scrutin_classe")):
         f.section(nom, [], "avec_qui", couverture=_absente("votes", pts, au, ["scrutin_classe"]))
@@ -744,7 +756,7 @@ def _avec_qui(ctx, f, l, ms, leg, commun):
                      len(rows), len(rows), pts, au=au)
         ordre = "alphabétique (sigle) : sièges non publiés pour cette législature"
     f.section(nom, rows, "avec_qui", ids={"autre": "maillon"}, date="au", source=None,
-              couverture=couv, colonnes=COLS_AVEC_QUI, extra={"ordre": ordre, "au": au})
+              couverture=marquer_trous(couv, ts), colonnes=COLS_AVEC_QUI, extra={"ordre": ordre, "au": au})
 
 
 def _mots(ecr, f, idx, au):

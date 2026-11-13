@@ -192,3 +192,48 @@ def test_faits_publies_ecrits_au_fil_de_l_eau(tmp_path):
     ecr2.clore()
     assert ecr2.ecrire_faits_publies(str(tmp_path / "une-fois.parquet")) == 5
     assert pq.read_table(str(tmp_path / "une-fois.parquet")).to_pylist() == t
+
+
+def test_source_jamais_relevee_la_section_ne_promet_pas_de_donnees(tmp_path):
+    """Issue #33 : amendements de la XVe et de la XVIe, jamais reçus. La section en panne ne dit pas
+    « données du dernier relevé complet » quand aucun relevé n'a abouti ; elle le dit, daté, quand
+    il y en a un."""
+    import gzip
+    import json
+    import os
+    ecr = Ecrivain(str(tmp_path), "g000010",
+                   pannes={"an-amendements-l15": "2026-11-12T20:40:00+00:00",
+                           "senat-export": "2026-11-12T20:41:00+00:00"},
+                   releves_reussis={"an-amendements-l15": None, "senat-export": "2026-11-11T20:35:00+00:00"})
+    f = ecr.fiche("candidat", "x", "X")
+    for nom, pts in (("amendements", ["an-amendements-l15", "an-amendements-l17"]),
+                     ("fonctions", ["an-amo30-l17", "senat-export"]),
+                     ("tout", ["an-amendements-l15", "senat-export"])):
+        f.section(nom, [], "x", couverture={"famille": nom, "statut": "complet", "detail": "D.",
+                                            "points_acces": pts})
+    ecr.clore()
+
+    def couv(nom):
+        with gzip.open(os.path.join(ecr.racine, "candidats", "x", f"{nom}.json.gz")) as fi:
+            return json.load(fi)["couverture"]
+    a = couv("amendements")
+    assert a["statut"] == "panne" and a["dernier_releve_reussi"] == {"an-amendements-l15": None}
+    assert a["detail"] == ("D. Source en panne depuis le 2026-11-12 (an-amendements-l15) : aucun relevé "
+                           "n'a encore abouti pour an-amendements-l15 : ses données manquent ici.")
+    assert "dernier relevé complet" not in a["detail"]
+    assert couv("fonctions")["detail"].endswith(": données du dernier relevé complet, du 2026-11-11.")
+    t = couv("tout")["detail"]
+    assert t.endswith("aucun relevé n'a encore abouti pour an-amendements-l15 : ses données manquent ici ; "
+                      "pour senat-export, données du dernier relevé complet, du 2026-11-11.")
+
+
+def test_alerte_de_panne_dit_s_il_reste_des_donnees():
+    from empreinte_src.alertes import sujets_du_rapport
+    base = {"point_acces": "an-amendements-l15", "issue": "echec", "panne_depuis": "2026-11-09",
+            "message": "budget de 1800 s dépassé", "url": "https://exemple"}
+    jamais = sujets_du_rapport({"releves": [dict(base, dernier_releve_reussi=None)]})["panne:an-amendements-l15"]
+    assert "Aucun relevé de ce point n'a encore abouti" in jamais and "dernier relevé complet" not in jamais
+    date = sujets_du_rapport({"releves": [dict(base, dernier_releve_reussi="2026-11-07T21:00:00")]})
+    assert date["panne:an-amendements-l15"].endswith("celles du dernier relevé complet, du 2026-11-07.")
+    ancien = sujets_du_rapport({"releves": [base]})["panne:an-amendements-l15"]
+    assert ancien.endswith("les données restent celles du dernier relevé complet.")

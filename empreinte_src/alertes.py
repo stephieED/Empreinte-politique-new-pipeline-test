@@ -11,6 +11,17 @@ ETIQUETTE = "alerte"
 PREFIXE = "[alerte] "
 
 
+def _reste(releve: dict) -> str:
+    """Ce qui reste servi pendant la panne : le dernier relevé complet, s'il y en a un (#33)."""
+    if "dernier_releve_reussi" not in releve:          # rapport d'avant le 13/11/2026
+        return "Rien n'a été retiré : les données restent celles du dernier relevé complet."
+    if not releve["dernier_releve_reussi"]:
+        return ("Aucun relevé de ce point n'a encore abouti : ses données manquent, et les sections "
+                "qui en dépendent sont en panne.")
+    return (f"Rien n'a été retiré : les données restent celles du dernier relevé complet, du "
+            f"{releve['dernier_releve_reussi'][:10]}.")
+
+
 def sujets_du_rapport(rapport: dict) -> dict[str, str]:
     """Rend {clé de sujet: texte}. Une clé stable par sujet."""
     sujets = {}
@@ -21,8 +32,7 @@ def sujets_du_rapport(rapport: dict) -> dict[str, str]:
             sujets[cle] = (f"Le point d'accès `{r['point_acces']}` n'a pas pu être relevé "
                            f"({r['issue']}) depuis le {depuis}.\n\nDernier message : "
                            f"`{(r.get('message') or '').splitlines()[0][:300] if r.get('message') else '—'}`\n\n"
-                           f"Adresse : {r.get('url')}\n\nRien n'a été retiré : les données restent "
-                           "celles du dernier relevé complet.")
+                           f"Adresse : {r.get('url')}\n\n{_reste(r)}")
     for a in rapport.get("anomalies", []):
         sujets[a["cle"]] = a["texte"]
     if rapport.get("publication_refusee"):

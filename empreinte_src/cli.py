@@ -39,6 +39,12 @@ def _panne_depuis(entrepot: Entrepot, point: str) -> str | None:
     return depuis
 
 
+def _dernier_reussi(entrepot: Entrepot, point: str) -> str | None:
+    """Date du dernier relevé complet réussi d'un point, ou None s'il n'y en a jamais eu (#33)."""
+    r = entrepot.dernier_releve(point, complet_seulement=True)
+    return r["debut"] if r else None
+
+
 def cmd_preparer(a):
     cfg = _config(a.config)
     ids = {p["id"] for p in cfg["points_acces"]}
@@ -70,6 +76,7 @@ def cmd_collecter(a):
     for r in releves:
         if r["issue"] in ("echec", "suspect"):
             r["panne_depuis"] = _panne_depuis(e, r["point_acces"])
+            r["dernier_releve_reussi"] = _dernier_reussi(e, r["point_acces"])
     rapport = {"generation": man["generation"], "base": man["base"], "mode": a.mode,
                "debut": debut, "fin": maintenant(), "code": man["code"],
                "releves": releves, "mesures": mesures.etapes,
@@ -125,6 +132,7 @@ def cmd_calculer(a):
               for r in rapport.get("releves", []) if r.get("issue") in ("echec", "suspect")}
     # Faits publiés écrits au fil de l'eau (mémoire : ≈ 2 millions sur le périmètre complet).
     ecr = Ecrivain(site, f"g{gen:06d}", pannes=pannes,
+                   releves_reussis={p: _dernier_reussi(e, p) for p in pannes},
                    chemin_faits=os.path.join(a.sortie, "export", "faits-publies.parquet"))
     with mesures.etape("E5") as m:
         for c in composeurs():
