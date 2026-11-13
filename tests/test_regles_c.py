@@ -66,10 +66,10 @@ def ecrire_table(z2, mod, table, lignes):
         if nom not in schema.names:
             schema = schema.append(pa.field(nom, t))
     rows = []
-    for k, r in enumerate(lignes):
-        r = {n: r.get(n) for n in schema.names} | {
-            "prov_point": "test", "prov_uid": f"{table}-{k}", "prov_version": 1,
-            "prov_etat": "present", "prov_url": r.get("prov_url")}
+    for k, r0 in enumerate(lignes):
+        r = {n: r0.get(n) for n in schema.names} | {
+            "prov_point": r0.get("prov_point") or "test", "prov_uid": f"{table}-{k}", "prov_version": 1,
+            "prov_etat": "present", "prov_url": r0.get("prov_url")}
         rows.append(r)
     pq.write_table(pa.Table.from_pylist(rows, schema=schema),
                    os.path.join(z2, f"{mod.NOM}__{table}.parquet"))
@@ -325,6 +325,9 @@ PARAGRAPHES = [
     _par("18", "PA1", "Un député du groupe RN", EAU, code="INTERRUPTION_1_10"),
     _par("19", "PA1", "MM. Jean Durand et Luc Bernard", EAU, code="INTERRUPTION_1_10"),
     _par("20", "PA8", "M. Marc Faure", EAU),                          # ministre et député à la date
+    _par("21", "PA10", "M. Guillaume Gouffier-Cha", EAU),             # nom de l'archive de la XVe
+    _par("22", "PA10", "M. Guillaume Gouffier Valente", EAU),         # nom actuel
+    _par("23", "PA10", "Mme Alice Rufo", EAU),                        # jamais ce nom à la source
 ]
 IDENTITES = [("PA1", "M.", "Jean", "Durand"), ("PA2", "Mme", "Claire", "Martin"),
              ("PA3", "M.", "Paul", "Vermorel"), ("PA4", "M.", "Luc", "Bernard"),
@@ -343,7 +346,12 @@ def petit(tmp_path_factory):
     z2.mkdir()
     ecrire_table(z2, an_comptes_rendus, "intervention", PARAGRAPHES)
     ecrire_table(z2, an_acteurs, "identite_source",
-                 [{"uid": u, "civilite": c, "prenom": p, "nom": n} for u, c, p, n in IDENTITES])
+                 [{"uid": u, "civilite": c, "prenom": p, "nom": n} for u, c, p, n in IDENTITES]
+                 # Changement de nom : l'archive figée de la XVe garde l'ancien (cas réel, PA721296).
+                 + [{"uid": "PA10", "civilite": "M.", "prenom": "Guillaume", "nom": "Gouffier-Cha",
+                     "prov_point": "an-amo30-l15"},
+                    {"uid": "PA10", "civilite": "M.", "prenom": "Guillaume", "nom": "Gouffier Valente",
+                     "prov_point": "an-amo30-l17"}])
     ecrire_table(z2, an_acteurs, "organe", [
         {"uid": "PO838901", "type_organe": "ASSEMBLEE", "legislature": "17", "date_debut": "2024-07-01"},
         {"uid": "POG", "type_organe": "GOUVERNEMENT", "libelle_abrege": "ESSAI", "date_debut": "2025-10-11"}])
@@ -352,6 +360,7 @@ def petit(tmp_path_factory):
         _mandat("PA3", "ASSEMBLEE", "PO838901", "2024-07-18"),
         _mandat("PA4", "ASSEMBLEE", "PO838901", "2024-07-18"),
         _mandat("PA7", "ASSEMBLEE", "PO838901", "2024-07-18"),
+        _mandat("PA10", "ASSEMBLEE", "PO838901", "2024-07-18"),
         _mandat("PA2", "GOUVERNEMENT", "POG", "2025-10-12"),
         _mandat("PA8", "GOUVERNEMENT", "POG", "2025-10-12"),
         _mandat("PA8", "ASSEMBLEE", "PO838901", "2024-07-18"),
@@ -387,7 +396,10 @@ def test_petit_attribution(petit):
         "7": "nom_discordant", "8": "identifiant_nul", "9": "interpellation", "10": None,
         "11": None, "12": None, "13": None, "14": "identifiant_inconnu",
         "15": "personne_hors_assemblee", "16": None, "17": "sans_orateur",
-        "18": "orateur_collectif", "19": "plusieurs_orateurs", "20": None}
+        "18": "orateur_collectif", "19": "plusieurs_orateurs", "20": None,
+        "21": None, "22": None, "23": "nom_discordant"}
+    assert dict(ctx.x("SELECT id_syceron, nom_anterieur FROM intervention_attribuee WHERE id_syceron IN ('21', '22')")) \
+        == {"21": True, "22": False}
     assert _ligne(ctx, "10")[:3] == ("PA7", None, True)
     assert _un(ctx, "SELECT interruption FROM intervention_attribuee WHERE id_syceron = '8'") == (True,)
 
