@@ -1,7 +1,7 @@
 """Composeur « candidat » : la fiche de chaque candidat publié (cahier 4.2 ; doc. 1, 1.7.2 et 1.7.3).
 
 Une fiche `candidat/<adresse>` par candidat **publié** (`candidat.publie`, R-IDENTITE : déclaré
-dans la liste de Wikipédia, avec une adresse). Un candidat retiré, ou qui n'est plus listé, n'a
+dans la liste des candidats, décision `candidature` recopiée de franceinfo, avec une adresse). Un candidat retiré, ou qui n'est plus listé, n'a
 pas de fiche ; ses données restent dans les tables (cahier 4.1). Les tables d'activité (groupe
 E2) sont calculées pour tous les députés : la fiche les filtre sur l'`acteur` du candidat, quand
 il en a un (identifiant de l'Assemblée déclaré par Wikidata, jamais rapproché par le nom).
@@ -315,7 +315,7 @@ def _lien_gouv(organe, commun):
 def _composer_un(ctx, ecr, c, ident, commun):
     au = commun["au"]
     nom = (" ".join(x for x in ((ident or {}).get("prenom"), (ident or {}).get("nom")) if x)
-           if ident and ident.get("source_nom") != "wikipedia" else None) or c["nom"]
+           if ident and ident.get("source_nom") not in ("wikipedia", "franceinfo") else None) or c["nom"]
     f = ecr.fiche("candidat", c["adresse"], titre=nom)
     acteur = c["acteur"] if c["acteur"] and c["acteur_connu_an"] else None
     perim = _perimetre(ctx, c, acteur, commun, commun["debut_activite"],
@@ -378,15 +378,23 @@ def _composer_un(ctx, ecr, c, ident, commun):
         "personne": personne,
         "candidature": {
             "election": "presidentielle-2027", "statut": c["statut"],
+            "parti": c["parti"],
             "date_declaration": c["date_declaration"],
             "date_declaration_texte": c["date_declaration_texte"],
             "raison_date_declaration": c["date_declaration_raison"],
+            "date_declaration_source": "wikipedia" if c["date_declaration_source_url"] else None,
+            "date_declaration_source_url": c["date_declaration_source_url"],
+            "date_declaration_source_point": PA_WP if c["date_declaration_source_url"] else None,
+            "revision_wikipedia": c["revision_wikipedia"],
             "article_frwiki": c["article_frwiki"], "article_url": c["article_url"],
             "element_wikidata": c["element_wikidata"], "element_url": c["element_url"],
             "rattachement": c["rattachement"], "raison_rattachement": c["raison_rattachement"],
-            "source_url": c["source_url"], "source_point": PA_WP, "revision": c["revision"],
-            "licence_source": commun["lic"].get(PA_WP),
-            "note_licence": "faits repris de Wikipédia : hors licence des données (cahier 2.2)"},
+            "rattachement_valide_par_decision": bool(c["rattachement_par_nom"]),
+            "source": c["source_liste"], "source_url": c["source_url"], "source_titre": c["source_titre"],
+            "source_lue_le": c["date_liste"], "decision": c["decision"],
+            "note_licence": "liste recopiée de franceinfo (nom, statut, parti) et date reprise de "
+                            "Wikipédia : des faits seulement, hors licence des données (cahier 2.2) ; "
+                            "la page de franceinfo n'est pas collectée"},
         "groupe_actuel": _groupe_actuel(carriere, au, commun),
         "en_bref": {
             "carriere": {"colonnes": COLS_CARRIERE,
@@ -424,7 +432,7 @@ def _personne(c, ident, commun) -> dict:
     lic = commun["lic"]
     licences = set()
     i = ident or {}
-    src = {"an": PA_AMO, "senat": PA_SENAT, "wikidata": PA_WD, "wikipedia": PA_WP}
+    src = {"an": PA_AMO, "senat": PA_SENAT, "wikidata": PA_WD, "wikipedia": PA_WP, "franceinfo": None}
     def champ(valeur, source, raison=None):
         if source in ("an", "senat", "wikidata") and lic.get(src[source]):
             licences.add(lic[src[source]])
@@ -537,7 +545,7 @@ def _perimetre(ctx, c, acteur, commun, depuis, plage_txt, quoi="Activité") -> d
                               "personne : l'activité de l'Assemblée ne la concerne pas. Son activité "
                               "de sénateur n'est pas collectée.", **vide}
         detail = {
-            "aucun_article": "La liste de Wikipédia ne lie aucun article à ce nom : aucun identifiant "
+            "aucun_element": "La liste n'inscrit aucun élément Wikidata pour ce nom : aucun identifiant "
                              "parlementaire n'est connu, et rien n'est rattaché par le nom. Il n'y a "
                              "ni vote, ni amendement, ni prise de parole à publier.",
             "non_etabli": "Identité non établie (" + str(c["raison_rattachement"]) + ") : aucune "

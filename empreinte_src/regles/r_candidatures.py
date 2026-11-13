@@ -1,50 +1,65 @@
 """R-CANDIDATURES : les candidats à l'élection présidentielle de 2027 et leurs identifiants de
-source (cahier 3.10 et 4.1 ; décision de la propriétaire du 06/11/2026).
+source (cahier 3.10 et 4.1 ; décisions de la propriétaire du 06/11 et du 13/11/2026).
 
-Un candidat listé comme déclaré dans l'article Wikipédia « Candidatures à l'élection
-présidentielle française de 2027 » est **validé**. Son identité est rattachée par des
-identifiants **déclarés**, jamais par le nom :
+**La liste** est celle de franceinfo (« la liste de candidats doit se baser sur celle de
+franceinfo », 13/11/2026). franceinfo réserve la fouille de textes et de données et interdit son
+site aux robots d'IA : la page n'est pas collectée. Elle est recopiée à la main dans une décision
+`candidature` (`decisions/candidature/<date>-franceinfo.yaml`, une entrée par candidat : nom,
+statut, parti, élément Wikidata), que la propriétaire valide en fusionnant la pull request
+(option « A » du 13/11/2026). La liste en vigueur est celle du fichier le plus récent (champ
+`date`) ; une personne d'une liste plus ancienne qui n'est plus dans la dernière garde sa ligne,
+statut `non_listee` : ses données ne sont pas détruites (cahier 4.1), elle n'est plus affichée.
 
-    titre de l'article cité dans la liste  ==  lien frwiki (sitelink) d'un élément Wikidata
-    élément Wikidata  ->  identifiant Assemblée (P4123, `PA…`), Sénat (P1808, matricule),
-                          Sycomore (P1045)
+**L'identité** n'est jamais rattachée par le nom seul :
 
-Les deux titres sont comparés **après la seule normalisation de MediaWiki** (espaces et
-soulignés équivalents, première lettre en capitale) : c'est le même titre, pas un nom
-rapproché. Un titre qui est une redirection ne retrouve pas son élément (« non établi » par
-défaut de lien, jamais deviné).
+    élément Wikidata inscrit dans la décision  ->  identifiant Assemblée (P4123, `PA…`),
+                                                   Sénat (P1808), Sycomore (P1045)
 
-La requête Wikidata collectée ne rend que les éléments qui portent un identifiant de
-l'Assemblée ou du Sénat : un candidat dont l'article n'y est pas est « sans identifiant
-parlementaire » (son élément Wikidata n'est pas connu). Rattachements :
+À défaut d'élément inscrit, l'article Wikipédia inscrit est suivi comme en version 1 (titre de
+l'article == lien frwiki d'un élément, après la seule normalisation de MediaWiki). La requête
+Wikidata collectée ne rend que les éléments qui portent un identifiant de l'Assemblée ou du
+Sénat. Rattachements :
 
-- `wikidata` : un seul élément porte ce titre, et au plus un identifiant de chaque chambre ;
-- `aucun_article` : la liste ne lie aucun article (`nolink`) : fiche avec ce que dit Wikipédia ;
-- `sans_identifiant_parlementaire` : article cité, aucun élément à identifiant parlementaire ;
-- `non_etabli` : plusieurs éléments pour un titre, plusieurs identifiants d'une même chambre,
-  ou un identifiant déclaré pour deux candidats : rien n'est retenu, la raison est écrite.
+- `wikidata` : l'élément est connu de la requête, avec au plus un identifiant de chaque chambre ;
+- `sans_identifiant_parlementaire` : élément inscrit (ou article) sans identifiant parlementaire ;
+- `aucun_element` : ni élément ni article inscrits : fiche faite de ce que dit la liste ;
+- `non_etabli` : élément mal écrit, élément dont l'article diffère de celui inscrit, plusieurs
+  éléments ou identifiants d'une même chambre, ou identifiant déclaré pour deux candidats : rien
+  n'est retenu, la raison est écrite.
 
-Une candidature « retirée » reste une ligne (statut `retiree`) ; un candidat qui n'est plus
-dans la liste mais l'a été dans une version lue garde sa ligne (statut `non_listee`) : ses
-données ne sont pas détruites (cahier 4.1), il n'est simplement plus affiché.
+**Wikipédia** (article « Candidatures à l'élection présidentielle française de 2027 ») reste lu,
+pour deux usages : la date de déclaration (la ligne qui cite le même article, ou à défaut le même
+nom écrit que celui inscrit dans `nom_wikipedia`), et un **détecteur** : un candidat que
+Wikipédia dit déclaré et que la liste ne cite pas, ou que la liste dit déclaré et Wikipédia
+retiré, est un écart (table `candidature_ecart_wikipedia`, avertissement A9). L'écart n'ajoute ni
+ne retire personne : seule une nouvelle décision le fait.
 """
 
 NOM = "R-CANDIDATURES"
-VERSION = 1
+VERSION = 2
 DEPEND = ()
-SORTIES = ("candidature",)
+SORTIES = ("candidature", "candidature_ecart_wikipedia")
 DESCRIPTION = (
-    "La liste des candidats est celle de l'article de Wikipédia « Candidatures à l'élection "
-    "présidentielle française de 2027 » : un candidat qu'il présente comme déclaré est retenu ; "
-    "un candidat qui a retiré sa candidature n'est plus affiché, mais ses données sont gardées. "
-    "Pour savoir qui est la personne, nous suivons le lien de la liste vers l'article de la "
-    "personne, puis l'élément Wikidata relié à cet article, qui déclare ses identifiants à "
-    "l'Assemblée nationale et au Sénat. Nous ne rapprochons jamais une personne par son seul "
-    "nom : un candidat sans article, ou dont l'article ne mène à aucun identifiant "
-    "parlementaire, a une fiche faite de ce que dit Wikipédia, et la fiche le dit.")
+    "La liste des candidats est celle de franceinfo (« Qui sont les candidats déclarés à "
+    "l'élection présidentielle de 2027 ? »), recopiée à la main et validée par la responsable du "
+    "site : franceinfo n'autorise pas sa lecture par des programmes. Un candidat qui a retiré sa "
+    "candidature, ou qui n'est plus dans la liste, n'est plus affiché, mais ses données sont "
+    "gardées. Pour savoir qui est la personne, la liste inscrit son élément Wikidata, qui déclare "
+    "ses identifiants à l'Assemblée nationale et au Sénat. Nous ne rapprochons jamais une "
+    "personne par son seul nom : un candidat sans élément Wikidata, ou dont l'élément ne mène à "
+    "aucun identifiant parlementaire, a une fiche faite de ce que dit la liste, et la fiche le "
+    "dit. La date de déclaration vient de l'article de Wikipédia « Candidatures à l'élection "
+    "présidentielle française de 2027 », qui sert aussi à signaler un candidat absent de la liste.")
 
 ELECTION = "presidentielle-2027"
+STATUTS = ("declaree", "retiree", "non_listee")
 
+COLONNES_DECISION = {
+    "election": "VARCHAR", "date": "VARCHAR", "source": "VARCHAR", "source_url": "VARCHAR",
+    "source_titre": "VARCHAR", "nom": "VARCHAR", "statut": "VARCHAR", "parti": "VARCHAR",
+    "wikidata": "VARCHAR", "article_frwiki": "VARCHAR", "nom_wikipedia": "VARCHAR",
+    "rattachement_par_nom": "BOOLEAN", "note": "VARCHAR", "fichier": "VARCHAR",
+}
 COLONNES_CANDIDATURE = {
     "election": "VARCHAR", "statut": "VARCHAR", "rang": "INTEGER", "personne_source": "VARCHAR",
     "nom": "VARCHAR", "prenom": "VARCHAR", "nom_famille": "VARCHAR", "forme_nom": "VARCHAR",
@@ -56,13 +71,27 @@ COLONNES_CANDIDATURE = {
 COLONNES_WD = {"element": "VARCHAR", "propriete": "VARCHAR", "identifiant": "VARCHAR",
                "naissance": "VARCHAR", "article_frwiki": "VARCHAR", "prov_url": "VARCHAR"}
 
+RAISON_SANS_DATE = ("non connue de nos sources : franceinfo ne date pas les candidatures, et la "
+                    "liste de Wikipédia ne cite pas cette personne")
+
 
 def vue_ou_vide(ctx, nom: str, colonnes: dict) -> str:
     """Le nom de la vue si elle existe, sinon une table vide de même forme (source non lue)."""
     if ctx.existe(nom):
         return nom
-    cols = ", ".join(f"NULL::{t} AS {c}" for c, t in colonnes.items())
+    cols = ", ".join(f'NULL::{t} AS "{c}"' for c, t in colonnes.items())
     return f"(SELECT {cols} WHERE false)"
+
+
+def _decisions(ctx) -> str:
+    """Les entrées des décisions `candidature`, colonnes normalisées (une colonne absente de
+    tous les fichiers est NULL)."""
+    if "candidature" not in getattr(ctx, "decisions", {}):
+        return vue_ou_vide(ctx, "_aucune_decision_candidature", COLONNES_DECISION)
+    presentes = {r[0] for r in ctx.x("DESCRIBE decision_candidature")}
+    cols = ", ".join((f'CAST("{c}" AS {t}) AS "{c}"' if c in presentes else f'NULL::{t} AS "{c}"')
+                     for c, t in COLONNES_DECISION.items())
+    return f"(SELECT {cols} FROM decision_candidature)"
 
 
 def titre_wp(x: str) -> str:
@@ -72,47 +101,73 @@ def titre_wp(x: str) -> str:
     return f"(CASE WHEN {x} IS NULL OR {t} = '' THEN NULL ELSE upper(left({t}, 1)) || substr({t}, 2) END)"
 
 
+def _verifier_statuts(ctx, dec: str):
+    mauvais = ctx.x(f"""SELECT fichier, nom, statut FROM {dec}
+                        WHERE statut IS NULL OR statut NOT IN {STATUTS} ORDER BY 1""")
+    if mauvais:
+        raise ValueError("R-CANDIDATURES : statut inconnu dans une décision `candidature` "
+                         f"(attendu : {', '.join(STATUTS)}) : {mauvais[:5]}")
+
+
 def appliquer(ctx):
-    cand = vue_ou_vide(ctx, "wp_candidatures__candidature", COLONNES_CANDIDATURE)
-    hist = vue_ou_vide(ctx, "wp_candidatures__candidature__hist", COLONNES_CANDIDATURE)
+    dec = _decisions(ctx)
+    _verifier_statuts(ctx, dec)
+    wp = vue_ou_vide(ctx, "wp_candidatures__candidature", COLONNES_CANDIDATURE)
     wd = vue_ou_vide(ctx, "wd_identifiants__identifiant_externe", COLONNES_WD)
     an = vue_ou_vide(ctx, "an_acteurs__identite_source", {"uid": "VARCHAR"})
     sen = vue_ou_vide(ctx, "senat_export__identite_source", {"matricule": "VARCHAR"})
 
-    # Une ligne par personne citée (clé de la source : le titre de l'article, à défaut le nom
-    # écrit). Déclarée l'emporte sur retirée si la page cite deux fois la même personne.
+    # Une ligne par personne : la liste la plus récente fait foi ; une personne d'une liste plus
+    # ancienne absente de la dernière est « non listée ». Clé : l'élément inscrit, à défaut
+    # l'article, à défaut le nom écrit.
     ctx.x(f"""CREATE OR REPLACE TEMP TABLE _cand AS
-        WITH cur AS (SELECT * FROM {cand} WHERE election = '{ELECTION}'),
-        c AS (SELECT *, statut AS statut_retenu FROM cur
-              QUALIFY row_number() OVER (PARTITION BY personne_source
-                      ORDER BY CASE statut WHEN 'declaree' THEN 0 ELSE 1 END, rang) = 1),
-        h AS (SELECT *, 'non_listee' AS statut_retenu FROM {hist} x
-              WHERE x.election = '{ELECTION}'
-                AND x.personne_source NOT IN (SELECT personne_source FROM cur)
-              QUALIFY row_number() OVER (PARTITION BY personne_source
-                      ORDER BY prov_version DESC, CASE statut WHEN 'declaree' THEN 0 ELSE 1 END, rang) = 1)
-        SELECT personne_source, nom, prenom, nom_famille, forme_nom, statut AS statut_source,
-               statut_retenu AS statut, {titre_wp('article')} AS article_frwiki,
-               date_declaration, date_declaration_texte, date_declaration_raison,
-               date_declaration_phrase, "references", nb_references, revision, page,
-               prov_url AS source_url
-        FROM (SELECT * FROM c UNION ALL BY NAME SELECT * FROM h)""")
+        WITH d AS (
+            SELECT *, {titre_wp('article_frwiki')} AS article,
+                   coalesce(trim(wikidata), {titre_wp('article_frwiki')}, nom_wikipedia, nom) AS personne_source
+            FROM {dec} WHERE election = '{ELECTION}'),
+        derniere AS (SELECT max("date") AS "date" FROM d),
+        cur AS (SELECT d.*, statut AS statut_retenu FROM d, derniere WHERE d."date" = derniere."date"),
+        h AS (SELECT d.*, 'non_listee' AS statut_retenu FROM d, derniere
+              WHERE d."date" < derniere."date"
+                AND d.personne_source NOT IN (SELECT personne_source FROM cur)
+              QUALIFY row_number() OVER (PARTITION BY d.personne_source ORDER BY d."date" DESC) = 1)
+        SELECT * FROM (SELECT * FROM cur UNION ALL BY NAME SELECT * FROM h)
+        QUALIFY row_number() OVER (PARTITION BY personne_source
+                ORDER BY CASE statut_retenu WHEN 'declaree' THEN 0 WHEN 'retiree' THEN 1 ELSE 2 END) = 1""")
 
-    # Éléments Wikidata dont le lien frwiki est le titre cité, et leurs identifiants.
-    ctx.x(f"""CREATE OR REPLACE TEMP TABLE _wd AS
-        SELECT {titre_wp('w.article_frwiki')} AS titre, w.element, w.propriete, w.identifiant,
-               w.naissance
-        FROM {wd} w
-        WHERE w.article_frwiki IS NOT NULL
-          AND {titre_wp('w.article_frwiki')} IN (SELECT article_frwiki FROM _cand)""")
+    # Ligne de Wikipédia qui cite la même personne : même article, ou, sans article, le nom
+    # écrit inscrit dans la décision (`nom_wikipedia`). Déclarée l'emporte sur retirée.
+    ctx.x(f"""CREATE OR REPLACE TEMP TABLE _wp AS
+        SELECT *, {titre_wp('article')} AS titre FROM {wp}
+        WHERE election = '{ELECTION}'
+        QUALIFY row_number() OVER (PARTITION BY coalesce({titre_wp('article')}, 'nom:' || nom)
+                ORDER BY CASE statut WHEN 'declaree' THEN 0 ELSE 1 END, rang) = 1""")
+    ctx.x("""CREATE OR REPLACE TEMP TABLE _cand_wp AS
+        SELECT c.personne_source, any_value(w) AS w FROM _cand c JOIN _wp w
+          ON (c.article IS NOT NULL AND w.titre = c.article)
+          OR (c.article IS NULL AND w.titre IS NULL AND w.nom = c.nom_wikipedia)
+        GROUP BY 1""")
+
+    # Éléments : celui inscrit, sinon ceux dont le lien frwiki est l'article inscrit.
+    ctx.x(f"""CREATE OR REPLACE TEMP TABLE _el AS
+        SELECT c.personne_source, trim(c.wikidata) AS element, 'decision' AS origine
+        FROM _cand c WHERE c.wikidata IS NOT NULL
+        UNION ALL
+        SELECT DISTINCT c.personne_source, w.element, 'lien_frwiki'
+        FROM _cand c JOIN {wd} w ON {titre_wp('w.article_frwiki')} = c.article
+        WHERE c.wikidata IS NULL AND c.article IS NOT NULL""")
     ctx.x(f"""CREATE OR REPLACE TEMP TABLE _ids AS
         SELECT c.personne_source,
-               coalesce(list_sort(list(DISTINCT w.element) FILTER (WHERE w.element IS NOT NULL)), []::VARCHAR[]) AS elements,
+               coalesce(list_sort(list(DISTINCT e.element) FILTER (WHERE e.element IS NOT NULL)), []::VARCHAR[]) AS elements,
+               any_value(e.origine) AS origine,
+               coalesce(list_sort(list(DISTINCT w.element) FILTER (WHERE w.element IS NOT NULL)), []::VARCHAR[]) AS elements_connus,
                coalesce(list_sort(list(DISTINCT w.identifiant) FILTER (WHERE w.propriete = 'P4123' AND w.identifiant IS NOT NULL)), []::VARCHAR[]) AS ids_an,
                coalesce(list_sort(list(DISTINCT w.identifiant) FILTER (WHERE w.propriete = 'P1808' AND w.identifiant IS NOT NULL)), []::VARCHAR[]) AS ids_senat,
                coalesce(list_sort(list(DISTINCT w.identifiant) FILTER (WHERE w.propriete = 'P1045' AND w.identifiant IS NOT NULL)), []::VARCHAR[]) AS ids_sycomore,
-               coalesce(list_sort(list(DISTINCT w.naissance) FILTER (WHERE w.naissance IS NOT NULL)), []::VARCHAR[]) AS naissances
-        FROM _cand c LEFT JOIN _wd w ON w.titre = c.article_frwiki
+               coalesce(list_sort(list(DISTINCT w.naissance) FILTER (WHERE w.naissance IS NOT NULL)), []::VARCHAR[]) AS naissances,
+               coalesce(list_sort(list(DISTINCT {titre_wp('w.article_frwiki')}) FILTER (WHERE w.article_frwiki IS NOT NULL)), []::VARCHAR[]) AS articles_element
+        FROM _cand c LEFT JOIN _el e USING (personne_source)
+        LEFT JOIN {wd} w ON w.element = e.element
         GROUP BY 1""")
     # Un identifiant déclaré pour deux candidats différents n'est retenu pour aucun.
     ctx.x("""CREATE OR REPLACE TEMP TABLE _partages AS
@@ -122,62 +177,117 @@ def appliquer(ctx):
 
     ctx.ecrire("candidature", f"""
         WITH r AS (
-            SELECT c.*, i.elements, i.ids_an, i.ids_senat, i.ids_sycomore, i.naissances,
+            SELECT c.*, i.elements, i.origine, i.elements_connus, i.ids_an, i.ids_senat,
+                   i.ids_sycomore, i.naissances, i.articles_element, cw.w,
                    EXISTS (SELECT 1 FROM _partages p
                            WHERE list_contains(i.elements || i.ids_an || i.ids_senat, p.id)) AS partage
-            FROM _cand c JOIN _ids i USING (personne_source)),
+            FROM _cand c JOIN _ids i USING (personne_source)
+            LEFT JOIN _cand_wp cw USING (personne_source)),
         s AS (
             SELECT r.*,
-                CASE WHEN article_frwiki IS NULL THEN 'aucun_article'
-                     WHEN len(elements) = 0 THEN 'sans_identifiant_parlementaire'
-                     WHEN len(elements) > 1 OR len(ids_an) > 1 OR len(ids_senat) > 1 OR partage
-                          THEN 'non_etabli'
+                CASE WHEN wikidata IS NOT NULL AND NOT regexp_full_match(trim(wikidata), 'Q[1-9][0-9]*')
+                          THEN 'element_mal_ecrit'
+                     WHEN wikidata IS NOT NULL AND article IS NOT NULL AND len(articles_element) > 0
+                          AND NOT list_contains(articles_element, article) THEN 'article_different'
+                     WHEN partage THEN 'partage'
+                     WHEN len(elements) > 1 THEN 'plusieurs_elements'
+                     WHEN len(ids_an) > 1 OR len(ids_senat) > 1 THEN 'plusieurs_identifiants'
+                END AS defaut
+            FROM r),
+        t AS (
+            SELECT s.*,
+                CASE WHEN defaut IS NOT NULL THEN 'non_etabli'
+                     WHEN len(elements) = 0 AND article IS NULL THEN 'aucun_element'
+                     WHEN len(elements_connus) = 0 THEN 'sans_identifiant_parlementaire'
                      ELSE 'wikidata' END AS rattachement
-            FROM r)
-        SELECT personne_source, nom, prenom, nom_famille, forme_nom, statut, statut_source,
-               date_declaration, date_declaration_texte, date_declaration_raison,
-               date_declaration_phrase, article_frwiki,
-               CASE WHEN rattachement = 'wikidata' THEN elements[1] END AS element_wikidata,
+            FROM s)
+        SELECT '{ELECTION}' AS election, personne_source,
+               -- Nom : celui de la ligne de Wikipédia qui cite le même article (la fiche ne
+               -- change pas de nom ni d'adresse), sinon le titre de l'article sans sa précision
+               -- entre parenthèses, sinon le nom écrit par la liste.
+               coalesce(w.nom, regexp_replace(article, '\\s*\\([^)]*\\)\\s*$', ''), nom_wikipedia, nom) AS nom,
+               nom AS nom_liste, w.prenom AS prenom, w.nom_famille AS nom_famille, w.forme_nom AS forme_nom,
+               statut_retenu AS statut, statut AS statut_source, parti,
+               w.statut AS statut_wikipedia,
+               w.date_declaration AS date_declaration,
+               w.date_declaration_texte AS date_declaration_texte,
+               CASE WHEN w.date_declaration IS NOT NULL THEN w.date_declaration_raison
+                    WHEN w IS NOT NULL THEN coalesce(w.date_declaration_raison, 'non connue')
+                    ELSE '{RAISON_SANS_DATE}' END AS date_declaration_raison,
+               w.date_declaration_phrase AS date_declaration_phrase,
+               CASE WHEN w IS NOT NULL THEN w.prov_url END AS date_declaration_source_url,
+               w.revision AS revision_wikipedia,
+               article AS article_frwiki, nom_wikipedia,
+               CASE WHEN rattachement IN ('wikidata', 'sans_identifiant_parlementaire') AND len(elements) = 1
+                    THEN elements[1] END AS element_wikidata,
+               CASE WHEN rattachement IN ('wikidata', 'sans_identifiant_parlementaire') THEN origine END AS origine_element,
+               coalesce(rattachement_par_nom, false) AS rattachement_par_nom,
                CASE WHEN rattachement = 'wikidata' AND len(ids_an) = 1 THEN ids_an[1] END AS acteur,
                CASE WHEN rattachement = 'wikidata' AND len(ids_senat) = 1 THEN ids_senat[1] END AS matricule_senat,
                CASE WHEN rattachement = 'wikidata' AND len(ids_sycomore) = 1 THEN ids_sycomore[1] END AS sycomore,
                CASE WHEN rattachement = 'wikidata' AND len(naissances) = 1 THEN naissances[1] END AS naissance_wikidata,
                rattachement,
                CASE rattachement
-                    WHEN 'aucun_article' THEN 'la liste ne lie aucun article à ce nom'
-                    WHEN 'sans_identifiant_parlementaire' THEN 'aucun élément Wikidata à identifiant de l''Assemblée ou du Sénat n''a cet article pour lien'
-                    WHEN 'non_etabli' THEN
-                         CASE WHEN partage THEN 'identifiant déclaré pour plusieurs candidats'
-                              WHEN len(elements) > 1 THEN 'plusieurs éléments Wikidata ont cet article pour lien'
-                              ELSE 'plusieurs identifiants d''une même chambre pour cet élément' END
+                    WHEN 'aucun_element' THEN 'la liste n''inscrit ni élément Wikidata ni article pour ce nom'
+                    WHEN 'sans_identifiant_parlementaire' THEN 'l''élément Wikidata de cette personne ne déclare aucun identifiant de l''Assemblée ou du Sénat'
+                    WHEN 'non_etabli' THEN CASE defaut
+                         WHEN 'element_mal_ecrit' THEN 'élément Wikidata mal écrit dans la décision'
+                         WHEN 'article_different' THEN 'l''élément Wikidata inscrit a pour lien un autre article que celui inscrit'
+                         WHEN 'partage' THEN 'identifiant déclaré pour plusieurs candidats'
+                         WHEN 'plusieurs_elements' THEN 'plusieurs éléments Wikidata ont cet article pour lien'
+                         ELSE 'plusieurs identifiants d''une même chambre pour cet élément' END
                END AS raison_rattachement,
                elements AS elements_candidats, ids_an AS identifiants_an, ids_senat AS identifiants_senat,
                CASE WHEN rattachement = 'wikidata' AND len(ids_an) = 1
                     THEN ids_an[1] IN (SELECT uid FROM {an}) END AS acteur_connu_an,
                CASE WHEN rattachement = 'wikidata' AND len(ids_senat) = 1
                     THEN ids_senat[1] IN (SELECT matricule FROM {sen}) END AS matricule_connu_senat,
-               "references", nb_references, revision, page, source_url,
-               CASE WHEN article_frwiki IS NOT NULL
-                    THEN 'https://fr.wikipedia.org/wiki/' || url_encode(replace(article_frwiki, ' ', '_'))
+               w."references" AS "references", w.nb_references AS nb_references,
+               source AS source_liste, source_url, source_titre, "date" AS date_liste, fichier AS decision,
+               note,
+               CASE WHEN article IS NOT NULL
+                    THEN 'https://fr.wikipedia.org/wiki/' || url_encode(replace(article, ' ', '_'))
                     END AS article_url,
-               CASE WHEN rattachement = 'wikidata' THEN 'https://www.wikidata.org/wiki/' || elements[1]
-                    END AS element_url
-        FROM s ORDER BY statut, nom""")
+               CASE WHEN rattachement IN ('wikidata', 'sans_identifiant_parlementaire') AND len(elements) = 1
+                    THEN 'https://www.wikidata.org/wiki/' || elements[1] END AS element_url
+        FROM t ORDER BY statut, nom""")
+
+    # Détecteur : écarts entre la liste et Wikipédia (jamais une entrée ni une sortie de liste).
+    ctx.ecrire("candidature_ecart_wikipedia", """
+        WITH lies AS (
+            SELECT w.titre, w.nom AS nom_wp, w.statut AS statut_wp, c.statut AS statut_liste,
+                   c.nom AS nom_liste
+            FROM _wp w LEFT JOIN _cand c
+              ON (w.titre IS NOT NULL AND c.article = w.titre)
+              OR (w.titre IS NULL AND c.article IS NULL AND c.nom_wikipedia = w.nom))
+        SELECT CASE WHEN statut_liste IS NULL THEN 'declare_par_wikipedia_absent_de_la_liste'
+                    ELSE 'retire_selon_wikipedia_declare_dans_la_liste' END AS ecart,
+               coalesce(nom_liste, nom_wp) AS nom, nom_wp AS nom_wikipedia, titre AS article_frwiki,
+               statut_wp AS statut_wikipedia, statut_liste
+        FROM lies
+        WHERE (statut_wp = 'declaree' AND statut_liste IS NULL)
+           OR (statut_wp = 'retiree' AND statut_liste = 'declaree')
+        ORDER BY 1, 2""")
 
     n = ctx.un("SELECT count(*) FROM candidature")
     decl = ctx.un("SELECT count(*) FROM candidature WHERE statut = 'declaree'")
-    art = ctx.un("SELECT count(*) FROM candidature WHERE article_frwiki IS NOT NULL")
+    el = ctx.un("SELECT count(*) FROM candidature WHERE element_wikidata IS NOT NULL")
+    par_nom = ctx.un("SELECT count(*) FROM candidature WHERE rattachement_par_nom")
     wdk = ctx.un("SELECT count(*) FROM candidature WHERE rattachement = 'wikidata'")
     an_ = ctx.un("SELECT count(*) FROM candidature WHERE acteur IS NOT NULL")
     an_connu = ctx.un("SELECT count(*) FROM candidature WHERE acteur_connu_an")
     sen_ = ctx.un("SELECT count(*) FROM candidature WHERE matricule_senat IS NOT NULL")
     date = ctx.un("SELECT count(*) FROM candidature WHERE statut = 'declaree' AND date_declaration IS NOT NULL")
-    for t in ("_cand", "_wd", "_ids", "_partages"):
+    ecarts = ctx.un("SELECT count(*) FROM candidature_ecart_wikipedia")
+    wp_decl = ctx.un("SELECT count(*) FROM _wp WHERE statut = 'declaree'")
+    for t in ("_cand", "_wp", "_cand_wp", "_el", "_ids", "_partages"):
         ctx.x(f"DROP TABLE IF EXISTS {t}")
     return {"candidats_declares": (decl, n),
-            "article_wikipedia_cite": (art, n),
-            "rattache_par_wikidata": (wdk, art),
+            "element_wikidata_retenu": (el, n),
+            "element_trouve_par_le_nom_valide_par_decision": (par_nom, n),
+            "rattache_par_wikidata": (wdk, n),
             "identifiant_assemblee_declare": (an_, n),
             "identifiant_assemblee_present_dans_l_archive": (an_connu, an_),
             "identifiant_senat_declare": (sen_, n),
-            "date_de_declaration_connue": (date, decl)}
+            "date_de_declaration_connue": (date, decl),
+            "ecarts_avec_wikipedia": (ecarts, wp_decl)}

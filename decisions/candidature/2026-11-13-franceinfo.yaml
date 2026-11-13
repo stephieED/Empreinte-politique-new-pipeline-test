@@ -1,0 +1,376 @@
+# Liste des candidats à l'élection présidentielle de 2027, d'après franceinfo.
+#
+# Décision du 13/11/2026 (« la liste de candidats doit se baser sur celle de franceinfo »,
+# puis option « A ») : franceinfo réserve la fouille de textes et de données et interdit son
+# site aux robots d'IA ; la page n'est donc pas collectée. La liste est recopiée ici à la main
+# (faits seulement : nom, statut, parti tels que la page les affiche), puis validée par la
+# propriétaire en fusionnant la pull request.
+#
+# Identité, jamais par le nom seul : `wikidata` est l'élément relié à l'article Wikipédia que la
+# liste de Wikipédia citait (lien déclaré) ; quand l'article a été trouvé par le nom
+# (`rattachement_par_nom: true`), le rattachement est validé par la propriétaire. `article_frwiki`
+# et `nom_wikipedia` gardent les clés sous lesquelles le registre des identités connaît déjà la
+# personne : sans elles, elle recevrait un nouveau numéro.
+#
+# Statuts : `declaree`, `retiree` (affichée comme retirée par la page), `non_listee` (absente
+# de la page, données gardées). Une nouvelle lecture de la page est un nouveau fichier : la
+# liste en vigueur est celle du fichier le plus récent (champ `date`).
+type: candidature
+election: presidentielle-2027
+date: 2026-11-13
+source: franceinfo
+source_url: "https://www.franceinfo.fr/elections/presidentielle/portraits-qui-sont-les-candidats-declares-a-l-election-presidentielle-de-2027_8208032.html"
+source_titre: "Qui sont les candidats déclarés à l'élection présidentielle de 2027 ? (37 candidats au 13/11/2026)"
+decisions:
+  - nom: "Nathalie Arthaud"
+    statut: declaree
+    parti: "Lutte ouvrière"
+    wikidata: "Q439490"
+    article_frwiki: "Nathalie Arthaud"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "François Asselineau"
+    statut: declaree
+    parti: "Union populaire républicaine"
+    wikidata: "Q12972"
+    article_frwiki: "François Asselineau"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Gabriel Attal"
+    statut: declaree
+    parti: "Renaissance"
+    wikidata: "Q30339350"
+    article_frwiki: "Gabriel Attal"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Delphine Batho"
+    statut: declaree
+    parti: "Génération écologie"
+    wikidata: "Q291385"
+    article_frwiki: "Delphine Batho"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Olivier Becht"
+    statut: declaree
+    parti: "Centre"
+    wikidata: "Q30348845"
+    article_frwiki: "Olivier Becht"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Augustin Billetdoux"
+    statut: declaree
+    parti: "Divers"
+    wikidata: null
+    article_frwiki: null
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: "sans article ni élément Wikidata"
+  - nom: "Karim Bouamrane"
+    statut: declaree
+    parti: "Parti socialiste"
+    wikidata: "Q98251165"
+    article_frwiki: "Karim Bouamrane"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Juan Branco"
+    statut: declaree
+    parti: "Les Ruches"
+    wikidata: "Q21890311"
+    article_frwiki: "Juan Branco"
+    nom_wikipedia: null
+    rattachement_par_nom: true
+    note: "article trouvé par le nom, rattachement validé par la propriétaire le 13/11/2026 ; âge affiché par franceinfo concordant avec la naissance de Wikidata"
+  - nom: "Joël Chevé"
+    statut: declaree
+    parti: "La France adulte"
+    wikidata: null
+    article_frwiki: null
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: "sans article ni élément Wikidata"
+  - nom: "Christian Collovati"
+    statut: declaree
+    parti: "Divers"
+    wikidata: null
+    article_frwiki: null
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: "sans article ni élément Wikidata"
+  - nom: "Nicolas Dupont-Aignan"
+    statut: declaree
+    parti: "Debout la France"
+    wikidata: "Q12961"
+    article_frwiki: "Nicolas Dupont-Aignan"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Sylvain Pierre Durif"
+    statut: declaree
+    parti: "Divers"
+    wikidata: "Q111050069"
+    article_frwiki: "Sylvain Durif"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Clara Egger"
+    statut: declaree
+    parti: "Solution démocratique"
+    wikidata: "Q108584624"
+    article_frwiki: "Clara Egger"
+    nom_wikipedia: null
+    rattachement_par_nom: true
+    note: "article trouvé par le nom, rattachement validé par la propriétaire le 13/11/2026 ; âge affiché par franceinfo concordant avec la naissance de Wikidata"
+  - nom: "Raphaël Glucksmann"
+    statut: declaree
+    parti: "Place publique"
+    wikidata: "Q556149"
+    article_frwiki: "Raphaël Glucksmann"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Anasse Kazib"
+    statut: declaree
+    parti: "Révolution permanente"
+    wikidata: "Q106405647"
+    article_frwiki: "Anasse Kazib"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Selma Labib"
+    statut: declaree
+    parti: "Nouveau Parti anticapitaliste-Révolutionnaires"
+    wikidata: null
+    article_frwiki: null
+    nom_wikipedia: "Selma Labib"
+    rattachement_par_nom: false
+    note: "sans article ; même nom écrit que dans la liste de Wikipédia, sous lequel le registre le connaît"
+  - nom: "Francis Lalanne"
+    statut: declaree
+    parti: "Divers"
+    wikidata: "Q3081533"
+    article_frwiki: "Francis Lalanne"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Jean Lassalle"
+    statut: declaree
+    parti: "Résistons"
+    wikidata: "Q3173022"
+    article_frwiki: "Jean Lassalle"
+    nom_wikipedia: null
+    rattachement_par_nom: true
+    note: "article trouvé par le nom, rattachement validé par la propriétaire le 13/11/2026 ; âge affiché par franceinfo concordant avec la naissance de Wikidata"
+  - nom: "Marine Le Pen"
+    statut: declaree
+    parti: "Rassemblement national"
+    wikidata: "Q12927"
+    article_frwiki: "Marine Le Pen"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Jean-François Legendre"
+    statut: declaree
+    parti: "A nous maintenant"
+    wikidata: null
+    article_frwiki: null
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: "sans article ni élément Wikidata"
+  - nom: "David Lisnard"
+    statut: declaree
+    parti: "Nouvelle Energie"
+    wikidata: "Q3018298"
+    article_frwiki: "David Lisnard"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Mira Markovic"
+    statut: declaree
+    parti: "Parti animaliste"
+    wikidata: null
+    article_frwiki: null
+    nom_wikipedia: "Mira Markovic"
+    rattachement_par_nom: false
+    note: "sans article ; même nom écrit que dans la liste de Wikipédia, sous lequel le registre le connaît"
+  - nom: "Benoît Mathieu"
+    statut: declaree
+    parti: "Divers"
+    wikidata: null
+    article_frwiki: null
+    nom_wikipedia: "Benoît Mathieu"
+    rattachement_par_nom: false
+    note: "sans article ; même nom écrit que dans la liste de Wikipédia, sous lequel le registre le connaît"
+  - nom: "Jean-Luc Mélenchon"
+    statut: declaree
+    parti: "La France insoumise"
+    wikidata: "Q5829"
+    article_frwiki: "Jean-Luc Mélenchon"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Antoine Mikolajczak"
+    statut: declaree
+    parti: "Equinoxe"
+    wikidata: null
+    article_frwiki: null
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: "sans article ni élément Wikidata"
+  - nom: "Manolo Mlekuz"
+    statut: declaree
+    parti: "Trajectoire"
+    wikidata: null
+    article_frwiki: null
+    nom_wikipedia: "Manolo Mlekuz"
+    rattachement_par_nom: false
+    note: "sans article ; même nom écrit que dans la liste de Wikipédia, sous lequel le registre le connaît"
+  - nom: "Edouard Philippe"
+    statut: declaree
+    parti: "Horizons"
+    wikidata: "Q3579995"
+    article_frwiki: "Édouard Philippe"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Florian Philippot"
+    statut: declaree
+    parti: "Les Patriotes"
+    wikidata: "Q3074223"
+    article_frwiki: "Florian Philippot"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Gilles Platret"
+    statut: declaree
+    parti: "Droite"
+    wikidata: null
+    article_frwiki: null
+    nom_wikipedia: "Gilles Platret"
+    rattachement_par_nom: false
+    note: "sans article ; même nom écrit que dans la liste de Wikipédia, sous lequel le registre le connaît"
+  - nom: "Natacha Polony"
+    statut: declaree
+    parti: "Divers"
+    wikidata: "Q941949"
+    article_frwiki: "Natacha Polony"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Bruno Retailleau"
+    statut: declaree
+    parti: "Les Républicains"
+    wikidata: "Q2926942"
+    article_frwiki: "Bruno Retailleau"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Teddy Riner"
+    statut: declaree
+    parti: "Divers"
+    wikidata: "Q353514"
+    article_frwiki: "Teddy Riner"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Erwan Rohou"
+    statut: declaree
+    parti: "Mouvement écologiste indépendant"
+    wikidata: null
+    article_frwiki: null
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: "sans article ni élément Wikidata"
+  - nom: "Fabien Roussel"
+    statut: declaree
+    parti: "Parti communiste français"
+    wikidata: "Q30388733"
+    article_frwiki: "Fabien Roussel"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "François Ruffin"
+    statut: declaree
+    parti: "Debout !"
+    wikidata: "Q3085763"
+    article_frwiki: "François Ruffin"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Marine Tondelier"
+    statut: declaree
+    parti: "Les Ecologistes"
+    wikidata: "Q29917987"
+    article_frwiki: "Marine Tondelier"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Eric Zemmour"
+    statut: declaree
+    parti: "Reconquête"
+    wikidata: "Q288477"
+    article_frwiki: "Éric Zemmour"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: null
+  - nom: "Clémentine Autain"
+    statut: retiree
+    parti: "L’Après"
+    wikidata: "Q2980738"
+    article_frwiki: "Clémentine Autain"
+    nom_wikipedia: null
+    rattachement_par_nom: true
+    note: "article trouvé par le nom ; candidature retirée, fiche non affichée"
+  - nom: "Olivier Faure"
+    statut: retiree
+    parti: "Parti socialiste"
+    wikidata: "Q3351018"
+    article_frwiki: "Olivier Faure"
+    nom_wikipedia: null
+    rattachement_par_nom: true
+    note: "article trouvé par le nom ; candidature retirée, fiche non affichée"
+  - nom: "Jérôme Guedj"
+    statut: retiree
+    parti: "Parti socialiste"
+    wikidata: "Q3190925"
+    article_frwiki: "Jérôme Guedj"
+    nom_wikipedia: null
+    rattachement_par_nom: true
+    note: "article trouvé par le nom ; candidature retirée, fiche non affichée"
+  - nom: "Lydie Massard"
+    statut: retiree
+    parti: "Union démocratique bretonne"
+    wikidata: "Q122803246"
+    article_frwiki: "Lydie Massard"
+    nom_wikipedia: null
+    rattachement_par_nom: true
+    note: "article trouvé par le nom ; candidature retirée, fiche non affichée"
+  - nom: "Emmanuel Maurel"
+    statut: retiree
+    parti: "Gauche républicaine et socialiste"
+    wikidata: "Q3052795"
+    article_frwiki: "Emmanuel Maurel"
+    nom_wikipedia: null
+    rattachement_par_nom: true
+    note: "article trouvé par le nom ; candidature retirée, fiche non affichée"
+  - nom: "Ségolène Royal"
+    statut: retiree
+    parti: "Parti socialiste"
+    wikidata: "Q81923"
+    article_frwiki: "Ségolène Royal"
+    nom_wikipedia: null
+    rattachement_par_nom: true
+    note: "article trouvé par le nom ; candidature retirée, fiche non affichée"
+  - nom: "Xavier Bertrand"
+    statut: non_listee
+    parti: null
+    wikidata: "Q203793"
+    article_frwiki: "Xavier Bertrand"
+    nom_wikipedia: null
+    rattachement_par_nom: false
+    note: "listé comme déclaré par Wikipédia jusqu'au 13/11/2026, absent de la liste de franceinfo (ni déclaré ni retiré) : données gardées, fiche non affichée"

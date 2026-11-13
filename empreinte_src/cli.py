@@ -142,8 +142,11 @@ def cmd_calculer(a):
         ctrl.c4_interdits()
         ctrl.c5_couverture(rapport.get("releves", []))
         changes = {r["uid"].split("@")[0] for r in e._index if r["vu_du"] == gen}
+        retirees = dict(ctx.x("""SELECT 'candidat/' || adresse, raison_non_publie FROM candidat
+                                 WHERE NOT publie AND adresse IS NOT NULL
+                                   AND statut IN ('retiree', 'non_listee')""")) if ctx.existe("candidat") else {}
         ctrl.c1_c6_comparer(a.faits_precedents or None, os.path.join(a.sortie, "export", "faits-publies.parquet"),
-                            uids_changes_a_la_source=changes)
+                            uids_changes_a_la_source=changes, fiches_retirees=retirees)
         # C3, C7 et avertissements : tables des règles et faits publiés de la candidate.
         ctrl.preparer(ctx.con, os.path.join(a.sortie, "export", "faits-publies.parquet"),
                       {f["fiche"] for f in manifeste_site["fiches"]}, manifeste_site["fiches"])
@@ -163,6 +166,7 @@ def cmd_calculer(a):
         ctrl.a5_famille_a_zero()
         ctrl.a6_couverture()
         ctrl.a8_mandats_ouverts()
+        ctrl.a9_liste_des_candidats()
         ctrl.a7_non_resolues(ctx.decisions)          # en dernier : il vérifie les levées sans objet
     controles = ctrl.bilan()
     rapport["calcul"] = {"lecture": l.bilan, "export": ex, "mesures": mesures.etapes,

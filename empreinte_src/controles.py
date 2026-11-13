@@ -122,7 +122,13 @@ class Controles:
 
     # -- C1 et C6 : comparaison avec la publication précédente ----------------------------
     def c1_c6_comparer(self, faits_avant: str | None, faits_apres: str,
-                       uids_changes_a_la_source: set[str] | None = None, seuil_effondrement=0.2):
+                       uids_changes_a_la_source: set[str] | None = None, seuil_effondrement=0.2,
+                       fiches_retirees: dict[str, str] | None = None):
+        """`fiches_retirees` : {fiche: raison} des fiches qui ne sont plus publiées pour une raison
+        établie (candidature retirée, candidat qui n'est plus dans la liste). Leurs faits perdus
+        sont expliqués ; la fiche retirée cette nuit est nommée dans l'avertissement A9."""
+        fiches_retirees = fiches_retirees or {}
+        self.fiches_retirees_cette_nuit = {}
         if not faits_avant or not os.path.exists(faits_avant):
             return
         con = duckdb.connect()
@@ -173,8 +179,11 @@ class Controles:
         perdus += [p for p in sans_a if descripteur(p[0], p[2], p[3]) not in apres_d]
         # Un fait qui disparaît parce que sa source a changé ou l'a retiré est expliqué : sa
         # valeur cite l'identifiant d'un fichier source modifié ou retiré cette nuit.
+        self.fiches_retirees_cette_nuit = {p[0]: fiches_retirees[p[0]] for p in perdus
+                                           if p[0] in fiches_retirees}
         non_expliques = [p for p in perdus
                          if p[2] not in DECOMPTES_VERIFIES_UN_PAR_UN
+                         and p[0] not in fiches_retirees
                          and not (uids_changes_a_la_source and _touche(p[3], uids_changes_a_la_source))]
         if non_expliques:
             self._signaler("C1", "Faits publiés perdus sans explication",
@@ -185,7 +194,8 @@ class Controles:
         apres = dict(((f, s), n) for f, s, n in con.execute(
             f"SELECT fiche, section, count(*) FROM read_parquet('{faits_apres}') GROUP BY 1, 2").fetchall())
         chutes = [f"{f}/{s}: {n} → {apres.get((f, s), 0)}" for (f, s), n in avant.items()
-                  if n >= 10 and apres.get((f, s), 0) < n * (1 - seuil_effondrement)]
+                  if n >= 10 and apres.get((f, s), 0) < n * (1 - seuil_effondrement)
+                  and f not in fiches_retirees]
         if chutes:
             self._signaler("C6", "Effondrement d'une section", chutes)
         con.close()
@@ -441,6 +451,25 @@ class Controles:
                 "SELECT numero FROM legislature WHERE fin IS NULL ORDER BY 1")
                 if f"legislature/{n}" not in self.fiches]
         self._avertir("A7", "Entrées non résolues", objets)
+
+    def a9_liste_des_candidats(self):
+        """Écarts entre la liste des candidats (décision) et Wikipédia, et fiches de candidat
+        retirées cette nuit : des noms de candidats et des statuts, jamais un indice."""
+        objets = []
+        if self._a("candidature_ecart_wikipedia"):
+            libelle = {"declare_par_wikipedia_absent_de_la_liste":
+                           "déclaré selon Wikipédia, absent de la liste en vigueur",
+                       "retire_selon_wikipedia_declare_dans_la_liste":
+                           "retiré selon Wikipédia, déclaré dans la liste en vigueur"}
+            objets += [f"{nom}" + (f" ([[{art}]])" if art else "") + f" : {libelle.get(e, e)}"
+                       for e, nom, art in self._x("""SELECT ecart, nom, article_frwiki
+                                                     FROM candidature_ecart_wikipedia ORDER BY 1, 2""")]
+        objets += [f"fiche {f} retirée cette nuit : {r}"
+                   for f, r in sorted(getattr(self, "fiches_retirees_cette_nuit", {}).items())]
+        self._avertir("A9", "Liste des candidats : écarts avec Wikipédia et fiches retirées", objets,
+                      detail="La liste des candidats est une décision (`decisions/candidature/`), "
+                             "recopiée de franceinfo ; Wikipédia ne sert qu'à signaler un écart. "
+                             "Un écart se règle par une nouvelle décision, jamais d'office.")
 
     def a8_mandats_ouverts(self):
         if self._a("mandat_ouvert_organe_clos"):
