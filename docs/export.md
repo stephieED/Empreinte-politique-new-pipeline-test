@@ -7,12 +7,17 @@ ses identifiants de source, sa valeur, sa date et sa source. Il sert à comparer
 
 ## Où le trouver
 
-Release `export` du dépôt, un jeu par nuit, nommé d'après la génération de l'entrepôt :
+Release `export` du dépôt, nommé d'après la génération de l'entrepôt :
 
-| Fichier | Contenu |
-| --- | --- |
-| `faits-gNNNNNN.parquet` | l'export, en Parquet (zstd) |
-| `faits-gNNNNNN.csv.gz` | le même, en CSV UTF-8 compressé, avec une ligne d'en-tête |
+| Fichier | Contenu | Gardé |
+| --- | --- | --- |
+| `faits-publies-gNNNNNN.parquet` | les faits publiés de la nuit, fiche par fiche (ce que demande la commande, section 7) | chaque nuit |
+| `faits-gNNNNNN.parquet` | tous les faits lus, en Parquet (zstd) | la dernière nuit seulement |
+
+Décision du 12/11/2026 : sur le périmètre complet, l'export de tous les faits lus pèse ≈ 1,2 Go
+en Parquet et 1,25 Go en CSV par nuit. Il n'est plus écrit en CSV, et chaque nuit publiée
+remplace celui de la nuit précédente. Un export plus ancien se refait depuis l'entrepôt
+(`empreinte reconstruire`), qui garde chaque fichier reçu.
 
 La génération `NNNNNN` est celle du manifeste de l'entrepôt (release `entrepot`) : elle relie
 l'export aux relevés et aux versions de la même nuit.

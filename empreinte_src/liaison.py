@@ -15,7 +15,9 @@ Une **règle** est un module de `empreinte_src/regles/` qui déclare :
 
 Dans le SQL d'une règle :
 - `<lecteur>__<table>` est l'**état courant** d'une table de faits (dernière version de chaque
-  fichier source, encore présent à la source) ;
+  fichier source, encore présent à la source), un objet n'y figurant qu'**une fois** même quand
+  plusieurs archives de l'Assemblée le portent (voir `ARCHIVES_SUCCESSIVES`) ;
+- `<lecteur>__<table>__archives` donne l'état courant de toutes les archives, sans ce choix ;
 - `<lecteur>__<table>__hist` donne toutes les versions conservées ;
 - chaque sortie d'une règle déjà appliquée est une vue du même nom ;
 - `decision_<type>` donne les décisions de la propriétaire de ce type (dossier `decisions/`).
@@ -36,6 +38,31 @@ import duckdb
 import yaml
 
 from .memoire import regler_duckdb
+
+# Archives successives de l'Assemblée (R-ARBITRAGE-ARCHIVES ; décision Q4 du 04/11/2026). Un même
+# objet peut figurer dans l'archive de plusieurs législatures : un dossier ouvert en XVIe et
+# poursuivi en XVIIe, une réunion de l'agenda, et surtout chaque acteur, organe et mandat, que
+# l'archive des acteurs de chaque législature republie depuis la XIe. La plus récente fait foi :
+# - « courante » : seule l'archive la plus récente est lue. L'archive des acteurs de la XVIIe
+#   couvre tout l'historique ; un mandat qu'elle n'a plus est corrigé (remplacé) ou retiré à la
+#   source, et disparaît (Q4) ;
+# - une colonne : pour chaque valeur de cette colonne (l'objet, le dossier d'un acte, la
+#   réunion d'un point de l'ordre du jour), les lignes de l'archive la plus récente qui la porte. Les objets propres à
+#   une archive close restent ; deux lignes d'une même archive aussi.
+# L'archive est reconnue au suffixe `-l<législature>` de son point d'accès ; un point sans ce
+# suffixe n'appartient à aucune suite et reste toujours lu.
+ARCHIVES_SUCCESSIVES = {
+    "an_acteurs__identite_source": "courante", "an_acteurs__organe": "courante",
+    "an_acteurs__mandat": "courante", "an_acteurs__deport": "courante",
+    # Les actes par leur dossier : chaque archive renumérote les actes d'un même dossier
+    # (L16-VD220135DI → L17-VD220135DI). Les documents par leur identifiant : un texte qui continue
+    # d'une législature à l'autre peut changer de numéro de dossier (DLR5L14N35824 →
+    # DLR5L15N35824), pas ses documents.
+    "an_dossiers__dossier": "uid", "an_dossiers__acte": "dossier", "an_dossiers__document": "uid",
+    "an_dossiers__cosignature": "document",
+    "an_agenda__reunion": "uid", "an_agenda__point_odj": "reunion",
+}
+_LEG = "TRY_CAST(regexp_extract(prov_point, '-l([0-9]+)$', 1) AS INTEGER)"
 
 
 def regles() -> list:
@@ -78,6 +105,20 @@ def ordonner(mods) -> list:
     return ordre
 
 
+def _une_archive(nom: str) -> str:
+    """SQL de l'état courant de `nom` : un objet n'y figure qu'une fois (ARCHIVES_SUCCESSIVES)."""
+    mode = ARCHIVES_SUCCESSIVES.get(nom)
+    if mode is None:
+        return f"SELECT * FROM {nom}__archives"
+    if mode == "courante":
+        # Un point sans législature (hors suite d'archives) est toujours lu.
+        return f"""SELECT * FROM {nom}__archives
+                   WHERE {_LEG} IS NULL OR {_LEG} = (SELECT max({_LEG}) FROM {nom}__archives)"""
+    return f"""SELECT x.* FROM {nom}__archives x
+               JOIN (SELECT {mode} AS cle, max(coalesce({_LEG}, -1)) AS leg FROM {nom}__archives GROUP BY 1) w
+                 ON x.{mode} IS NOT DISTINCT FROM w.cle AND coalesce({_LEG.replace("prov_point", "x.prov_point")}, -1) = w.leg"""
+
+
 class Contexte:
     def __init__(self, dossier_z2: str, dossier_z3: str, dossier_decisions: str | None = None,
                  generation: int | None = None, date_reference: str | None = None,
@@ -99,11 +140,12 @@ class Contexte:
                 continue
             self.x(f"CREATE VIEW {nom}__hist AS SELECT * FROM read_parquet('{p}')")
             # État courant : dernière version de chaque fichier source, encore présent.
-            self.x(f"""CREATE VIEW {nom} AS SELECT x.* FROM read_parquet('{p}') x
+            self.x(f"""CREATE VIEW {nom}__archives AS SELECT x.* FROM read_parquet('{p}') x
                 SEMI JOIN (SELECT prov_point AS p, prov_uid AS u, max(prov_version) AS n
                            FROM read_parquet('{p}') GROUP BY 1, 2) d
                   ON x.prov_point = d.p AND x.prov_uid = d.u AND x.prov_version = d.n
                 WHERE x.prov_etat = 'present'""")
+            self.x(f"CREATE VIEW {nom} AS {_une_archive(nom)}")
         self._charger_decisions(dossier_decisions)
 
     def _charger_decisions(self, dossier):

@@ -34,7 +34,10 @@ EXCLUES_DE_LA_VALEUR = {"prov_source", "prov_point", "prov_uid", "prov_version",
                         "prov_url", "prov_vu_du", "prov_vu_jusqu_au", "prov_etat", "lecteur", "licence"}
 
 
-def requete_table(chemin: str, spec: dict, colonnes: list[str]) -> str:
+def requete_table(chemin: str, spec: dict, colonnes: list[str], nom: str | None = None) -> str:
+    """Requête d'export d'une table de faits. Avec `nom` (table d'archives successives de
+    l'Assemblée, `liaison.ARCHIVES_SUCCESSIVES`), un objet n'est exporté qu'une fois, depuis
+    l'archive qui fait foi : la vue `<nom>__archives` doit exister sur la connexion."""
     def q(c):
         return f'"{c}"'
     ids = spec.get("ids", {})
@@ -56,6 +59,9 @@ def requete_table(chemin: str, spec: dict, colonnes: list[str]) -> str:
             "prov_version", "lecteur"]
     if spec.get("toutes_versions"):
         return f"""SELECT {", ".join(sel)} FROM read_parquet('{chemin}') WHERE prov_etat = 'present'"""
+    if nom:
+        from .liaison import _une_archive
+        return f"SELECT {', '.join(sel)} FROM ({_une_archive(nom)})"
     # Dernière version de chaque fichier source, calculée sur les seules colonnes d'identifiants
     # (mémoire bornée), puis jointe.
     return f"""
@@ -67,18 +73,18 @@ def requete_table(chemin: str, spec: dict, colonnes: list[str]) -> str:
 
 
 def exporter(dossier_z2: str, lecteurs, sortie: str) -> dict:
-    """Écrit `faits.parquet` et `faits.csv.gz` dans `sortie`. Rend le nombre de faits par type.
+    """Écrit `faits.parquet` dans `sortie` (Parquet seul : le CSV, 1,25 Go par nuit sur le périmètre
+    complet, est abandonné le 12/11/2026). Rend le nombre de faits par type.
 
     Table par table (mémoire bornée) : chaque table est exportée dans un fichier à part, puis
     les morceaux sont assemblés au fil de l'eau, groupés par type de fait. L'ordre des lignes
     dans un type n'est pas garanti : on compare en joignant sur `cle_fait`."""
-    import gzip
     import shutil
 
     import pyarrow as pa
-    import pyarrow.csv as pacsv
     import pyarrow.parquet as pq
 
+    from .liaison import ARCHIVES_SUCCESSIVES
     from .memoire import regler_duckdb
     os.makedirs(sortie, exist_ok=True)
     morceaux_dir = os.path.join(sortie, "morceaux")
@@ -94,9 +100,19 @@ def exporter(dossier_z2: str, lecteurs, sortie: str) -> dict:
                 continue
             cols = [r[0] for r in con.execute(f"DESCRIBE SELECT * FROM read_parquet('{chemin}')").fetchall()]
             part = os.path.join(morceaux_dir, f"{spec['type']}__{mod.NOM}.parquet")
+            nom = f"{mod.NOM}__{table}"
+            if nom in ARCHIVES_SUCCESSIVES and not spec.get("toutes_versions"):
+                # Un objet porté par plusieurs archives n'est exporté qu'une fois (comme les règles le lisent).
+                con.execute(f"""CREATE OR REPLACE VIEW {nom}__archives AS SELECT x.* FROM read_parquet('{chemin}') x
+                    SEMI JOIN (SELECT prov_point AS p, prov_uid AS u, max(prov_version) AS n
+                               FROM read_parquet('{chemin}') GROUP BY 1, 2) d
+                      ON x.prov_point = d.p AND x.prov_uid = d.u AND x.prov_version = d.n
+                    WHERE x.prov_etat = 'present'""")
+            else:
+                nom = None
             # Pas de tri (il coûte trop de mémoire sur les tables larges) : deux nuits se
             # comparent en joignant sur `cle_fait`, pas par l'ordre des lignes.
-            con.execute(f"COPY ({requete_table(chemin, spec, cols)}) "
+            con.execute(f"COPY ({requete_table(chemin, spec, cols, nom)}) "
                         f"TO '{part}' (FORMAT parquet, COMPRESSION zstd, ROW_GROUP_SIZE 10000)")
             parts.append((spec["type"], mod.NOM, part))
     if not parts:
@@ -125,15 +141,10 @@ def exporter(dossier_z2: str, lecteurs, sortie: str) -> dict:
     pq_ = os.path.join(sortie, "faits.parquet")
     # Toutes les colonnes peuvent être vides d'un type de fait à l'autre (un identifiant absent).
     schema = pa.schema([f.with_nullable(True) for f in pq.read_schema(parts[0][2])])
-    with pq.ParquetWriter(pq_, schema, compression="zstd") as w, \
-            gzip.open(os.path.join(sortie, "faits.csv.gz"), "wb") as gz:
-        premiere = True
+    with pq.ParquetWriter(pq_, schema, compression="zstd") as w:
         for t, _, part in sorted(parts):
             for b in pq.ParquetFile(part).iter_batches(batch_size=50_000):
-                tb = pa.Table.from_batches([b]).cast(schema)
-                w.write_table(tb)
-                pacsv.write_csv(tb, gz, pacsv.WriteOptions(include_header=premiere))
-                premiere = False
+                w.write_table(pa.Table.from_batches([b]).cast(schema))
     shutil.rmtree(morceaux_dir, ignore_errors=True)
     return {"faits_par_type": dict(sorted(compte.items())), "total": sum(compte.values()),
             "cles_en_double": doublons}

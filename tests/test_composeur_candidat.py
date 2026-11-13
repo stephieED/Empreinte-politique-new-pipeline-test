@@ -1,8 +1,8 @@
 """Composeur « candidat » (cahier 4.2) sur de petites tables Z3 écrites à la main.
 
-Quatre candidats : Alice Martin (députée en XVIe puis XVIIe : toute l'activité de la XVIIe),
-Éric Zemmour (aucun identifiant parlementaire), Jean Ancien (député avant la XVIIe seulement) et
-Rémi Retiré (candidature retirée : pas de fiche)."""
+Quatre candidats : Alice Martin (députée en XVIe puis XVIIe : toute son activité est dans le
+périmètre, XIVe à XVIIe), Éric Zemmour (aucun identifiant parlementaire), Jean Ancien (député de la
+XIIIe seulement, avant le périmètre) et Rémi Retiré (candidature retirée : pas de fiche)."""
 import gzip
 import json
 import os
@@ -118,7 +118,13 @@ def _parole(ids, date, extrait, preside=False, sujet="Logement des étudiants", 
 
 
 TABLES = {
-    "legislature": [{"numero": 16, "organe": "PO16", "debut": "2022-06-22", "fin": "2024-06-09",
+    "legislature": [{"numero": 13, "organe": "PO13", "debut": "2007-06-20", "fin": "2012-06-19",
+                     "en_cours": False, "mode_fin": "fin_de_legislature", "source_url": None},
+                    {"numero": 14, "organe": "PO14", "debut": "2012-06-20", "fin": "2017-06-20",
+                     "en_cours": False, "mode_fin": "fin_de_legislature", "source_url": None},
+                    {"numero": 15, "organe": "PO15", "debut": "2017-06-21", "fin": "2022-06-21",
+                     "en_cours": False, "mode_fin": "fin_de_legislature", "source_url": None},
+                    {"numero": 16, "organe": "PO16", "debut": "2022-06-22", "fin": "2024-06-09",
                      "en_cours": False, "mode_fin": "dissolution", "source_url": None},
                     {"numero": 17, "organe": "PO17", "debut": "2024-07-01", "fin": None, "en_cours": True,
                      "mode_fin": "en_cours", "source_url": None}],
@@ -142,7 +148,7 @@ TABLES = {
     "carriere": [_car("per:000001", "2022-06-22", "2024-06-09", 16, "legislature/16"),
                  _car("per:000001", "2024-07-08", "2024-07-18", 17, "legislature/17", mandat="PM2"),
                  _car("per:000001", "2024-07-19", None, 17, "legislature/17", "POG", "ECOS", mandat="PM2"),
-                 _car("per:000003", "2017-06-21", "2022-06-21", 15, None, mandat="PM3", acteur="PA3")],
+                 _car("per:000003", "2007-06-20", "2012-06-19", 13, None, mandat="PM3", acteur="PA3")],
     "couverture_carriere": (
         _couvcar("per:000001", {"assemblee": "complet", "assemblee_avant_2002": "hors_source",
                                 "gouvernement": "relu_aucun", "senat": "aucun_identifiant",
@@ -171,7 +177,7 @@ TABLES = {
     "texte_porte": [
         _texte("PA1", "DL1", "PIONANR5L17B0001", "auteur", "2025-01-15", titre="Logement des étudiants"),
         _texte("PA1", "DL2", "PIONANR5L17B0002", "cosignataire", "2025-02-01", publiable=False, etape="depot"),
-        _texte("PA1", "DL0", "PIONANR5L15B0009", "cosignataire", "2021-11-03", titre="Ancien texte"),
+        _texte("PA1", "DL0", "PIONANR5L13B0009", "cosignataire", "2011-11-03", titre="Ancien texte"),
         _texte("PA1", "DL3", "PRJLANR5L17B0003", "initiative_gouvernementale", "2025-03-01", gouv="GB",
                titre="Projet de loi de finances"),
         _texte("PA1", "DL4", "PRJLANR5L16B0004", "initiative_gouvernementale", "2024-07-20", gouv="GA",
@@ -265,7 +271,7 @@ def test_une_fiche_par_candidat_publie_et_controles(sortie):
     assert [f["fiche"] for f in man["fiches"]] == ["candidat/alice-martin", "candidat/eric-zemmour",
                                                     "candidat/jean-ancien"]          # retiré : pas de fiche
     c = Controles(racine)
-    c.c2_liens({f["fiche"] for f in man["fiches"]} | {"legislature/17", "gouvernement/beta"})
+    c.c2_liens({f["fiche"] for f in man["fiches"]} | {"legislature/16", "legislature/17", "gouvernement/beta"})
     c.c4_interdits()
     assert c.bilan()["publication_autorisee"], c.bilan()
 
@@ -280,9 +286,8 @@ def test_entete_identite_groupe_et_liens_publies(sortie):
     # Sans lignée publiée pour ce groupe : pas de lien, la raison est écrite.
     assert g["sigle"] == "ECOS" and g["lien"] is None and g["raison_lien"] == "groupe sans lignée publiée"
     car = _rows(f["en_bref"]["carriere"])
-    # legislature/16 n'est pas publiée : pas de lien, la raison est écrite.
-    assert [l["lien"] for l in car] == [None, "legislature/17", "legislature/17"]
-    assert car[0]["raison_lien"] == "fiche non publiée"
+    # XIVe à XVIIe publiées : chaque période renvoie à sa législature.
+    assert [l["lien"] for l in car] == ["legislature/16", "legislature/17", "legislature/17"]
     per = _rows(f["periodes"])
     assert [p["lien"] for p in per] == [None, "gouvernement/beta"]
     inst = {i["institution"]: i["statut"] for i in f["en_bref"]["institutions"]}
@@ -300,10 +305,10 @@ def test_groupe_actuel_renvoie_a_sa_lignee(tmp_path):
     g = _lire(racine, "candidats/alice-martin/fiche.json.gz")["groupe_actuel"]
     assert g["lien"] == "lignee/ecologiste-et-social" and g["raison_lien"] is None
     c = Controles(racine)
-    c.c2_liens({f["fiche"] for f in man["fiches"]} | {"legislature/17", "gouvernement/beta"})
+    c.c2_liens({f["fiche"] for f in man["fiches"]} | {"legislature/16", "legislature/17", "gouvernement/beta"})
     assert not c.bilan()["publication_autorisee"]          # la lignée n'est pas composée ici
     c = Controles(racine)
-    c.c2_liens({f["fiche"] for f in man["fiches"]} | {"legislature/17", "gouvernement/beta",
+    c.c2_liens({f["fiche"] for f in man["fiches"]} | {"legislature/16", "legislature/17", "gouvernement/beta",
                                                        "lignee/ecologiste-et-social"})
     assert c.bilan()["publication_autorisee"]
 
@@ -326,7 +331,7 @@ def test_sans_identifiant_parlementaire(sortie):
     f = _lire(racine, "candidats/eric-zemmour/fiche.json.gz")
     assert f["perimetre_activite"]["raison"] == "aucun_identifiant_parlementaire"
     assert all(c["statut"] == "hors_perimetre" for c in f["couverture"])
-    act = [c for c in f["en_bref"]["compteurs"] if c["perimetre"] == "XVIIe législature"]
+    act = [c for c in f["en_bref"]["compteurs"] if c["perimetre"] == "XIVe à la XVIIe législature"]
     assert act and all(c["valeur"] is None for c in act)          # jamais 0
     fi = next(x for x in man["fiches"] if x["adresse"] == "eric-zemmour")
     assert set(fi["sections"]) == {"fonctions", "fonctions-periodes", "proposes", "amendements", "votes",
@@ -338,7 +343,8 @@ def test_activite_anterieure_hors_perimetre_sans_zero(sortie):
     _, _, racine = sortie
     f = _lire(racine, "candidats/jean-ancien/fiche.json.gz")
     assert f["perimetre_activite"]["statut"] == "hors_perimetre"
-    assert f["perimetre_activite"]["jours_xviie"] == 0
+    assert f["perimetre_activite"]["jours_dans_le_perimetre"] == 0
+    assert f["perimetre_activite"]["depuis"] == "2012-06-20"
     comptes = {(c["institution"], c["famille"]): c["valeur"] for c in f["en_bref"]["compteurs"]}
     assert comptes[("assemblee", "positions_textes")] is None
     assert comptes[("assemblee", "prises_de_parole")] is None
@@ -355,7 +361,7 @@ def test_textes_portes_publiables_xviie_et_initiative_gouvernementale(sortie):
                                                        ("DL3", "initiative_gouvernementale")]
     assert {x["dossier"]: x["lien"] for x in t} == {"DL4": None, "DL1": None, "DL3": "gouvernement/beta"}
     sel = d["couverture"]["selection"]
-    assert sel["anterieurs_a_la_xviie"] == 1 and sel["ecartes"] == {"pas_encore_examine_en_commission": 1}
+    assert sel["anterieurs_au_perimetre"] == 1 and sel["ecartes"] == {"pas_encore_examine_en_commission": 1}
 
 
 def test_amendements_irrecevables_et_signatures_a_part_exposes_separes(sortie):
@@ -442,3 +448,21 @@ def test_tables_absentes_couverture_le_dit(tmp_path):
     f = _lire(racine, "candidats/alice-martin/fiche.json.gz")
     st = {c["section"]: c["statut"] for c in f["couverture"]}
     assert st["votes"] == st["paroles"] == st["divergences"] == "non_relu"
+
+
+def test_depute_de_la_xive_seulement_paroles_hors_perimetre(tmp_path):
+    """Un député de la XIVe seulement : votes, amendements, textes et questions sont dans le
+    périmètre (XIVe à XVIIe) ; les prises de parole ne sont lues qu'à partir de la XVe : « hors
+    périmètre », sans compte (pas même 0), et la limite le dit."""
+    car = [x for x in TABLES["carriere"] if x["per"] != "per:000003"] + [
+        _car("per:000003", "2012-06-20", "2017-06-20", 14, "legislature/14", mandat="PM3", acteur="PA3")]
+    _, _, racine = _composer(tmp_path, carriere=car)
+    f = _lire(racine, "candidats/jean-ancien/fiche.json.gz")
+    assert f["perimetre_activite"]["statut"] == "complet"
+    comptes = {(c["institution"], c["famille"]): c for c in f["en_bref"]["compteurs"]}
+    assert comptes[("assemblee", "positions_textes")]["valeur"] == 0        # vrai zéro : lu
+    assert comptes[("assemblee", "prises_de_parole")]["valeur"] is None     # pas lu : jamais 0
+    assert comptes[("assemblee", "prises_de_parole")]["perimetre"] == "XVe à la XVIIe législature"
+    p = _lire(racine, "candidats/jean-ancien/paroles.json.gz")["couverture"]
+    assert p["statut"] == "hors_perimetre" and p["raison"] == "activite_anterieure_au_perimetre"
+    assert "paroles" in {l["famille"] for l in f["limites"]}

@@ -20,9 +20,10 @@ Une ligne par période, toutes institutions :
   antérieurs à 2002 : hors source (Sycomore non collecté). Ces absences sont des lignes de
   `couverture_carriere`, pas des périodes inventées.
 
-`lien` ne pointe que vers une fiche publiée : `legislature/17`, `gouvernement/<adresse>` pour un
-gouvernement qui traverse la XVIIe.
+`lien` ne pointe que vers une fiche publiée : `legislature/<14 à 17>` (module `perimetre`),
+`gouvernement/<adresse>` pour un gouvernement publié.
 """
+from ..perimetre import LEGISLATURES, LEGISLATURES_GOUVERNEMENTS
 from .r_candidatures import vue_ou_vide
 
 NOM = "R-CARRIERE"
@@ -39,7 +40,7 @@ DESCRIPTION = (
     "alors. Les mandats de député antérieurs à 2002, les mandats au Parlement européen et les "
     "mandats locaux ne sont pas encore collectés : la fiche le dit au lieu de les taire.")
 
-LEGISLATURES_PUBLIEES = (17,)
+LEGISLATURES_PUBLIEES = LEGISLATURES
 FIN_OUVERTE = "DATE '9999-12-31'"
 URL_DEPUTE = "https://www.assemblee-nationale.fr/dyn/deputes/"
 EST_NI = "(o.sigle = 'NI' OR lower(o.libelle) IN ('non inscrit', 'non inscrits', 'non-inscrits'))"
@@ -67,6 +68,7 @@ def segments(periodes: str, groupes: str) -> str:
 
 def appliquer(ctx):
     publies = ", ".join(str(n) for n in LEGISLATURES_PUBLIEES)
+    gouv_publies = ", ".join(str(n) for n in LEGISLATURES_GOUVERNEMENTS)
     mandat_an = vue_ou_vide(ctx, "an_acteurs__mandat", {
         "uid": "VARCHAR", "acteur": "VARCHAR", "type_organe": "VARCHAR", "organe": "VARCHAR",
         "date_debut": "VARCHAR", "date_fin": "VARCHAR", "prov_point": "VARCHAR"})
@@ -185,7 +187,7 @@ def appliquer(ctx):
                    m.portefeuille, NULL::INTEGER, m.gouvernement, NULL, NULL, NULL, 'sans_objet',
                    NULL::INTEGER, NULL, NULL,
                    CASE WHEN m.gouvernement IN (SELECT gouvernement FROM gouvernement_legislature
-                                                WHERE legislature IN ({publies}))
+                                                WHERE legislature IN ({gouv_publies}))
                         THEN 'gouvernement/' || g.adresse END,
                    'an', 'en_fonction', m.qualite, m.mandat, m.acteur, NULL, NULL, NULL, m.source_url
             FROM membre_gouvernement m JOIN _car_c c ON c.acteur = m.acteur

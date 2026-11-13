@@ -37,9 +37,9 @@ TABLES = {
     "gouvernement_legislature": [{"gouvernement": "PO-G", "legislature": 17}],
     "membre_gouvernement": [{"gouvernement": "PO-G", "acteur": "PA7"}],
     "depute": [{"acteur": "PA1", "legislature": 17}, {"acteur": "PA9", "legislature": 17}],
-    "an_scrutins__scrutin": [{"uid": "VT1", "numero": 1, "date": "2025-01-30", "nombre_votants": 3, "pour": 2,
+    "an_scrutins__scrutin": [{"uid": "VT1", "legislature": "17", "numero": 1, "date": "2025-01-30", "nombre_votants": 3, "pour": 2,
                               "contre": 1, "abstentions": 0},
-                             {"uid": "VT2", "numero": 2, "date": "2025-02-01", "nombre_votants": 1, "pour": 1,
+                             {"uid": "VT2", "legislature": "17", "numero": 2, "date": "2025-02-01", "nombre_votants": 1, "pour": 1,
                               "contre": 0, "abstentions": 0}],
     # VT1 (30/01/2025) : PA2 a quitté le groupe le 01/01/2025, le groupe compte 1 membre.
     "an_scrutins__decompte_groupe": [{"scrutin": "VT1", "organe": "PO17S", "nombre_membres": 1},
@@ -49,7 +49,12 @@ TABLES = {
                              {"amendement": "AM2", "acteur": "PA2", "date_depot": "2025-03-01", "alias": None},
                              {"amendement": "AM3", "acteur": "PA2", "date_depot": "2024-12-01", "alias": None}],
     "intervention_attribuee": [{"compte_rendu": "CR1", "id_syceron": "1", "acteur": "PA1", "date": "2025-01-30"},
-                               {"compte_rendu": "CR1", "id_syceron": "2", "acteur": None, "date": "2025-01-30"}],
+                               {"compte_rendu": "CR1", "id_syceron": "2", "acteur": None, "date": "2025-01-30"},
+                               {"compte_rendu": "CR1", "id_syceron": "3", "acteur": "PA1", "date": "2025-01-30"}],
+    # CR1#3 : interruption notée sans texte par la source, rien à servir.
+    "an_comptes_rendus__intervention": [{"compte_rendu": "CR1", "id_syceron": "1", "texte": "Bonjour."},
+                                        {"compte_rendu": "CR1", "id_syceron": "2", "texte": "(Applaudissements.)"},
+                                        {"compte_rendu": "CR1", "id_syceron": "3", "texte": None}],
     "parole_personne": [{"acteur": "PA1", "compte_rendu": "CR1", "id_syceron": "1", "date": "2025-01-30"}],
     "mandat_ouvert_organe_clos": [{"mandat": "PM9", "acteur": "PA7", "organe": "PO-G", "organe_fin": "2025-09-09"}],
     "legislature": [{"numero": 17, "debut": "2024-07-18", "fin": None}],
@@ -113,7 +118,7 @@ def test_c3_bilan_par_famille_et_objet_attendu_non_servi(tmp_path):
     c = _ctrl(tmp_path)
     b = {x["famille"]: x for x in c.c3_laisses_de_cote()}
     assert b["scrutins"]["ecartes"] == {"aucun_decompte_d_un_groupe_avec_fiche": 1}
-    assert b["prises_de_parole"]["ecartes"] == {"orateur_non_attribue": 1}
+    assert b["prises_de_parole"]["ecartes"] == {"orateur_non_attribue": 1, "paragraphe_sans_texte": 1}
     # AM2 : déposé après le départ de PA2 → écarté avec raison ; AM3 : PA2 membre, non servi → bloque.
     assert b["amendements"]["ecartes"] == {"auteur_hors_groupe_a_la_date": 1}
     assert b["amendements"]["exemples"] == ["AM3"]
@@ -162,7 +167,8 @@ def test_avertissements_sans_bloquer(tmp_path):
     assert _an(c, "A5")[0]["exemples"] == ["candidat / questions : vide sur les 2 fiches"]
     a6 = _an(c, "A6")[0]["exemples"]
     # Un décompte, jamais de nom : PA2 (aucune parole servie) n'est pas nommé.
-    assert "1 membres de groupes de la XVIIe sur 2 sans prise de parole servie" in a6
+    assert ("1 membres de groupes de la XVIIe législature sur 2 sans prise de parole servie pendant cette "
+            "législature") in a6
     assert not any("PA2" in x for x in a6)
     a7 = _an(c, "A7")[0]["exemples"]
     assert "filiation à trancher : grp:16:X → grp:17:PO17S" in a7
@@ -211,3 +217,17 @@ def test_a2_verification_croisee(tmp_path):
     r = c.a2_verification_croisee(1, panne, nb_scrutins=5)
     assert r["ecarts"] == [] and len(r["non_verifies"]) == 2
     assert _an(c, "A2")[0]["titre"].startswith("Vérification croisée impossible")
+
+
+def test_a2_page_de_la_legislature_du_scrutin():
+    """Un scrutin de la XIVe est relu sur sa page de la XIVe, pas sur celle de la XVIIe (qui
+    porte le même numéro : écarts faux, essai du 12/11/2026)."""
+    from empreinte_src.verification import verifier
+    con = duckdb.connect()
+    con.execute("CREATE TABLE _ctl_fp AS SELECT 'VTANR5L14V34' AS id_scrutin")
+    con.execute("""CREATE TABLE an_scrutins__scrutin AS SELECT 'VTANR5L14V34' AS uid, '14' AS legislature,
+                   '34' AS numero, 3 AS nombre_votants, 2 AS pour, 1 AS contre, 0 AS abstentions""")
+    con.execute("CREATE TABLE an_scrutins__position_vote (scrutin VARCHAR, acteur VARCHAR, position VARCHAR)")
+    lues = []
+    verifier(con, 1, lambda url: lues.append(url) or PAGE, nb_scrutins=1)
+    assert lues == ["https://www.assemblee-nationale.fr/dyn/14/scrutins/34"]

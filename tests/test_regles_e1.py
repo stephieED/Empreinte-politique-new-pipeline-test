@@ -317,8 +317,8 @@ def test_ruffin_trois_mandats_et_ses_groupes(reel):
     assert groupes == ["FI", "LFI-NUPES", "ECOS"]
     # Le passage chez les non-inscrits à l'ouverture d'une législature n'est pas un groupe.
     assert {r["groupe_statut"] for r in an} == {"groupe", "non_inscrit"}
-    assert {r["lien"] for r in an if r["legislature"] == 17} == {"legislature/17"}
-    assert {r["lien"] for r in an if r["legislature"] != 17} == {None}
+    # XIVe à XVIIe publiées : chaque période renvoie à la fiche de sa législature.
+    assert all(r["lien"] == f"legislature/{r['legislature']}" for r in an)
     ecos = [r for r in an if r["groupe_sigle"] == "ECOS"][0]
     assert ecos["fin"] is None and ecos["siege"] is not None and ecos["siege_date"] == "2026-11-06"
     assert an[0]["libelle"] == "Député de la 1re circonscription · Somme"

@@ -146,18 +146,35 @@ def _sha(p):
 
 
 def publier_export(depot: str, dossier_export: str, generation: int) -> list[dict]:
-    """Export plat de la nuit (commande, section 7) : release `export`, un jeu par génération."""
+    """Export plat de la nuit (commande, section 7) : release `export`.
+
+    Les **faits publiés** de chaque nuit sont tous gardés (`faits-publies-gNNNNNN.parquet` : ce que
+    demande la commande, et la base du contrôle des pertes C1). L'export de **tous les faits lus**
+    (`faits-gNNNNNN.parquet`, ≈ 1,2 Go sur le périmètre complet) n'est gardé que pour la dernière
+    nuit, en Parquet seul : déposé, il remplace ceux des nuits précédentes, et leurs anciens CSV
+    sont retirés (décision du 12/11/2026)."""
+    import re
     r = _gh("release", "view", "export", "-R", depot, check=False)
     if r.returncode != 0:
         _gh("release", "create", "export", "-R", depot, "--title", "Export des faits",
-            "--notes", "Export plat des faits, une ligne par fait, un jeu par nuit (génération). "
+            "--notes", "Export plat des faits, une ligne par fait. Faits publiés : un fichier par nuit "
+                       "(génération). Tous les faits lus : la dernière nuit seulement. "
                        "Documentation : voir le dépôt. Licences : colonne `licence` de chaque ligne.")
     envois = []
-    for nom in ("faits.parquet", "faits.csv.gz", "faits-publies.parquet"):
+    for nom in ("faits.parquet", "faits-publies.parquet"):
         if not os.path.exists(os.path.join(dossier_export, nom)):
             continue
         cible = f"{nom.split('.')[0]}-g{generation:06d}.{nom.split('.', 1)[1]}"
         envois.append(_envoyer(depot, os.path.join(dossier_export, nom), cible, release="export"))
+    depose = next((e for e in envois if e["actif"] == f"faits-g{generation:06d}.parquet"), None)
+    if depose and depose["reussi"]:
+        r = _gh("release", "view", "export", "-R", depot, "--json", "assets", check=False)
+        anciens = sorted(a["name"] for a in (json.loads(r.stdout or "{}").get("assets", []) if r.returncode == 0 else [])
+                         if re.fullmatch(r"faits-g\d{6}\.(parquet|csv\.gz)", a["name"])
+                         and a["name"] != depose["actif"])
+        for nom in anciens:
+            x = _gh("release", "delete-asset", "export", nom, "-R", depot, "-y", check=False)
+            envois.append({"actif": nom, "release": "export", "retire": True, "reussi": x.returncode == 0})
     return envois
 
 

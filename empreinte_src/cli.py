@@ -123,13 +123,14 @@ def cmd_calculer(a):
     shutil.rmtree(site, ignore_errors=True)
     pannes = {r["point_acces"]: r.get("panne_depuis") or r.get("debut")
               for r in rapport.get("releves", []) if r.get("issue") in ("echec", "suspect")}
-    ecr = Ecrivain(site, f"g{gen:06d}", pannes=pannes)
+    # Faits publiés écrits au fil de l'eau (mémoire : ≈ 2 millions sur le périmètre complet).
+    ecr = Ecrivain(site, f"g{gen:06d}", pannes=pannes,
+                   chemin_faits=os.path.join(a.sortie, "export", "faits-publies.parquet"))
     with mesures.etape("E5") as m:
         for c in composeurs():
             c.composer(ctx, ecr)
         manifeste_site = ecr.clore()
-        nb_publies = ecr.ecrire_faits_publies(os.path.join(a.sortie, "export", "faits-publies.parquet"))
-        ecr.faits.clear()            # écrits : les contrôles relisent le fichier (mémoire)
+        nb_publies = ecr.ecrire_faits_publies()      # les contrôles relisent le fichier
         m.update(fiches=len(manifeste_site["fiches"]), faits_publies=nb_publies)
     from importlib.resources import files
     shutil.copy(str(files("empreinte_src").joinpath("site/index.html")), os.path.join(site, "index.html"))

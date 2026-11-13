@@ -2,7 +2,7 @@
 cahier 3.1.9).
 
 Chaque nuit, des scrutins **servis** sont tirés au sort (tirage reproductible : il dépend de la
-génération) ; pour chacun, la page publique `/dyn/17/scrutins/<numéro>` est relue et deux faits
+génération) ; pour chacun, la page publique `/dyn/<législature>/scrutins/<numéro>` est relue et deux faits
 sont comparés à nos données : les totaux du scrutin (votants, pour, contre, abstention) et la
 position nominative d'un député tiré au sort. 20 scrutins font 40 faits (Q14).
 
@@ -58,13 +58,14 @@ def verifier(con, generation: int, recuperer, nb_scrutins: int = 20, legislature
     tires = servis[:nb_scrutins]
     ecarts, non_verifies, verifies = [], [], 0
     for uid in tires:
-        s = con.execute("""SELECT numero, nombre_votants, pour, contre, abstentions FROM an_scrutins__scrutin
-                           WHERE uid = ? LIMIT 1""", [uid]).fetchall()
+        s = con.execute("""SELECT legislature, numero, nombre_votants, pour, contre, abstentions
+                           FROM an_scrutins__scrutin WHERE uid = ? LIMIT 1""", [uid]).fetchall()
         if not s:
             non_verifies.append(f"{uid} : absent des faits lus")
             continue
-        numero, *nos = s[0]
-        url = URL_SCRUTIN.format(leg=legislature, numero=numero)
+        leg, numero, *nos = s[0]
+        # La page du scrutin est celle de sa législature (XIVe à XVIIe), jamais celle de la XVIIe.
+        url = URL_SCRUTIN.format(leg=leg or legislature, numero=numero)
         try:
             html = recuperer(url)
         except Exception as e:                      # injoignable : non vérifié, jamais un écart
