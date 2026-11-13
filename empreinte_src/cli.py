@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -164,7 +165,14 @@ def cmd_calculer(a):
         # Un fichier modifié cette nuit explique la perte de ses faits, sauf si le lecteur n'a pas
         # pu le lire : la perte vient alors de nous, pas de la source, et C1 doit la voir (#39).
         uids_illisibles = {u.split("@")[0] for _, u, _ in l.illisibles}
-        changes = {r["uid"].split("@")[0] for r in e._index if r["vu_du"] == gen} - uids_illisibles
+        # « Cette nuit » = depuis la génération de la dernière publication, pas seulement la courante :
+        # après une nuit écrite mais non publiée (13/11/2026, refusée par C4), la mise à jour suivante
+        # se compare à la publication d'avant, et les fichiers changés la nuit refusée doivent encore
+        # expliquer leurs pertes (9 points de l'ordre du jour faussement perdus, essai 43521640358).
+        m_pub = re.search(r"faits-publies-g(\d+)\.parquet$", a.faits_precedents or "")
+        depuis = int(m_pub.group(1)) if m_pub else gen - 1
+        changes = {r["uid"].split("@")[0] for r in e._index
+                   if r["vu_du"] is not None and r["vu_du"] > depuis} - uids_illisibles
         retirees = dict(ctx.x("""SELECT 'candidat/' || adresse, raison_non_publie FROM candidat
                                  WHERE NOT publie AND adresse IS NOT NULL
                                    AND statut IN ('retiree', 'non_listee')""")) if ctx.existe("candidat") else {}

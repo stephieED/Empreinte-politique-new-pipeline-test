@@ -39,6 +39,12 @@ def cle_section(chemin: str) -> str | None:
     return f"{morceaux[0]}/{re.sub(r'[0-9]+', 'N', nom[:-len('.json.gz')])}"
 
 
+def _sans_paquet(chemin: str) -> str:
+    """`candidats/x/amendements-2023-1.json.gz` → `candidats/x/amendements-2023.json.gz` : le
+    numéro de paquet suit toujours une année ou un semestre (`votes-14` n'est pas touché)."""
+    return re.sub(r"(-\d{4}(?:-s\d)?)-\d+(\.json\.gz)$", r"\1\2", chemin)
+
+
 def _fichiers(racine: str):
     for dossier, _, noms in os.walk(racine):
         for n in sorted(noms):
@@ -88,7 +94,12 @@ def verifier(racine: str, schema: dict) -> list[str]:
             continue
         cols, lignes = contenu["colonnes"], contenu.get("lignes") or []
         if lignes:
+            # Un paquet (`amendements-2023-1`, quand une année dépasse la taille d'un fichier) relève
+            # du schéma de sa section (`amendements-N`) : nuit du 13/11/2026 refusée parce que la
+            # première année découpée en paquets n'existait pas quand le schéma a été tiré.
             attendu = colonnes.get(cle)
+            if attendu is None:
+                attendu = colonnes.get(cle_section(_sans_paquet(chemin)) or "")
             if attendu is None:
                 ecarts.setdefault(f"section:{cle}", f"{chemin} : section « {cle} » absente du schéma")
             elif list(cols) != list(attendu):
