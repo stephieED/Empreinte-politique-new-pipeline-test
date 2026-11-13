@@ -37,6 +37,15 @@ class TransportSimule:
 
     def __init__(self, reponses, echec=None):
         self.reponses, self.echec, self.adresses = reponses, echec, []
+        self.session, self.delai_s = self, 1
+
+    def get(self, url, timeout=None):
+        """Requête directe (interventions en séance) : rend la réponse simulée, sinon 204."""
+        self.adresses.append(url)
+        for motif, octets in self.reponses.items():
+            if motif in url:
+                return type("R", (), {"status_code": 200, "content": octets})()
+        return type("R", (), {"status_code": 204, "content": b""})()
 
     def telecharger(self, url, etag=None, last_modified=None):
         self.adresses.append(url)
