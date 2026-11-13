@@ -16,6 +16,8 @@ from typing import Iterator
 
 @dataclass
 class Membre:
+    """Un fichier sorti d'une archive : son `uid`, son `chemin` dans l'archive, ses `octets`
+    exacts, leur `taille`, leur `crc32` et leur `empreinte` SHA-256."""
     uid: str
     chemin: str        # chemin dans l'archive
     octets: bytes
@@ -25,6 +27,8 @@ class Membre:
 
 
 def uid_du_chemin(chemin: str) -> str:
+    """Rend l'uid d'un membre : le nom de fichier de `chemin`, sans son dossier, et sans son
+    extension quand elle est `.json`, `.xml`, `.sql`, `.csv`, `.txt` ou `.dat` (casse ignorée)."""
     nom = os.path.basename(chemin)
     for ext in (".json", ".xml", ".sql", ".csv", ".txt", ".dat"):
         if nom.lower().endswith(ext):

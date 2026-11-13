@@ -24,6 +24,9 @@ def debut_de_nuit(maintenant: dt.datetime, heure: int = DEBUT_NUIT_UTC) -> dt.da
 
 
 def a_faire(cree_le: str | None, maintenant: dt.datetime | None = None) -> bool:
+    """Vrai si la mise à jour est à lancer : aucune génération n'est connue (`cree_le` vide), ou la
+    dernière (`cree_le`, date ISO) a été écrite avant le début de la nuit en cours. `maintenant`
+    vaut l'heure courante par défaut."""
     if not cree_le:
         return True
     maintenant = maintenant or dt.datetime.now(dt.timezone.utc)
@@ -31,6 +34,8 @@ def a_faire(cree_le: str | None, maintenant: dt.datetime | None = None) -> bool:
 
 
 def main():
+    """Point d'entrée : lit le manifeste distant du dépôt `--depot` et écrit `true` si la mise à
+    jour est à faire (`a_faire`), `false` sinon."""
     p = argparse.ArgumentParser()
     p.add_argument("--depot", required=True)
     a = p.parse_args()
