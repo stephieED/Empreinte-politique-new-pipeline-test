@@ -42,3 +42,25 @@ def test_conclusions_classees_et_restantes(tmp_path):
     # Résolutions européennes adoptées (art. 151) et lecture définitive : adoptions définitives.
     assert {d for (d,) in ctx.x(f"SELECT dossier FROM ({adoptions_definitives(ctx)})")} == \
         {"DLR5L14N35259", "DLR5L14N29958", "DLR5L16N47461", "DLR5L14N10001"}
+
+
+def test_a7_nomme_les_conclusions_non_classees(tmp_path):
+    import duckdb
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    from empreinte_src.controles import Controles
+    faits = tmp_path / "faits.parquet"
+    pq.write_table(pa.table({"fiche": pa.array([], pa.string())}), faits)
+    con = duckdb.connect()
+    con.execute("""CREATE VIEW conclusion_non_classee AS SELECT * FROM (VALUES
+        ('TSORTMOT01', 'Motion adoptée', 25, 25, ['DLR5L14N29478', 'DLR5L14N29698'], 22))
+        t(conclusion_code, conclusion_libelle, decisions, dossiers, exemples,
+          dossiers_dont_c_est_la_derniere_decision)""")
+    c = Controles(str(tmp_path))
+    c.preparer(con, str(faits), set())
+    c.a7_non_resolues({})
+    a7 = [a for a in c.bilan()["anomalies"] if a["controle"] == "A7"]
+    assert a7 and not a7[0]["bloquant"]
+    assert a7[0]["exemples"] == ["conclusion TSORTMOT01 (« Motion adoptée ») non classée : 25 décisions, "
+                                 "25 dossiers (22 dont c'est la dernière décision), dont DLR5L14N29478, DLR5L14N29698"]
