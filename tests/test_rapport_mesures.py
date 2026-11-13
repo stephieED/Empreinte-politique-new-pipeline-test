@@ -83,3 +83,12 @@ def test_charger_trie_par_generation(tmp_path):
         (tmp_path / run / "rapport.json").write_text(json.dumps(_rapport(gen, [])))
     (tmp_path / "vide").mkdir()
     assert [n["rapport"]["generation"] for n in rm.charger(str(tmp_path))] == [1, 3]
+
+
+def test_pic_de_la_tache_est_le_plus_haut_des_etapes():
+    from empreinte_src.mesures import Mesures
+    m = Mesures()
+    m.etapes = [{"etape": "E3", "lecteur": "an_acteurs", "pic_memoire_mo": 1377.0},
+                {"etape": "E4", "pic_memoire_mo": 4813.2}, {"etape": "E6", "pic_memoire_mo": 2683.1}]
+    assert m.pic() == "Pic de mémoire : 4,813 Mo (étape E4)."
+    assert Mesures().pic() == "Pic de mémoire : non mesuré."

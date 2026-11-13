@@ -123,7 +123,9 @@ jobs:
             empreinte collecter --entrepot entrepot --mode "${{ needs.preparer.outputs.mode }}" \
               --rapport sortie/rapport.json --tmp "$RUNNER_TEMP" ${POINTS:+--points $POINTS} \
               ${RATTRAPAGE_ERREUR:+--rattrapage-erreur "$RATTRAPAGE_ERREUR"}
-          grep -E "Maximum resident|Elapsed" sortie/time-collecter.txt || true
+          # Durée seulement : le pic de `time -v` ne vaut que pour la dernière étape (le traitement
+          # remet le pic à zéro à chaque étape) ; le vrai pic est imprimé par la commande.
+          grep -E "Elapsed" sortie/time-collecter.txt || true
           G=$(python -c 'import json; print("%06d" % json.load(open("entrepot/manifeste.json"))["generation"])')
           echo "generation=$G" >> "$GITHUB_OUTPUT"
           # Un essai n'écrit rien : son acquis porte un autre nom, que le rattrapage ne reprend jamais.
@@ -192,7 +194,9 @@ jobs:
             empreinte calculer --entrepot entrepot --z2 z2 --z3 z3 --decisions decisions \
               --sortie sortie --rapport sortie/rapport.json \
               --faits-precedents "$(ls precedent/faits-publies-g*.parquet 2>/dev/null | head -1)"
-          grep -E "Maximum resident|Elapsed" sortie/time-calculer.txt || true
+          # Durée seulement : le pic de `time -v` ne vaut que pour la dernière étape (le traitement
+          # remet le pic à zéro à chaque étape) ; le vrai pic est imprimé par la commande.
+          grep -E "Elapsed" sortie/time-calculer.txt || true
       - name: Garder les faits lus
         uses: actions/cache/save@v4
         with:
