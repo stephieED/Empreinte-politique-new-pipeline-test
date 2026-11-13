@@ -76,7 +76,10 @@ Les budgets des gouvernements ne sont pas collectés : leur section est vide et 
 
 Le workflow `Pages` (`.github/workflows/pages.yml`) sert, à
 <https://stephieed.github.io/Empreinte-politique-new-pipeline-test/>, la documentation du code
-(pdoc) et la page minimale de contrôle avec les fichiers servis de la dernière publication. Il
+(pdoc), la description du traitement (`traitement/` : étapes, périmètre, lecteurs, règles,
+contrôles, écrite à partir du code par `empreinte_src/methodologie.py`), les documents de
+`livrables/` convertis en HTML (`empreinte_src/pages_livrables.py`) et la page minimale de
+contrôle avec les fichiers servis de la dernière publication. Il
 tourne après chaque mise à jour sur `main` et après chaque envoi de code sur `main`. Ce n'est pas
 le site : l'interface reste hors périmètre (décision du 13/11/2026).
 
