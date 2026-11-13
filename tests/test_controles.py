@@ -125,6 +125,33 @@ def test_c1_reconnait_un_fait_a_son_identite_pas_a_sa_valeur(tmp_path):
     assert len(a) == 1 and a[0]["nb_objets"] == 1 and "JORFTEXT1" in a[0]["exemples"][0]
 
 
+def test_c1_decompte_dont_la_case_se_vide_n_est_pas_une_perte(tmp_path):
+    """13/11/2026 : des amendements de 2026 reçoivent leur commission à la source ; la ligne de
+    décompte « commission non établie, 2026 » disparaît, ses nombres passent sur la commission.
+    Les amendements eux-mêmes restent vérifiés un par un : leur perte, elle, bloque."""
+    def fait(type_fait, valeur, **ids):
+        r = {"fiche": "lignee/x", "section": "amendements", "type_fait": type_fait, "valeur": valeur}
+        r.update({f"id_{k}": v for k, v in ids.items()})
+        return r
+    avant = [fait("amendements_compte_lignee", '{"commission":null,"annee":"2026","nb_amendements":122}', autre="2026"),
+             fait("amendements_compte_lignee", '{"commission":"PO1","annee":"2026","nb_amendements":507}',
+                  organe="PO1", autre="2026"),
+             fait("amendement_lignee", '{"amendement":"AM1"}', amendement="AM1"),
+             fait("amendement_lignee", '{"amendement":"AM2"}', amendement="AM2")]
+    apres = [fait("amendements_compte_lignee", '{"commission":"PO1","annee":"2026","nb_amendements":629}',
+                  organe="PO1", autre="2026"),
+             fait("amendement_lignee", '{"amendement":"AM1"}', amendement="AM1")]
+    schema = pa.schema([(c, pa.string()) for c in ("fiche", "section", "type_fait", "valeur", "id_organe",
+                                                    "id_amendement", "id_autre")])
+    pa_, pb = str(tmp_path / "a.parquet"), str(tmp_path / "b.parquet")
+    pq.write_table(pa.Table.from_pylist(avant, schema=schema), pa_)
+    pq.write_table(pa.Table.from_pylist(apres, schema=schema), pb)
+    c = Controles(str(tmp_path))
+    c.c1_c6_comparer(pa_, pb)
+    a = [x for x in c.anomalies if x["controle"] == "C1"]
+    assert len(a) == 1 and a[0]["nb_objets"] == 1 and "AM2" in a[0]["exemples"][0]
+
+
 def test_faits_publies_ecrits_au_fil_de_l_eau(tmp_path):
     """Avec `chemin_faits`, l'Ecrivain ne garde en mémoire qu'un lot de faits : les autres sont déjà
     dans le Parquet, et le fichier final est le même qu'en une fois (mémoire : ≈ 2 millions de faits
