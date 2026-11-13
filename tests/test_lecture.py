@@ -95,3 +95,21 @@ def test_cache_reconnait_une_version_a_son_empreinte(tmp_path, extrait_agenda, p
     assert Lecture(e, str(z2), CFG).executer(an_agenda)["lues"] == 6
     rows = pq.read_table(z2 / "an_agenda__reunion.parquet").to_pylist()
     assert len(rows) == 6                                                  # pas de doublon
+
+
+def test_version_sortie_puis_revenue_est_relue(tmp_path, extrait_agenda, pa_agenda):
+    """Issue #44 (rouverte) : une version absente de l'entrepôt perd ses lignes ; elle ne doit plus
+    être inscrite comme lue, sinon elle reviendrait sans aucune ligne."""
+    e = _ranger(tmp_path, pa_agenda, extrait_agenda)
+    z2 = tmp_path / "z2"
+    Lecture(e, str(z2), CFG).executer(an_agenda)
+    garde = list(e._index)
+    sortie = garde[0]
+    e._index = garde[1:]                                    # la version sort de l'entrepôt
+    Lecture(e, str(z2), CFG).executer(an_agenda)
+    lues = {r["u"] for r in pq.read_table(z2 / "an_agenda__versions.parquet").to_pylist()}
+    assert sortie["uid"] not in lues
+    e._index = garde                                        # elle revient, mêmes octets
+    assert Lecture(e, str(z2), CFG).executer(an_agenda)["lues"] == 1
+    rows = pq.read_table(z2 / "an_agenda__reunion.parquet").to_pylist()
+    assert sortie["uid"] in {r["prov_uid"] for r in rows} and len(rows) == 6

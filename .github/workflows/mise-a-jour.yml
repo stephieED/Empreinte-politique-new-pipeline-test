@@ -62,7 +62,8 @@ jobs:
           FAIRE=true
           if [ "${{ github.event_name }}" = "schedule" ]; then
             # Le second déclenchement s'arrête si une génération a déjà été écrite depuis 20 h.
-            FAIRE=$(python -m empreinte_src.planification --depot "$GITHUB_REPOSITORY")
+            # Une erreur de la planification ne supprime pas la nuit (#41) : elle se fait.
+            FAIRE=$(python -m empreinte_src.planification --depot "$GITHUB_REPOSITORY" || echo true)
           fi
           # La nuit est décidée avant le rattrapage : une étape accessoire ne doit pas l'empêcher (#41).
           { echo "faire=$FAIRE"; echo "mode=$MODE"; echo "points=$POINTS"; } >> "$GITHUB_OUTPUT"
