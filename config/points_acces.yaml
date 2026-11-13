@@ -452,3 +452,17 @@ points_acces:
     uid: elus-sortants-maires
     taille_min: 2000000
     licence: etalab-2.0        # maires sortants (2020-2026)
+
+  # --- Parltrack : activités des députés européens (interventions, rapports, propositions de
+  # résolution, questions, explications de vote…), ODbL 1.0, figé depuis le 24/07/2026. Décision Q37
+  # du 13/11/2026 (« Tout, chacun dans sa section ») : interventions avant le 02/07/2019 (le portail
+  # du PE ensuite, point pe-eurodeputes), autres activités à toutes dates. Gardé à l'octet ; requête
+  # conditionnelle (ETag).
+  - id: parltrack-activites
+    source: parltrack
+    type: activites_parltrack
+    url: https://parltrack.org/dumps/ep_mep_activities.json.zst
+    format: fichier
+    uid: ep_mep_activities
+    taille_min: 40000000
+    licence: odbl-1.0
