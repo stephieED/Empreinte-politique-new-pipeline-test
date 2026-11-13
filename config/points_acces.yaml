@@ -453,6 +453,35 @@ points_acces:
     taille_min: 2000000
     licence: etalab-2.0        # maires sortants (2020-2026)
 
+  # --- Parltrack : activités des députés européens (interventions, rapports, propositions de
+  # résolution, questions, explications de vote…), ODbL 1.0, figé depuis le 24/07/2026. Décision Q37
+  # du 13/11/2026 (« Tout, chacun dans sa section ») : interventions avant le 02/07/2019 (le portail
+  # du PE ensuite, point pe-eurodeputes), autres activités à toutes dates. Gardé à l'octet ; requête
+  # conditionnelle (ETag).
+  - id: parltrack-activites
+    source: parltrack
+    type: activites_parltrack
+    url: https://parltrack.org/dumps/ep_mep_activities.json.zst
+    format: fichier
+    uid: ep_mep_activities
+    taille_min: 40000000
+    licence: odbl-1.0
+
+  # --- Parltrack : votes nominatifs du Parlement européen de 2004 au 26/03/2026 (ODbL 1.0 ; figé
+  # depuis le 24/07/2026). Décision Q3 du 13/11/2026 : Parltrack pour les votes antérieurs au
+  # 02/07/2019 (législatures closes, que le gel ne touche pas) ; le portail du PE ensuite (point
+  # pe-votes). Le fichier est gardé à l'octet ; requête conditionnelle (ETag) : relevé une fois,
+  # puis 304 tant que Parltrack ne bouge pas. `robots.txt` de parltrack.org : aucune règle pour
+  # les robots en général (seuls des robots d'IA d'entraînement sont exclus).
+  - id: parltrack-votes
+    source: parltrack
+    type: votes_parltrack
+    url: https://parltrack.org/dumps/ep_votes.json.zst
+    format: fichier
+    uid: ep_votes
+    taille_min: 10000000
+    licence: odbl-1.0
+
   # --- Sycomore (www2.assemblee-nationale.fr, « tous droits réservés ») : mandats de député des
   # candidats, pour ceux d'avant le 19/06/2002 que l'archive des acteurs ne donne pas (cahier 3.11
   # et 4.2 ; décision Q36 du 13/11/2026 : « Oui, les faits seulement »). Identifiant Sycomore

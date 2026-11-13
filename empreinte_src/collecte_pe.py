@@ -13,7 +13,9 @@ personne (P1186). Le relevé est donc fait de trois sortes de membres, tous gard
 2. `mep-<id>` : la fiche de chaque député européen ainsi déclaré (`meps/<id>`), avec ses
    mandats, ses groupes et ses fonctions datés ;
 3. `org-<id>` : chaque groupe politique européen cité par ces fiches (`corporate-bodies/<id>`),
-   pour son nom.
+   pour son nom ;
+4. `interventions-<id>-<rang>` : les interventions en séance de chaque député européen déclaré
+   (`speeches?person-id=<id>`, par pages de 500, jusqu'à la réponse vide 204 ; décision Q37).
 
 Le portail ne publie ni `ETag` ni `Last-Modified` (mesuré le 04/11/2026) : chaque nuit relit tout,
 et l'entrepôt ne garde une version nouvelle que si les octets changent. Une requête toutes les
@@ -88,6 +90,17 @@ def groupes_cites(octets: bytes) -> list[str]:
     return sorted(out, key=lambda x: (len(x), x))
 
 
+def _obtenir_brut_poli(transport, url, dernier, pause_s, releve):
+    """GET direct (un 204 de fin de pagination n'est pas une panne), au rythme du portail."""
+    attente = pause_s - (time.monotonic() - dernier[0])
+    if attente > 0:
+        time.sleep(attente)
+    code, octets = _obtenir_brut(transport, url)
+    dernier[0] = time.monotonic()
+    releve["octets_recus"] += len(octets)
+    return code, octets
+
+
 def relever_eurodeputes(entrepot, transport, pa_cfg: dict, params: dict,
                         dossier_decisions: str | None = None, pause_s: float = 2.1) -> dict:
     from .collecte import releve_vide
@@ -128,6 +141,16 @@ def relever_eurodeputes(entrepot, transport, pa_cfg: dict, params: dict,
             o = obtenir(f"{PORTAIL}meps/{i}?{FORMAT}", portail=True)
             membres.append(_membre(f"mep-{i}", f"meps/{i}.json", o))
             groupes.update(groupes_cites(o))
+            # Interventions en séance (Q37) : pages de 500 jusqu'à la réponse vide (204).
+            for rang in range(0, 40):
+                code, o = _obtenir_brut_poli(transport, f"{PORTAIL}speeches?person-id={i}&limit=500&offset={rang * 500}&{FORMAT}",
+                                             dernier, pause_s, r)
+                requetes.append({"url": "speeches", "http": code})
+                if code in (204, 404) or not o:
+                    break
+                if code != 200:
+                    raise RuntimeError(f"interventions {i} : HTTP {code}")
+                membres.append(_membre(f"interventions-{i}-{rang}", f"speeches/{i}-{rang}.json", o))
         for g in sorted(groupes, key=lambda x: (len(x), x)):
             o = obtenir(f"{PORTAIL}corporate-bodies/{g}?{FORMAT}&language=fr", portail=True)
             membres.append(_membre(f"org-{g}", f"corporate-bodies/{g}.json", o))

@@ -1,0 +1,119 @@
+{#
+Gabarit des pages de la documentation (pdoc 16.0.0, default/module.html.jinja2 étendu).
+
+- Un menu commun en tête de la barre latérale : la page d'entrée de la documentation, le
+  traitement, le code, la page minimale de contrôle (servie à côté, dans `site/`) et l'accueil.
+- Les pages du paquet `documentation` (documents, rubriques, traitement) sont des documents : ni
+  nom de module, ni bouton « source », et leurs sous-modules sont listés par leur titre dans le
+  menu (`titres_menu`, donné par `pages_doc`).
+- La page d'entrée montre dans la barre latérale toutes les rubriques et leurs documents, avec la
+  documentation du code avant les annexes ; une rubrique, ses documents. Ni l'une ni l'autre n'a
+  de sommaire : il redirait la même liste.
+- Les intitulés du menu sont en français.
+#}
+{% extends "default/module.html.jinja2" %}
+{% set est_doc = module.modulename == "documentation" or module.modulename.startswith("documentation.") %}
+{% set racine = "../" * module.modulename.count(".") %}
+
+{% set titres = titres_menu if titres_menu is defined else {} %}
+{% set traitement = doc_traitement if doc_traitement is defined else "" %}
+
+{% macro titre_doc(m) -%}
+    {%- set t = m.docstring.partition("\n")[0] -%}
+    {%- if m.modulename in titres %}{{ titres[m.modulename] }}
+    {%- else %}{{ t[2:].replace("`", "").replace("*", "") if t.startswith("# ") else m.name }}{% endif -%}
+{%- endmacro %}
+
+{# Les rubriques et leurs documents, en listes imbriquées (barre latérale de la page d'entrée). #}
+{% macro arbre(m, haut=False) -%}
+    <ul{% if haut %} class="rubriques"{% endif %}>
+        {% for s in m.submodules if is_public(s) | trim %}
+            {% if doc_code_avant is defined and s.modulename == doc_code_avant and "empreinte_src" in all_modules %}
+                <li><a href="{{ racine }}empreinte_src.html">Le code (empreinte_src)</a></li>
+            {% endif %}
+            <li>{{ s.taken_from | link(text=titre_doc(s)) }}
+                {%- if s.submodules %}{{ arbre(s) }}{% endif %}</li>
+        {% endfor %}
+    </ul>
+{%- endmacro %}
+
+{% block title %}
+    {%- if est_doc %}{{ titre_doc(module) }} — Empreinte politique
+    {%- else %}{{ module.modulename }} — documentation du code{% endif -%}
+{% endblock %}
+
+{% block module_list_link %}
+    {% set parentmodule = ".".join(module.modulename.split(".")[:-1]) %}
+    {% if parentmodule and parentmodule in all_modules %}
+        <a class="pdoc-button module-list-button" href="../{{ parentmodule.split(".")[-1] }}.html">
+            {% include "resources/box-arrow-in-left.svg" %}
+            &nbsp;
+            {{- titre_doc(all_modules[parentmodule]) if est_doc else parentmodule -}}
+        </a>
+    {% endif %}
+{% endblock %}
+
+{% block nav_title %}
+    <ul class="menu-global">
+        {% if "documentation" in all_modules %}
+            <li{% if module.modulename == "documentation" %} class="ici"{% endif %}>
+                <a href="{{ racine }}documentation.html">Documentation</a></li>
+            {% if traitement in all_modules %}
+                <li{% if module.modulename == traitement %} class="ici"{% endif %}>
+                    <a href="{{ racine }}{{ traitement.replace(".", "/") }}.html">Le traitement, étape par étape</a></li>
+            {% endif %}
+        {% endif %}
+        {% if "empreinte_src" in all_modules %}
+            <li{% if module.modulename == "empreinte_src" %} class="ici"{% endif %}>
+                <a href="{{ racine }}empreinte_src.html">Le code</a></li>
+        {% endif %}
+        <li><a href="{{ racine }}../site/index.html">Page minimale de contrôle</a></li>
+        <li><a href="{{ racine }}../index.html">Accueil</a></li>
+    </ul>
+{% endblock %}
+
+{% block search_box %}
+    {% if search and all_modules|length > 1 %}
+        <input type="search" placeholder="Rechercher…" role="searchbox" aria-label="rechercher"
+               pattern=".+" required>
+    {% endif %}
+{% endblock %}
+
+{% block nav_index %}
+    {% set index = module.docstring | to_markdown | to_html | attr("toc_html") %}
+    {% if index and not (est_doc and module.is_package) %}
+        <h2>Sommaire</h2>
+        {{ index | safe }}
+    {% endif %}
+{% endblock %}
+
+{% block nav_submodules %}
+    {% if module.modulename == "documentation" and module.submodules %}
+        <h2>Rubriques</h2>
+        {{ arbre(module, haut=True) }}
+    {% elif module.submodules %}
+        <h2>{{ "Documents" if est_doc else "Sous-modules" }}</h2>
+        <ul>
+            {% for submodule in module.submodules if is_public(submodule) | trim %}
+                <li>{{ submodule.taken_from | link(text=(titre_doc(submodule) if est_doc else submodule.name)) }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endblock %}
+
+{% block nav_members %}
+    {% if module.members and not est_doc %}
+        <h2>Contenu du module</h2>
+        {{ nav_members(module.members.values()) }}
+    {% endif %}
+{% endblock %}
+
+{% block module_info %}
+    {% if est_doc %}
+        <section class="module-info">
+            {{ docstring(module) }}
+        </section>
+    {% else %}
+        {{ super() }}
+    {% endif %}
+{% endblock %}

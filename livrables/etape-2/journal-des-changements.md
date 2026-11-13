@@ -746,6 +746,77 @@ part) : les blocs Mermaid restent tels quels dans le Markdown.
 Les écarts entre un schéma et le texte de la spécification ne sont pas tranchés ici : la
 spécification fait foi, et les écarts relevés sont listés dans la PR.
 
+## Restes de #41 et #44, issues rouvertes (13/11/2026)
+
+Branche `etape-2-restes-41-44`. Les issues #41, #42 et #44 ont été rouvertes à 16 h 34 UTC par une relecture du code (`main` fd1fa8a).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| `planification` : trois essais ; si le manifeste reste illisible, la nuit se fait (`true`), l'erreur au journal de la tâche ; le workflow retombe aussi sur `true` | #41 : sur une nuit planifiée, la planification appelle l'API avant d'écrire `faire` ; une erreur y supprimait la nuit et l'alerte. Au pis, le second déclenchement refait une nuit déjà faite | 2 (2.3) |
+| Lecture : seules les versions encore portées par l'entrepôt restent inscrites comme lues | #44 : une version sortie de l'entrepôt perd ses lignes mais restait « lue » ; revenue avec les mêmes octets, elle n'aurait plus aucun fait (déduit du code, non observé). Le second point de la réouverture (« les essais sur `main` sauvent toujours le cache ») ne tient pas : essai sur `main` 43467867327 du 13/11, étape « Garder les faits lus » sautée, aucun cache `z2-` | 2 (2.5) |
+
+## A9 : un compteur à 0 toujours signalé, identités partagées appariées (13/11/2026, soir)
+
+Branche `etape-2-a9-compteurs`, issue #42 rouverte, décision Q35 révisée (« Nombre à 0 : toujours »).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Un nombre qui passe à 0 ou à rien est signalé même seul ; le seuil (1 % ou 50) ne vaut plus que pour les autres champs vidés | relecture du 13/11 : `positions_textes` d'un candidat, 165 → 0 (1 fait sur 638), ne déclenchait rien ; c'est le cas même de l'issue | 2 (2.8.2 A9) |
+| Plusieurs faits sous une même identité s'apparient par les champs discriminants de leur valeur (`institution`, `date`, `legislature`, `role`…) ; seuls les doublons restants sont écartés | 203 des 638 `compte_candidat` partageaient leur identité (un compte par institution) : `mandats` 6 → 0 passait inaperçu | — |
+| Connexion DuckDB de A9 sous la limite de mémoire du traitement ; extraction des discriminants pour les seules identités partagées | première version tuée en local (mémoire) ; mesurée ensuite : 41 s, 2,2 Go, g10 contre `main` du 13/11 : mêmes 3 signalements que l'après-midi | 4 |
+
+Restent hors de A9 : les faits sans identifiant (94 `actes_compte`) et `parole_sujet`, dont le numéro d'ordre se décale.
+
+## Amendements de la XIVe : examen tiré de l'uid (13/11/2026, soir)
+
+Branche `etape-2-amendements-xiv-examen`, issue #111 (constat transmis par la session d'analyse, à la demande de la propriétaire).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Lecteur `an_amendements` (version 2) : l'examen d'un amendement de la XIVe est tiré de son uid, qui a la même grammaire qu'aux législatures suivantes (`AMANR5L14PO419610B1179P0D1N482` → `EXANR5L14PO419610B1179P0D1`) | #111 : le schéma de la XIVe n'a pas d'examen ; R-AMENDEMENT dédoublonnait par le seul numéro : 167 420 amendements lus, 22 159 gardés (g10). Après : 167 420 gardés ; Delphine Batho, 65 → 158 amendements de la XIVe (CE435 revient). Relecture des amendements une fois (≈ 3 min en local) | 1 (1.6 R-AMENDEMENT) |
+| C6 compte une section avec ses paquets (`amendements-2013` et `amendements-2013-1`, `-2`… : numéro de paquet après une année ou un semestre) | premier essai de la branche (43477541508) refusé par C6 : 21 sections « tombées à 0 », dont `lignee/droite-republicaine/amendements-2013` 551 → 0, parce qu'avec les amendements retrouvés l'année est découpée en paquets. Rejoué avec la correction : ni C1 ni C6 | 2 (2.8.1 C6) |
+
+## Volet européen, lot 3 : votes nominatifs avant juillet 2019, depuis Parltrack (13/11/2026)
+
+Branche `etape-2-europe-parltrack`. Décision Q3 du 13/11/2026 (« Les deux, raccordées en 2019 ») :
+Parltrack pour les votes antérieurs au 02/07/2019.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Point `parltrack-votes` (format `fichier`, `ep_votes.json.zst` gardé à l'octet, ODbL 1.0) : requête conditionnelle, 304 tant que Parltrack ne bouge pas ; `robots.txt` de parltrack.org : aucune règle pour les robots en général (seuls des robots d'IA d'entraînement sont exclus) | Q3 | 2 (2.2) |
+| Lecteur `parltrack_votes` : lu en flux (zstandard), `vote_pt` et `position_pt` (positions `+`, `-`, `0` → `favor`, `against`, `abstention`, listes aplaties par groupe), mêmes noms que `pe_votes` | une seule règle pour les deux sources | 1 (1.4) |
+| R-VOTE-PE v2 : votes de Parltrack avant le 02/07/2019, du portail ensuite ; chaque ligne dit sa source (`source`, `source_point`) ; formes anciennes des libellés reconnues (« approbation », « Proposition modifiée », « par. 10 », « cons. B », « vote procédural »…) | Q3, Q33 | 1 (1.6) |
+| Fiche : licence de chaque vote selon sa source (ODbL pour Parltrack) ; couverture `complet` quand chaque période de mandat a sa source ; colonnes servies inchangées (schéma de #66) | cahier 2.2 | — |
+
+Mesures (13/11/2026) : fichier de 11,25 Mo (44 648 scrutins, dont 21 549 avant le 02/07/2019) ;
+lecture 37 s. Votes rattachés : Le Pen 10 670 (15/09/2004 → 17/05/2017), Philippot 8 470
+(17/07/2014 → 18/04/2019), Mélenchon 7 823 (25/11/2009 → 16/03/2017) ; aucun vote en double ; les
+deux sources se raccordent sans recouvrement (Maurel : Parltrack jusqu'au 18/04/2019, portail
+dès le 18/07/2019). Nature non établie : 85 votes de Le Pen sur 10 670, 71 de Mélenchon, 49 de
+Philippot. Les quatre candidats anciens ou actuels députés européens ont un volet européen
+`complet`.
+
+
+
+## Volet européen : activité hors votes (13/11/2026)
+
+Branche `etape-2-europe-activite` (sur `etape-2-europe-parltrack`). Décision Q37 du 13/11/2026 (« Tout,
+chacun dans sa section »).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Point `parltrack-activites` (`ep_mep_activities.json.zst`, ODbL, gardé à l'octet) ; point `pe-eurodeputes` : interventions en séance de chaque député européen déclaré (`speeches`, pages de 500 jusqu'au 204) | Q37 | 2 (2.2) |
+| Lecteurs `parltrack_activites` (date de republication du 22/11/2016 écartée : date relue dans l'adresse ou la référence, sinon l'année, sinon la législature ; champs publiés parfois en liste) et `pe_eurodeputes` v3 (`intervention_pe`) | cahier 3.4 | 1 (1.4) |
+| R-ACTIVITE-PE : interventions de Parltrack avant le 02/07/2019, du portail ensuite ; rapports (rôle : rapporteur, fictif, pour avis), résolutions, questions, explications de vote (extrait de 300 caractères), autres : Parltrack à toutes dates | Q37 | 1 (1.6) |
+| Fiche : six sections `europe-<famille>` (déclarées dans `config/schema_fichiers.yaml`) ; colonne `role_pe` (pas `role`, au vocabulaire fermé) ; couverture `partiel` après le gel de Parltrack (24/07/2026) et pour un trou du portail | cahier 4.2 ; C4 | 1 (1.7.2) |
+
+Mesures (13/11/2026, données réelles) : 6 425 activités pour les 6 personnes à identifiant européen,
+date établie pour 4 899 ; Mélenchon 2 158 interventions (2009-2017), Le Pen 808, Philippot 749 (et 766
+explications de vote, toutes sans date sûre : législature 8) ; Glucksmann 112 interventions au portail,
+**aucune avant le 06/07/2021 ni dans Parltrack** (trou de source, section `partiel`) ; 0 écart au schéma
+des fichiers servis. Défaut trouvé en route : une résolution de conflit de fusion avait effacé la
+licence du point `parltrack-activites` (corrigé, vérifié : chaque point a sa licence).
+
 ## Mandats de député antérieurs à 2002, depuis Sycomore (13/11/2026)
 
 Branche `etape-2-sycomore`. Décision Q36 du 13/11/2026 (« Oui, les faits seulement »).

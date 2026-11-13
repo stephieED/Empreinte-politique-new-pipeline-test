@@ -20,12 +20,15 @@ import orjson
 import pyarrow as pa
 
 NOM = "pe_eurodeputes"
-VERSION = 2
+VERSION = 3
 TYPES = ("eurodeputes_pe",)
 S = pa.string()
 TABLES = {
     "identifiant_pe": pa.schema([("element", S), ("identifiant", S)]),
     "naissance_wikidata": pa.schema([("element", S), ("naissance", S)]),
+    "intervention_pe": pa.schema([
+        ("personne", S), ("intervention", S), ("date", S), ("heure", S), ("debat", S), ("compte_rendu", S),
+        ("point", S)]),
     "eurodepute": pa.schema([
         ("personne", S), ("libelle", S), ("prenom", S), ("nom", S), ("naissance", S),
         ("lieu_naissance", S), ("nationalite", S), ("genre", S)]),
@@ -82,6 +85,20 @@ def lire(m):
                     "role": _suffixe(h.get("role")), "debut": periode.get("startDate"),
                     "fin": periode.get("endDate"),
                     "represente": _suffixe(rep[0]) if rep else None, "prov_url": url})
+    elif m.uid.startswith("interventions-"):
+        pid = m.uid.split("-")[1]
+        for x in _donnees(m.octets):
+            cr = x.get("recorded_in_a_realization_of") or []
+            cr = cr[0].get("id") if cr and isinstance(cr[0], dict) else (cr[0] if cr else None)
+            lab = x.get("activity_label")
+            out["intervention_pe"].append({
+                "personne": pid, "intervention": x.get("activity_id"), "date": x.get("activity_date"),
+                "heure": x.get("activity_start_date"),
+                "debat": (lab.get("fr") or lab.get("en")) if isinstance(lab, dict) else lab,
+                "compte_rendu": _suffixe(cr) if cr else None,
+                "point": _suffixe((x.get("inverse_consists_of") or [None])[0]),
+                "prov_url": ("https://www.europarl.europa.eu/doceo/document/" + _suffixe(cr) + "_FR.html")
+                            if cr else None})
     elif m.uid.startswith("org-"):
         for o in _donnees(m.octets):
             t = o.get("temporal") or {}
@@ -95,6 +112,8 @@ def lire(m):
 
 
 EXPORT = {
+    "intervention_pe": {"type": "intervention_pe", "cle": ["personne", "intervention"],
+                        "ids": {"acteur": "personne", "compte_rendu": "compte_rendu"}, "date": "date"},
     "naissance_wikidata": {"type": "naissance_wikidata", "cle": ["element", "naissance"],
                            "ids": {"autre": "element"}, "date": None},
     "identifiant_pe": {"type": "identifiant_pe_wikidata", "cle": ["element", "identifiant"],

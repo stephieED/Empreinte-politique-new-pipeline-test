@@ -1,0 +1,15 @@
+{# Page index.html de la documentation : elle mène à la page d'entrée `documentation` quand elle
+   existe (le menu de chaque page mène au reste) ; sinon, la liste des modules de pdoc. #}
+{% if "documentation" in all_modules %}
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="refresh" content="0; url=./documentation.html"/>
+    <title>Documentation — Empreinte politique</title>
+</head>
+<body><a href="documentation.html">Documentation</a></body>
+</html>
+{% else %}
+{% include "default/index.html.jinja2" %}
+{% endif %}

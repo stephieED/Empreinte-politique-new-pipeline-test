@@ -1,7 +1,9 @@
-"""Description du traitement, tirée du code (issue #95) : la partie `traitement/` de Pages.
+"""Description du traitement, tirée du code (issue #95) : la page « Le traitement, étape par
+étape » de la documentation (module `documentation.comprendre.traitement`, écrit par
+`pages_doc`).
 
-Une page HTML statique, lisible sans lire le code, écrite à chaque déploiement de Pages à partir
-de ce que le code déclare déjà :
+Une page en Markdown, lisible sans lire le code, écrite à chaque déploiement de Pages à partir de
+ce que le code déclare déjà :
 
 - les étapes E0 à E8 et les zones de données : la docstring du paquet ;
 - le périmètre : `perimetre` (sa docstring et ses constantes) ;
@@ -14,14 +16,11 @@ de ce que le code déclare déjà :
   du module).
 
 Rien n'est recopié à la main : un lecteur, une règle ou un contrôle ajouté apparaît au prochain
-déploiement. Les modules sont importés pour lire leurs constantes, rien n'est exécuté ; aucune
-dépendance, aucun script, aucune ressource externe dans la page.
-
-    python -m empreinte_src.methodologie sortie-pages/traitement [--commit SHA] [--depot URL]
+déploiement. Les modules sont importés pour lire leurs constantes, rien n'est exécuté. pdoc rend
+le Markdown, avec le menu, la recherche et le sommaire du reste de la documentation.
 """
 from __future__ import annotations
 
-import argparse
 import ast
 import html
 import inspect
@@ -33,72 +32,10 @@ import yaml
 
 RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG = os.path.join(RACINE, "config", "points_acces.yaml")
-DOC = "../doc/"          # documentation du code (pdoc), servie à côté de `traitement/`
-
-
-# -- un peu de Markdown (celui des docstrings), sans dépendance -------------------------------
-
-def _inline(texte: str) -> str:
-    t = html.escape(texte, quote=False)
-    t = re.sub(r"`([^`]+)`", r"<code>\1</code>", t)
-    return re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", t)
 
 
 def _cellules(ligne: str) -> list[str]:
     return [c.strip() for c in ligne.strip().strip("|").split("|")]
-
-
-def markdown(texte: str) -> str:
-    """Le Markdown des docstrings : paragraphes, listes à tirets, tableaux, titres, blocs indentés,
-    `code` et **gras**. Tout le reste est rendu comme du texte (échappé)."""
-    sortie = []
-    blocs = re.split(r"\n\s*\n", inspect.cleandoc(texte or ""))
-    for bloc in blocs:
-        lignes = bloc.splitlines()
-        if not lignes:
-            continue
-        if all(l.lstrip().startswith("|") for l in lignes):
-            lignes_t = [_cellules(l) for l in lignes
-                        if not re.fullmatch(r"[\s|:\-]+", l)]
-            tete, corps = lignes_t[0], lignes_t[1:]
-            sortie.append('<div class="defile"><table><thead><tr>'
-                          + "".join(f"<th>{_inline(c)}</th>" for c in tete) + "</tr></thead><tbody>"
-                          + "".join("<tr>" + "".join(f"<td>{_inline(c)}</td>" for c in r) + "</tr>"
-                                    for r in corps)
-                          + "</tbody></table></div>")
-            continue
-        if all(l.startswith("    ") for l in lignes):
-            sortie.append("<pre>" + html.escape("\n".join(l[4:] for l in lignes)) + "</pre>")
-            continue
-        m = re.match(r"(#{1,6}) (.*)", lignes[0])
-        if m and len(lignes) == 1:
-            sortie.append(f"<h4>{_inline(m.group(2))}</h4>")
-            continue
-        # Paragraphe et liste peuvent se suivre sans ligne vide.
-        para, items = [], []
-
-        def vider():
-            """Ajoute à `sortie` le paragraphe en cours (`<p>`) puis la liste en cours (`<ul>`),
-            s'ils ne sont pas vides, et les vide."""
-            if para:
-                sortie.append("<p>" + _inline(" ".join(para)) + "</p>")
-                para.clear()
-            if items:
-                sortie.append("<ul>" + "".join(f"<li>{_inline(' '.join(i))}</li>" for i in items) + "</ul>")
-                items.clear()
-        for l in lignes:
-            if l.startswith("- "):
-                if para:
-                    vider()
-                items.append([l[2:].strip()])
-            elif items and l.startswith(" "):
-                items[-1].append(l.strip())
-            else:
-                if items:
-                    vider()
-                para.append(l.strip())
-        vider()
-    return "\n".join(sortie)
 
 
 def premier_paragraphe(texte: str | None) -> str:
@@ -272,217 +209,189 @@ def donnees(config: str | None = CONFIG) -> dict:
 
 # -- la page ------------------------------------------------------------------------------------
 
-STYLE = """
-:root { --texte: #1b1b1b; --fond: #fff; --doux: #555; --lien: #0b4f9c; --trait: #d6d6d6;
-        --encart: #f4f4f4; --bloquant: #9b1c1c; --avert: #7a5300; }
-@media (prefers-color-scheme: dark) {
-  :root { --texte: #e6e6e6; --fond: #161616; --doux: #aaa; --lien: #8cb8ff; --trait: #3a3a3a;
-          --encart: #222; --bloquant: #ff9b9b; --avert: #f0c674; }
-}
-* { box-sizing: border-box; }
-body { font-family: system-ui, sans-serif; max-width: 52rem; margin: 2rem auto; padding: 0 1rem;
-       line-height: 1.5; color: var(--texte); background: var(--fond); overflow-wrap: break-word; }
-a { color: var(--lien); }
-h2 { margin-top: 2.5rem; border-bottom: 1px solid var(--trait); padding-bottom: .2rem; }
-h3 { margin: 1.8rem 0 .3rem; }
-.doux, .meta { color: var(--doux); }
-.meta { font-size: .92rem; margin: .2rem 0; }
-code { background: var(--encart); padding: 0 .2em; border-radius: 3px; font-size: .92em; }
-pre { background: var(--encart); padding: .6rem; overflow-x: auto; }
-.defile { overflow-x: auto; }
-table { border-collapse: collapse; margin: .5rem 0; font-size: .92rem; }
-th, td { border: 1px solid var(--trait); padding: .25rem .5rem; text-align: left; vertical-align: top; }
-details { margin: .4rem 0; }
-summary { cursor: pointer; color: var(--lien); }
-.etiquette { font-size: .8rem; font-weight: 600; padding: 0 .4em; border: 1px solid; border-radius: 3px; }
-.bloquant { color: var(--bloquant); }
-.avert { color: var(--avert); }
-ol.sommaire li, ol.ordre li { margin: .1rem 0; }
-h3 code, h4 code { font-size: 1em; }
-"""
+def ancre(titre: str) -> str:
+    """L'ancre que pdoc donne au titre Markdown `titre` (voir `pages_doc.ancre`)."""
+    from .pages_doc import ancre as a
+    return a(titre)
 
 
-def _ancre(nom: str) -> str:
-    return re.sub(r"[^A-Za-z0-9_-]+", "-", nom)
+def _cellule(texte: str) -> str:
+    """Du Markdown d'une ligne, sûr dans une cellule de tableau."""
+    return " ".join((texte or "").split()).replace("|", "\\|")
 
 
-def _doc(module: str, ancre: str = "") -> str:
-    return DOC + module.replace(".", "/") + ".html" + (f"#{ancre}" if ancre else "")
+def _encart(doc: str) -> str:
+    """Une docstring reprise dans la page : indentation commune retirée, ses titres descendus sous
+    ceux de la page."""
+    return re.sub(r"^(#{1,6}) ", lambda m: "#" * min(6, len(m.group(1)) + 4) + " ",
+                  inspect.cleandoc(doc or ""), flags=re.M)
 
 
-def _liste(noms, prefixe="regle-") -> str:
-    return ", ".join(f'<a href="#{prefixe}{_ancre(n)}"><code>{html.escape(n)}</code></a>' for n in noms) or "aucune"
+def _premiere_majuscule(t: str) -> str:
+    return t[:1].upper() + t[1:]
 
 
-def _codes(noms) -> str:
-    return ", ".join(f"<code>{html.escape(n)}</code>" for n in noms) or "aucune"
+def _titres(d: dict) -> dict[str, str]:
+    """Les titres des sections et des sous-sections, d'où viennent les ancres des liens internes."""
+    t = {"etapes": "1. Les étapes", "perimetre": "2. Le périmètre",
+         "lecteurs": "3. Les sources et leurs lecteurs (étape E3)",
+         "regles": "4. Les règles de liaison (étape E4)", "controles": "5. Les contrôles (étape E6)"}
+    for l in d["lecteurs"]:
+        t["lecteur:" + l["nom"]] = f"`{l['nom']}`"
+    for i, r in enumerate(d["regles"], 1):
+        t["regle:" + r["nom"]] = f"{i}. `{r['nom']}`"
+    for c in d["controles"]:
+        mot = "bloquant" if c["bloquant"] else "avertissement"
+        intitule = c["bref"] or " ; ".join(c["titres"])
+        t[f"controle:{c['code']}:{mot}"] = f"`{c['code']}` {_premiere_majuscule(intitule)} ({mot})"
+    return t
 
 
-def rendre(d: dict, commit: str | None = None, depot: str | None = None) -> str:
-    """Rend la page HTML complète du traitement à partir de `d` (voir `donnees`) : sommaire, étapes
-    et zones, périmètre, lecteurs avec leurs points d'accès et leurs tables, règles dans leur ordre
-    d'application, contrôles bloquants puis avertissements. Avec `commit`, la page dit de quel
+def rendre(d: dict, commit: str | None = None, depot: str | None = None,
+           de: str = "documentation.comprendre.traitement") -> str:
+    """Rend la page du traitement en Markdown à partir de `d` (voir `donnees`) : étapes et zones,
+    périmètre, lecteurs avec leurs points d'accès et leurs tables, règles dans leur ordre
+    d'application, contrôles bloquants puis avertissements. Les liens vers le code mènent aux
+    pages pdoc des modules, vues depuis celle du module `de`. Avec `commit`, la page dit de quel
     commit elle vient (avec un lien si `depot`, l'adresse du dépôt, est donné)."""
     e = html.escape
-    p = []
+    racine = "../" * de.count(".")
+    t = _titres(d)
+
+    def doc(module: str, a: str = "") -> str:
+        return racine + module.replace(".", "/") + ".html" + (f"#{a}" if a else "")
+
+    def vers(cle: str) -> str:
+        return "#" + ancre(t[cle])
+
+    def regles(noms) -> str:
+        return ", ".join(f"[`{n}`]({vers('regle:' + n)})" for n in noms) or "aucune"
+
+    def codes(noms) -> str:
+        return ", ".join(f"`{n}`" for n in noms) or "aucune"
+
+    p: list[str] = []
     w = p.append
-    w('<!doctype html>\n<html lang="fr">\n<head>\n<meta charset="utf-8">\n'
-      '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-      "<title>Le traitement, étape par étape</title>\n"
-      f"<style>{STYLE}</style>\n</head>\n<body>\n")
-    w('<p class="doux"><a href="../index.html">Empreinte politique — dépôt d\'essai</a></p>\n')
-    w("<h1>Le traitement, étape par étape</h1>\n")
+    w("# Le traitement, étape par étape\n")
     origine = ""
     if commit:
-        court = e(commit[:12])
-        origine = (f' (commit <a href="{e(depot)}/commit/{e(commit)}"><code>{court}</code></a>)'
-                   if depot else f" (commit <code>{court}</code>)")
-    w(f'<p class="doux">Cette page est écrite à partir du code du traitement{origine}, à chaque '
-      "déploiement : ce qu'elle décrit est ce que le code déclare. Les choix et leurs raisons sont "
-      'dans les <a href="../livrables/index.html">documents de conception</a> ; le code lui-même '
-      f'est décrit dans la <a href="{DOC}empreinte_src.html">documentation du code</a>.</p>\n')
+        origine = (f" (commit [`{commit[:12]}`]({depot}/commit/{commit}))" if depot
+                   else f" (commit `{commit[:12]}`)")
     nb_bl = sum(1 for c in d["controles"] if c["bloquant"])
-    w('<ol class="sommaire">'
-      '<li><a href="#etapes">Les étapes</a></li>'
-      '<li><a href="#perimetre">Le périmètre</a></li>'
-      f'<li><a href="#lecteurs">Les sources et leurs lecteurs</a> ({len(d["lecteurs"])})</li>'
-      f'<li><a href="#regles">Les règles de liaison</a> ({len(d["regles"])})</li>'
-      f'<li><a href="#controles">Les contrôles</a> ({nb_bl} bloquants, '
-      f'{len(d["controles"]) - nb_bl} avertissements)</li></ol>\n')
+    w(f"Cette page est écrite à partir du code du traitement{origine}, à chaque déploiement : ce "
+      "qu'elle décrit est ce que le code déclare. Les choix et leurs raisons sont dans les "
+      f"[documents de conception]({racine}documentation.html) ; "
+      f"le code lui-même est décrit dans la [documentation du code]({doc('empreinte_src')}).\n")
+    w(f"Dans cette page : [les étapes]({vers('etapes')}), [le périmètre]({vers('perimetre')}), "
+      f"[les sources et leurs lecteurs]({vers('lecteurs')}) ({len(d['lecteurs'])}), "
+      f"[les règles de liaison]({vers('regles')}) ({len(d['regles'])}), "
+      f"[les contrôles]({vers('controles')}) ({nb_bl} bloquants, "
+      f"{len(d['controles']) - nb_bl} avertissements).\n")
 
     # Étapes
-    w('<h2 id="etapes">1. Les étapes</h2>\n')
-    w("<p>Chaque nuit, le traitement passe par ces étapes, dans cet ordre.</p>\n")
+    w(f"## {t['etapes']}\n")
+    w("Chaque nuit, le traitement passe par ces étapes, dans cet ordre.\n")
     renvoi = {"E3": "lecteurs", "E4": "regles", "E6": "controles"}
-    w('<div class="defile"><table><thead><tr><th>Étape</th><th>Ce qu\'elle fait</th>'
-      "<th>Code</th></tr></thead><tbody>\n")
+    w("| Étape | Ce qu'elle fait | Code |\n| --- | --- | --- |")
     for x in d["etapes"]:
         num = x["etape"].split()[0]
-        quoi = _inline(x["quoi"])
+        quoi = _cellule(x["quoi"])
         if num in renvoi:
-            quoi += f' — <a href="#{renvoi[num]}">détail plus bas</a>'
-        mods = ", ".join(f'<a href="{_doc("empreinte_src." + m)}"><code>{e(m)}</code></a>' for m in x["modules"])
-        w(f"<tr><td>{e(x['etape'])}</td><td>{quoi}</td><td>{mods}</td></tr>\n")
-    w("</tbody></table></div>\n")
+            quoi += f" — [détail plus bas]({vers(renvoi[num])})"
+        mods = ", ".join(f"[`{m}`]({doc('empreinte_src.' + m)})" for m in x["modules"])
+        w(f"| {_cellule(x['etape'])} | {quoi} | {mods} |")
+    w("")
     if d["zones"]:
-        w("<h3>Les zones de données</h3>\n" + markdown(d["zones"]) + "\n")
+        w("### Les zones de données\n")
+        w(_encart(d["zones"]) + "\n")
 
     # Périmètre
     pe = d["perimetre"]
-    w('<h2 id="perimetre">2. Le périmètre</h2>\n')
-    w(markdown(pe["doc"]) + "\n")
-    w("<ul>"
-      f"<li>Législatures publiées (<code>LEGISLATURES</code>) : de la {e(pe['legislatures'])}.</li>"
-      f"<li>Prises de parole en séance (<code>LEGISLATURES_PAROLES</code>) : de la {e(pe['paroles'])}.</li>"
-      f"<li>Gouvernements (<code>LEGISLATURES_GOUVERNEMENTS</code>) : ceux qui traversent les "
-      f"législatures de la {e(pe['gouvernements'])}.</li></ul>\n")
-    w(f'<p class="meta">Tiré de <a href="{_doc("empreinte_src.perimetre")}"><code>perimetre</code></a>.</p>\n')
+    w(f"## {t['perimetre']}\n")
+    w(_encart(pe["doc"]) + "\n")
+    w(f"- Législatures publiées (`LEGISLATURES`) : de la {pe['legislatures']}.\n"
+      f"- Prises de parole en séance (`LEGISLATURES_PAROLES`) : de la {pe['paroles']}.\n"
+      f"- Gouvernements (`LEGISLATURES_GOUVERNEMENTS`) : ceux qui traversent les législatures de "
+      f"la {pe['gouvernements']}.\n")
+    w(f"*Tiré de [`perimetre`]({doc('empreinte_src.perimetre')}).*\n")
 
     # Lecteurs
-    w('<h2 id="lecteurs">3. Les sources et leurs lecteurs (étape E3)</h2>\n')
-    w("<p>Un <strong>lecteur</strong> transforme chaque fichier reçu d'une source en lignes de "
-      "faits, rangées dans des tables. Il lit les points d'accès d'un ou de plusieurs types. Le "
-      "traitement ajoute à chaque ligne sa provenance : " + _codes(d["provenance"]) + ". Dans les "
-      "règles, une table s'appelle <code>lecteur__table</code>.</p>\n")
-    w('<div class="defile"><table><thead><tr><th>Lecteur</th><th>Ce qu\'il lit</th><th>Tables</th>'
-      "</tr></thead><tbody>"
-      + "".join(f'<tr><td><a href="#lecteur-{_ancre(l["nom"])}"><code>{e(l["nom"])}</code></a></td>'
-                f'<td>{_inline(l["resume"])}</td><td>{len(l["tables"])}</td></tr>' for l in d["lecteurs"])
-      + "</tbody></table></div>\n")
+    w(f"## {t['lecteurs']}\n")
+    w("Un **lecteur** transforme chaque fichier reçu d'une source en lignes de faits, rangées dans "
+      "des tables. Il lit les points d'accès d'un ou de plusieurs types. Le traitement ajoute à "
+      f"chaque ligne sa provenance : {codes(d['provenance'])}. Dans les règles, une table "
+      "s'appelle `lecteur__table`.\n")
+    w("| Lecteur | Ce qu'il lit | Tables |\n| --- | --- | ---: |")
     for l in d["lecteurs"]:
-        w(f'<h3 id="lecteur-{_ancre(l["nom"])}"><code>{e(l["nom"])}</code></h3>\n')
-        w(f'<p class="meta">version {e(str(l["version"]))} · types lus : {_codes(l["types"])} · '
-          f'<a href="{_doc(l["module"])}">code</a></p>\n')
+        w(f"| [`{l['nom']}`]({vers('lecteur:' + l['nom'])}) | {_cellule(l['resume'])} | {len(l['tables'])} |")
+    w("")
+    for l in d["lecteurs"]:
+        w(f"### {t['lecteur:' + l['nom']]}\n")
+        w(f"*version {l['version']} · types lus : {codes(l['types'])} · "
+          f"[code]({doc(l['module'])})*\n")
         if l["resume"]:
-            w(markdown(l["resume"]) + "\n")
+            w(_encart(l["resume"]) + "\n")
+        blocs = []
         if l["points"]:
-            w('<details><summary>Points d\'accès lus (' + str(len(l["points"])) + ")</summary>"
-              '<div class="defile"><table><thead><tr><th>Point d\'accès</th><th>Source</th>'
-              "<th>Législature</th><th>Licence</th><th>Adresse</th></tr></thead><tbody>")
+            lignes = []
             for pt in l["points"]:
                 etat = " (relevé, pas encore lu)" if pt.get("lire") is False else ""
                 url = pt.get("url") or ""
                 lien = f'<a href="{e(url)}">fichier</a>' if url.startswith("https://") else e(url)
-                w(f"<tr><td><code>{e(str(pt.get('id')))}</code>{etat}</td><td>{e(str(pt.get('source', '')))}</td>"
-                  f"<td>{e(str(pt.get('legislature', '') or ''))}</td><td>{e(str(pt.get('licence', '') or ''))}</td>"
-                  f"<td>{lien}</td></tr>")
-            w("</tbody></table></div></details>\n")
-        for t, cols in l["tables"].items():
-            w(f"<details><summary>Table <code>{e(l['nom'])}__{e(t)}</code> ({len(cols)} colonnes)</summary>"
-              '<div class="defile"><table><thead><tr><th>Colonne</th><th>Type</th></tr></thead><tbody>'
-              + "".join(f"<tr><td><code>{e(c)}</code></td><td>{e(ty)}</td></tr>" for c, ty in cols)
-              + "</tbody></table></div></details>\n")
+                lignes.append(
+                    f"<tr><td><code>{e(str(pt.get('id')))}</code>{etat}</td>"
+                    f"<td>{e(str(pt.get('source', '')))}</td>"
+                    f"<td>{e(str(pt.get('legislature', '') or ''))}</td>"
+                    f"<td>{e(str(pt.get('licence', '') or ''))}</td><td>{lien}</td></tr>")
+            blocs.append(f"<details><summary>Points d'accès lus ({len(l['points'])})</summary>"
+                         "<table><thead><tr><th>Point d'accès</th><th>Source</th><th>Législature</th>"
+                         "<th>Licence</th><th>Adresse</th></tr></thead><tbody>"
+                         + "".join(lignes) + "</tbody></table></details>")
+        for nom_t, cols in l["tables"].items():
+            blocs.append(f"<details><summary>Table <code>{e(l['nom'])}__{e(nom_t)}</code> "
+                         f"({len(cols)} colonnes)</summary><table><thead><tr><th>Colonne</th>"
+                         "<th>Type</th></tr></thead><tbody>"
+                         + "".join(f"<tr><td><code>{e(c)}</code></td><td>{e(ty)}</td></tr>"
+                                   for c, ty in cols)
+                         + "</tbody></table></details>")
+        if blocs:
+            w('<div class="details-traitement">' + "".join(blocs) + "</div>\n")
 
     # Règles
-    w('<h2 id="regles">4. Les règles de liaison (étape E4)</h2>\n')
-    w("<p>Une <strong>règle</strong> relie les faits lus : elle lit des tables de faits et les "
-      "sorties d'autres règles, et écrit ses propres tables. Elles sont appliquées dans l'ordre "
-      "ci-dessous : une règle passe après celles dont elle dépend, et sinon dans l'ordre "
-      "alphabétique. Chaque ligne écrite porte le nom et la version de sa règle "
-      "(<code>R-COMPOSITION@1</code>) ; une règle qui ne conclut pas écrit « non établi » et sa "
-      "raison.</p>\n")
-    w('<ol class="ordre">' + "".join(f'<li><a href="#regle-{_ancre(r["nom"])}"><code>{e(r["nom"])}</code></a></li>'
-                                     for r in d["regles"]) + "</ol>\n")
-    for i, r in enumerate(d["regles"], 1):
-        w(f'<h3 id="regle-{_ancre(r["nom"])}">{i}. <code>{e(r["nom"])}</code></h3>\n')
-        w(f'<p class="meta">version {e(str(r["version"]))} · <a href="{_doc(r["module"])}">code</a></p>\n')
-        w(f"<p>{_inline(r['description'])}</p>\n" if r["description"]
-          else '<p class="doux">Pas de description.</p>\n')
-        w("<ul>"
-          f"<li>Dépend de : {_liste(r['depend'])}"
-          + (f" ; lit aussi, si elles existent : {_liste(r['facultatif'])}" if r["facultatif"] else "")
-          + "</li>"
-          f"<li>Écrit : {_codes(r['sorties'])}</li>"
-          f"<li>Lue par : {_liste(r['lue_par'])}</li></ul>\n")
+    w(f"## {t['regles']}\n")
+    w("Une **règle** relie les faits lus : elle lit des tables de faits et les sorties d'autres "
+      "règles, et écrit ses propres tables. Elles sont appliquées dans l'ordre ci-dessous : une "
+      "règle passe après celles dont elle dépend, et sinon dans l'ordre alphabétique. Chaque "
+      "ligne écrite porte le nom et la version de sa règle (`R-COMPOSITION@1`) ; une règle qui ne "
+      "conclut pas écrit « non établi » et sa raison.\n")
+    w("\n".join(f"{i}. [`{r['nom']}`]({vers('regle:' + r['nom'])})"
+                for i, r in enumerate(d["regles"], 1)) + "\n")
+    for r in d["regles"]:
+        w(f"### {t['regle:' + r['nom']]}\n")
+        w(f"*version {r['version']} · [code]({doc(r['module'])})*\n")
+        w(" ".join(r["description"].split()) + "\n" if r["description"] else "*Pas de description.*\n")
+        dep = f"- Dépend de : {regles(r['depend'])}"
+        if r["facultatif"]:
+            dep += f" ; lit aussi, si elles existent : {regles(r['facultatif'])}"
+        w(dep + f"\n- Écrit : {codes(r['sorties'])}\n- Lue par : {regles(r['lue_par'])}\n")
 
     # Contrôles
-    w('<h2 id="controles">5. Les contrôles (étape E6)</h2>\n')
-    w("<p>Avant toute publication, des contrôles relisent le résultat. Un contrôle "
-      '<strong class="bloquant">bloquant</strong> qui trouve une anomalie empêche la publication, '
-      "sauf levée explicite par une décision de la propriétaire, valable pour cette anomalie "
-      'seulement. Un <strong class="avert">avertissement</strong> laisse publier et ouvre une '
-      "issue. Les avertissements donnent des décomptes et des identifiants, jamais un indice "
-      "individuel.</p>\n")
+    w(f"## {t['controles']}\n")
+    w("Avant toute publication, des contrôles relisent le résultat. Un contrôle **bloquant** qui "
+      "trouve une anomalie empêche la publication, sauf levée explicite par une décision de la "
+      "propriétaire, valable pour cette anomalie seulement. Un **avertissement** laisse publier et "
+      "ouvre une issue. Les avertissements donnent des décomptes et des identifiants, jamais un "
+      "indice individuel.\n")
     for bloquant, titre in ((True, "Contrôles bloquants"), (False, "Avertissements")):
-        w(f"<h3>{titre}</h3>\n")
+        w(f"### {titre}\n")
         for c in (c for c in d["controles"] if c["bloquant"] is bloquant):
-            classe, mot = ("bloquant", "bloquant") if bloquant else ("avert", "avertissement")
-            ancre = f"controle-{_ancre(c['code'])}-{mot}"
-            intitule = c["bref"] or " ; ".join(c["titres"])
-            w(f'<h4 id="{ancre}"><code>{e(c["code"])}</code> ' + _inline(intitule[0].upper() + intitule[1:])
-              + f' <span class="etiquette {classe}">{mot}</span></h4>\n')
-            w("<ul>" + "".join(f"<li>Signale : « {_inline(t)} »</li>" for t in c["titres"]) + "</ul>\n")
-            for doc in c["explications"]:
-                w(markdown(doc) + "\n")
-            w('<p class="meta">Méthode : ' + ", ".join(
-                f'<a href="{_doc("empreinte_src.controles", "Controles." + m)}"><code>{e(m)}</code></a>'
-                for m in c["methodes"]) + "</p>\n")
-    w("</body>\n</html>\n")
-    return "".join(p)
-
-
-def ecrire(dossier: str, config: str | None = CONFIG, commit: str | None = None,
-           depot: str | None = None) -> str:
-    """Écrit la page (`rendre(donnees(config))`) dans `index.html` du dossier `dossier`, créé au
-    besoin, et rend son chemin."""
-    os.makedirs(dossier, exist_ok=True)
-    chemin = os.path.join(dossier, "index.html")
-    with open(chemin, "w", encoding="utf-8") as f:
-        f.write(rendre(donnees(config), commit=commit, depot=depot))
-    return chemin
-
-
-def main(argv=None):
-    """Point d'entrée : écrit la page dans le dossier donné (`ecrire`, options `--config`,
-    `--commit`, `--depot`) et affiche son chemin."""
-    ap = argparse.ArgumentParser(description="Écrit la description du traitement (Pages, traitement/).")
-    ap.add_argument("dossier")
-    ap.add_argument("--config", default=CONFIG)
-    ap.add_argument("--commit")
-    ap.add_argument("--depot", help="adresse du dépôt, pour le lien vers le commit")
-    a = ap.parse_args(argv)
-    print(ecrire(a.dossier, a.config, a.commit, a.depot))
-
-
-if __name__ == "__main__":
-    main()
+            mot = "bloquant" if bloquant else "avertissement"
+            cle = f"controle:{c['code']}:{mot}"
+            w(f"#### {t[cle]}\n")
+            w("\n".join(f"- Signale : « {' '.join(x.split())} »" for x in c["titres"]) + "\n")
+            for x in c["explications"]:
+                w(_encart(x) + "\n")
+            w("*Méthode : " + ", ".join(
+                f"[`{m}`]({doc('empreinte_src.controles', 'Controles.' + m)})"
+                for m in c["methodes"]) + "*\n")
+    return "\n".join(p).rstrip() + "\n"

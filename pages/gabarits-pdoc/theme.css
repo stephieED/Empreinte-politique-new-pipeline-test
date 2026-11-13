@@ -1,0 +1,46 @@
+/* Couleurs de pdoc (theme.css de pdoc 16.0.0), et leur version sombre quand le navigateur la
+   demande. */
+:root {
+    --pdoc-background: #fff;
+    color-scheme: light dark;
+}
+
+.pdoc {
+    --text: #212529;
+    --muted: #6c757d;
+    --link: #3660a5;
+    --link-hover: #1659c5;
+    --code: #f8f8f8;
+    --active: #fff598;
+
+    --accent: #eee;
+    --accent2: #c1c1c1;
+
+    --nav-hover: rgba(255, 255, 255, 0.5);
+    --name: #0066BB;
+    --def: #008800;
+    --annotation: #007020;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --pdoc-background: #17181a;
+    }
+
+    .pdoc {
+        --text: #e3e3e3;
+        --muted: #a0a6ad;
+        --link: #8cb8ff;
+        --link-hover: #b5d1ff;
+        --code: #272822;
+        --active: #5a5216;
+
+        --accent: #24262a;
+        --accent2: #474a50;
+
+        --nav-hover: rgba(0, 0, 0, 0.35);
+        --name: #79b8ff;
+        --def: #7ee787;
+        --annotation: #a5d6a7;
+    }
+}

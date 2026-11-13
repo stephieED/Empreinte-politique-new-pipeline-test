@@ -1,19 +1,16 @@
 """Description du traitement servie par Pages (`empreinte_src.methodologie`, issue #95) : tirée du
-code, complète, sans script ni ressource externe. Sans réseau."""
+code, complète, en Markdown pour pdoc (module `documentation.comprendre.traitement`). Sans réseau."""
 import re
 
 import pytest
 
-from empreinte_src import lecture, liaison, methodologie
+from empreinte_src import lecture, liaison, methodologie, pages_doc
 
 
 @pytest.fixture(scope="module")
-def page(tmp_path_factory):
-    dossier = tmp_path_factory.mktemp("pages") / "traitement"
-    chemin = methodologie.ecrire(str(dossier), commit="0123456789abcdef0123",
-                                 depot="https://github.com/exemple/depot")
-    with open(chemin, encoding="utf-8") as f:
-        return f.read()
+def page():
+    return methodologie.rendre(methodologie.donnees(), commit="0123456789abcdef0123",
+                               depot="https://github.com/exemple/depot")
 
 
 def test_etapes_e0_a_e8():
@@ -25,12 +22,12 @@ def test_etapes_e0_a_e8():
 def test_chaque_regle_dans_l_ordre_d_application(page):
     attendu = [m.NOM for m in liaison.regles()]
     assert [r["nom"] for r in methodologie.regles()] == attendu
-    positions = [page.index(f'<h3 id="regle-{methodologie._ancre(n)}">') for n in attendu]
+    positions = [page.index(f"\n### {i}. `{n}`\n") for i, n in enumerate(attendu, 1)]
     assert positions == sorted(positions)
     for m in liaison.regles():
-        assert methodologie._inline(m.DESCRIPTION) in page
+        assert " ".join(m.DESCRIPTION.split()) in page
         for s in m.SORTIES:
-            assert f"<code>{s}</code>" in page
+            assert f"`{s}`" in page
 
 
 def test_dependances_et_lecteurs_de_chaque_regle():
@@ -47,7 +44,7 @@ def test_chaque_lecteur_ses_tables_et_colonnes(page):
         l = decrits[m.NOM]
         assert l["version"] == m.VERSION and l["types"] == tuple(m.TYPES)
         assert l["points"], f"{m.NOM} : aucun point d'accès de ses types"
-        assert f'id="lecteur-{m.NOM}"' in page
+        assert f"\n### `{m.NOM}`\n" in page
         for t, schema in m.TABLES.items():
             assert f"{m.NOM}__{t}</code>" in page
             assert [c for c, _ in l["tables"][t]] == schema.names
@@ -72,7 +69,7 @@ def test_controles_bloquants_et_avertissements(page):
     assert all(c["bref"] for c in ctl if c["bloquant"])
     for c in ctl:
         mot = "bloquant" if c["bloquant"] else "avertissement"
-        assert f'id="controle-{methodologie._ancre(c["code"])}-{mot}"' in page
+        assert re.search(rf"^#### `{re.escape(c['code'])}` .* \({mot}\)$", page, re.M), c["code"]
     # C1 et C6 partagent une méthode : l'explication de chacun est la sienne.
     par = {(c["code"], c["bloquant"]): c for c in ctl}
     assert par[("C6", True)]["explications"] != par[("C1", True)]["explications"]
@@ -109,38 +106,23 @@ def test_perimetre(page):
     assert methodologie.perimetre()["paroles"] == perimetre.plage(perimetre.LEGISLATURES_PAROLES)
 
 
-def test_page_autonome(page):
-    assert page.startswith("<!doctype html>") and '<html lang="fr">' in page
-    assert "<script" not in page and "<link" not in page and "<img" not in page
-    assert "@import" not in page and "url(" not in page
-    assert "prefers-color-scheme: dark" in page and 'name="viewport"' in page
-    assert 'href="https://github.com/exemple/depot/commit/0123456789abcdef0123"' in page
-    # Les liens internes mènent à une ancre de la page.
-    ancres = set(re.findall(r'id="([^"]+)"', page))
-    for cible in re.findall(r'href="#([^"]+)"', page):
+def test_liens_de_la_page(page):
+    assert page.startswith("# Le traitement, étape par étape\n")
+    assert "<script" not in page and "<style" not in page and "<img" not in page
+    assert "[`0123456789ab`](https://github.com/exemple/depot/commit/0123456789abcdef0123)" in page
+    # Chaque lien interne mène à l'ancre que pdoc donnera à un titre de la page.
+    ancres = set(pages_doc.ancres(page).values())
+    internes = re.findall(r"\]\(#([^)]+)\)", page)
+    assert len(internes) > 100
+    for cible in internes:
         assert cible in ancres, cible
-    # Les liens vers la documentation du code restent dans Pages.
-    for lien in re.findall(r'href="(\.\./[^"]+)"', page):
-        assert lien.startswith(("../doc/empreinte_src", "../index.html", "../livrables/index.html")), lien
+    # Les autres liens relatifs mènent à la documentation (pages pdoc), vue depuis
+    # `documentation/comprendre/traitement.html`.
+    for lien in re.findall(r"\]\((\.\./[^)]+)\)", page):
+        assert lien.startswith(("../../empreinte_src", "../../documentation.html")), lien
+    assert "](../../empreinte_src/controles.html#Controles." in page
 
 
-def test_markdown_des_docstrings():
-    h = methodologie.markdown("""Titre `code` et **gras** <b>.
-
-    | A | B |
-    | --- | --- |
-    | x | `y` |
-
-    Texte :
-    - un
-      suite
-    - deux""")
-    assert "<p>Titre <code>code</code> et <strong>gras</strong> &lt;b&gt;.</p>" in h
-    assert "<th>A</th>" in h and "<td><code>y</code></td>" in h and "---" not in h
-    assert "<p>Texte :</p><ul><li>un suite</li><li>deux</li></ul>" in h.replace("\n", "")
-
-
-def test_ligne_de_commande(tmp_path, capsys):
-    methodologie.main([str(tmp_path / "t"), "--commit", "abc"])
-    assert (tmp_path / "t" / "index.html").read_text(encoding="utf-8").count("<code>abc</code>") == 1
-    assert capsys.readouterr().out.strip().endswith("index.html")
+def test_titres_des_docstrings_reprises_sous_ceux_de_la_page():
+    assert methodologie._encart("Texte.\n\n## Titre\n\nSuite.") == "Texte.\n\n###### Titre\n\nSuite."
+    assert methodologie._cellule("a | b\n  c") == "a \\| b c"
