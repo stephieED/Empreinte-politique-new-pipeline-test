@@ -41,8 +41,8 @@ jobs:
           ./actionlint -color
 
   documentation:
-    # Documentation du code, tirée des docstrings par pdoc ; déposée comme artefact (pas de
-    # déploiement sur le dépôt d'essai).
+    # Documentation du code, tirée des docstrings par pdoc ; déposée comme artefact, sur chaque
+    # branche. Celle de `main` est aussi servie par Pages (workflow `pages.yml`).
     runs-on: ubuntu-latest
     permissions:
       contents: read
