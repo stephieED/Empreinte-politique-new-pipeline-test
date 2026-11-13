@@ -13,6 +13,7 @@ Ce n'est pas le dépôt du site ; rien n'est publié sur `empreinte-politique.fr
 | `empreinte_src/regles/` | une règle de liaison par fichier ; sa `DESCRIPTION` est le texte de la page de méthodologie |
 | `empreinte_src/composeurs/` | un composeur par type de fiche : règles → fichiers servis |
 | `empreinte_src/site/` | la page minimale qui affiche les fichiers servis (contrôle, pas l'interface du site) |
+| `empreinte_src/perimetre.py` | le périmètre publié, en un seul endroit : législatures, paroles, gouvernements (voir plus bas) |
 | `.github/workflows/` | la mise à jour du soir et les tests |
 | `config/` | les points d'accès aux sources et les réglages |
 | `decisions/` | les décisions de la propriétaire, un fichier par décision |
@@ -43,15 +44,33 @@ tâches, chacune avec ses droits minimaux :
 | `ecrire` | **seule tâche qui écrit** : dépose la génération dans l'entrepôt | `contents: write` |
 | `alerter` | une issue par sujet d'alerte, fermée quand le sujet disparaît | `issues: write` |
 
-L'**entrepôt** est la release `entrepot` de ce dépôt : relevés, index des versions, octets des
-fichiers reçus, registres d'identité. Le fichier `manifeste.json` dit quelle est la génération
-courante et l'empreinte de chaque fichier.
+Ce qu'écrit la tâche `ecrire`, une release par usage :
 
-L'**export des faits** de chaque nuit est dans la release `export` (une ligne par fait,
-documenté dans [`docs/export.md`](docs/export.md)).
+| Release | Contenu |
+| --- | --- |
+| `entrepot` | l'**entrepôt** : relevés, index des versions, octets des fichiers reçus, registres d'identité. `manifeste.json` dit quelle est la génération courante et l'empreinte de chaque fichier |
+| `archives-brutes` | les archives reçues trop grosses pour être rechargées chaque nuit, gardées à l'octet près : l'archive globale du Journal officiel (1,75 Go, depuis 1861). Elles ne servent qu'à refaire un découpage ; `restaurer` ne les rapatrie que sur demande (`avec_brutes`) |
+| `export` | l'**export des faits** : les faits publiés de chaque nuit, et tous les faits lus de la dernière nuit (une ligne par fait, documenté dans [`docs/export.md`](docs/export.md)) |
+| `publication` | les fichiers servis et la page minimale de chaque nuit, en une archive (aucun déploiement Pages ici) |
 
-Le contenu de l'entrepôt reste sous la licence de chaque source (Licence Ouverte pour
-l'Assemblée nationale, le Sénat et le Journal officiel ; CC BY-SA pour Wikipédia).
+Le contenu de l'entrepôt reste sous la licence de chaque source : Licence Ouverte pour
+l'Assemblée nationale, le Sénat et le Journal officiel ; CC BY-SA pour Wikipédia ; CC0 pour
+Wikidata ; CC BY pour le Parlement européen.
+
+## Périmètre
+
+Cahier des charges 4.1, sans budgets ni mandats locaux (décision du 07/11/2026), écrit une seule
+fois dans `empreinte_src/perimetre.py` :
+
+| Objet | Périmètre |
+| --- | --- |
+| Législatures, groupes, lignées ; scrutins, amendements, dossiers, questions | XIVe à XVIIe (depuis le 20/06/2012) |
+| Prises de parole en séance | XVe à XVIIe |
+| Gouvernements, Journal officiel | depuis la XIVe (20/06/2012 ; décision du 13/11/2026), d'Ayrault II à aujourd'hui. Pour le JO : l'archive globale, relevée une fois, puis les livraisons quotidiennes |
+| Sénat | mandats des sénateurs |
+| Candidats | la liste tenue dans `decisions/candidature/` ; volet européen pour les anciens eurodéputés |
+
+Les budgets des gouvernements ne sont pas collectés : leur section est vide et le dit.
 
 ## Lancer à la main
 
