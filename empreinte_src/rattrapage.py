@@ -19,6 +19,10 @@ from .distant import manifeste_distant
 
 
 def chercher(depot: str, run_actuel: str | None) -> dict:
+    """Cherche parmi les artefacts non expirés du dépôt un acquis `acquis-gNNNNNN` à rattraper : il
+    doit porter la génération qui suit la génération courante de l'entrepôt distant, et ne pas
+    venir de l'exécution `run_actuel`. Rend le plus récent sous la forme
+    `{"run", "nom", "generation", "cree_le"}`, ou `{}` s'il n'y en a pas."""
     man = manifeste_distant(depot)
     gen = man["generation"] if man else 0
     sortie = subprocess.run(["gh", "api", f"repos/{depot}/actions/artifacts?per_page=100"],

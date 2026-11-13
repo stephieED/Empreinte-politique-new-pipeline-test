@@ -17,7 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest==9.0.1"]
-doc = ["pdoc==16.0.0"]
+doc = ["pdoc==16.0.0", "markdown2==2.5.5"]
 
 [project.scripts]
 empreinte = "empreinte_src.cli:main"

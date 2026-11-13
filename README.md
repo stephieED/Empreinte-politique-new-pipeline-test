@@ -19,6 +19,7 @@ Ce n'est pas le dépôt du site ; rien n'est publié sur `empreinte-politique.fr
 | `decisions/` | les décisions de la propriétaire, un fichier par décision |
 | `tests/` | les tests sans réseau et les extraits réels des sources qu'ils utilisent |
 | `docs/` | la documentation de l'export des faits |
+| `livrables/` | les documents de conception et de l'étape 2 : modèle, processus, justifications, questions ouvertes, recette (docs 0 à 8), cadrage, journal des changements, rapport de mesures, migration ; versés dans le dépôt le 13/11/2026 pour être publiés sur Pages |
 
 Le fonctionnement d'ensemble (étapes, données, contrôles) est décrit dans les documents de
 conception, rédigés à part.
@@ -51,7 +52,7 @@ Ce qu'écrit la tâche `ecrire`, une release par usage :
 | `entrepot` | l'**entrepôt** : relevés, index des versions, octets des fichiers reçus, registres d'identité. `manifeste.json` dit quelle est la génération courante et l'empreinte de chaque fichier |
 | `archives-brutes` | les archives reçues trop grosses pour être rechargées chaque nuit, gardées à l'octet près : l'archive globale du Journal officiel (1,75 Go, depuis 1861). Elles ne servent qu'à refaire un découpage ; `restaurer` ne les rapatrie que sur demande (`avec_brutes`) |
 | `export` | l'**export des faits** : les faits publiés de chaque nuit, et tous les faits lus de la dernière nuit (une ligne par fait, documenté dans [`docs/export.md`](docs/export.md)) |
-| `publication` | les fichiers servis et la page minimale de chaque nuit, en une archive (aucun déploiement Pages ici) |
+| `publication` | les fichiers servis et la page minimale de chaque nuit, en une archive ; la dernière est servie par Pages (voir plus bas) |
 
 Le contenu de l'entrepôt reste sous la licence de chaque source : Licence Ouverte pour
 l'Assemblée nationale, le Sénat et le Journal officiel ; CC BY-SA pour Wikipédia ; CC0 pour
@@ -72,6 +73,17 @@ fois dans `empreinte_src/perimetre.py` :
 
 Les budgets des gouvernements ne sont pas collectés : leur section est vide et le dit.
 
+## Pages
+
+Le workflow `Pages` (`.github/workflows/pages.yml`) sert, à
+<https://stephieed.github.io/Empreinte-politique-new-pipeline-test/>, la documentation du code
+(pdoc), la description du traitement (`traitement/` : étapes, périmètre, lecteurs, règles,
+contrôles, écrite à partir du code par `empreinte_src/methodologie.py`), les documents de
+`livrables/` convertis en HTML (`empreinte_src/pages_livrables.py`) et la page minimale de
+contrôle avec les fichiers servis de la dernière publication. Il
+tourne après chaque mise à jour sur `main` et après chaque envoi de code sur `main`. Ce n'est pas
+le site : l'interface reste hors périmètre (décision du 13/11/2026).
+
 ## Lancer à la main
 
 Onglet *Actions* → *Mise à jour* → *Run workflow* : mode `quotidien`, `complet` (relire toutes
@@ -91,7 +103,9 @@ empreinte rapport-mesures --depot <propriétaire/dépôt> --cache mesures --sort
 
 ## Documentation
 
-La conception (modèle de données, processus, justifications, estimations, recette) est
-rédigée à part ; ce dépôt en est la réalisation.
+La conception (modèle de données, processus, justifications, questions ouvertes, recette) est
+dans `livrables/` ; le code de ce dépôt en est la réalisation. Le document 4 (estimations) est
+remplacé par le rapport de mesures (`livrables/etape-2/3-rapport-de-mesures.md`, décision du
+13/11/2026).
 
 Licence : AGPL-3.0.

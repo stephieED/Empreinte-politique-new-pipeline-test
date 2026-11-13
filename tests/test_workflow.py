@@ -74,3 +74,14 @@ def test_un_essai_ne_garde_pas_les_faits_lus():
     etapes = {e.get("name"): e for e in _wf()["jobs"]["calculer"]["steps"]}
     assert etapes["Garder les faits lus"]["if"] == "needs.preparer.outputs.mode != 'essai'"
     assert "preparer" in _wf()["jobs"]["calculer"]["needs"]
+
+
+def test_pages_ne_deploie_que_pages_sans_ecrire_le_contenu():
+    """Pages (décision du 13/11/2026) : seule `deployer` a les droits de Pages ; aucune tâche
+    n'écrit le contenu du dépôt (correction P3)."""
+    with open(os.path.join(os.path.dirname(WF), "pages.yml")) as f:
+        wf = yaml.safe_load(f)
+    assert wf["permissions"] == {"contents": "read"}
+    droits = {nom: t["permissions"] for nom, t in wf["jobs"].items()}
+    assert droits == {"construire": {"contents": "read"},
+                      "deployer": {"pages": "write", "id-token": "write"}}

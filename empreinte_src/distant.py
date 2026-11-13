@@ -32,14 +32,20 @@ def _release_de(rel: str) -> str:
 
 
 def nom_actif(rel: str) -> str:
+    """Rend le nom d'actif de release d'un fichier de l'entrepôt : son chemin relatif `rel`, les
+    `/` remplacés par `__` (`a/b.parquet` donne `a__b.parquet`)."""
     return rel.replace("/", "__")
 
 
 def chemin_local(actif: str) -> str:
+    """Inverse de `nom_actif` : rend le chemin relatif d'un actif, les `__` remplacés par `/`."""
     return actif.replace("__", "/")
 
 
 def manifeste_distant(depot: str) -> dict | None:
+    """Télécharge `manifeste.json` de la release `entrepot` du dépôt `depot` (avec `gh`) et le rend
+    lu. Rend `None` si la release ou l'actif n'existe pas ; lève `RuntimeError` pour toute autre
+    erreur de lecture."""
     with tempfile.TemporaryDirectory() as d:
         r = _gh("release", "download", RELEASE, "-R", depot, "-p", "manifeste.json", "-D", d,
                 check=False)
@@ -198,7 +204,8 @@ def publier_export(depot: str, dossier_export: str, generation: int) -> list[dic
 
 def publier_site(depot: str, dossier_site: str, generation: int) -> list[dict]:
     """Fichiers servis et page minimale de la nuit (release `publication`), en une archive.
-    Pas de déploiement (décision du 06/11/2026) : l'archive s'ouvre en local."""
+    La dernière archive est servie par Pages avec la documentation du code (workflow `pages.yml`,
+    décision du 13/11/2026) ; elle s'ouvre aussi en local."""
     import tarfile
     r = _gh("release", "view", "publication", "-R", depot, check=False)
     if r.returncode != 0:

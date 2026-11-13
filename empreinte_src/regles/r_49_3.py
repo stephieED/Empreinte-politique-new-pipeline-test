@@ -24,6 +24,9 @@ DESCRIPTION = (
 
 
 def appliquer(ctx):
+    """Applique R-49-3 : écrit `engagement_49_3`, les engagements de responsabilité du gouvernement
+    sur un texte, avec le gouvernement qui les a pris (voir la description du module). Rend la
+    couverture, `{nom: (numérateur, dénominateur)}` : `gouvernement_etabli`."""
     ctx.ecrire("engagement_49_3", f"""
         SELECT a.dossier, left(a.date, 10) AS date, {gouvernement_a('left(a.date, 10)')} AS gouvernement,
                a.uid AS acte, split_part(a.code, '-', 1) AS etape, a.texte_associe AS declaration,

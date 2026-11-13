@@ -14,7 +14,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: pip install -q -e ".[test]"
+      # L'extra `doc` aussi : la conversion des livrables pour Pages (markdown2) est testée.
+      - run: pip install -q -e ".[test,doc]"
       - run: python -m pytest -q
 
   workflows:
@@ -41,8 +42,8 @@ jobs:
           ./actionlint -color
 
   documentation:
-    # Documentation du code, tirée des docstrings par pdoc ; déposée comme artefact (pas de
-    # déploiement sur le dépôt d'essai).
+    # Documentation du code, tirée des docstrings par pdoc ; déposée comme artefact, sur chaque
+    # branche. Celle de `main` est aussi servie par Pages (workflow `pages.yml`).
     runs-on: ubuntu-latest
     permissions:
       contents: read

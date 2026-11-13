@@ -47,6 +47,12 @@ LEGISLATURES_AVEC_FICHE = (14, 15, 16, 17)
 
 
 def appliquer(ctx):
+    """Applique R-LIGNEE : réunit les maillons reliés par une filiation en lignées, leur donne un
+    numéro acquis et une adresse dans le registre des lignées (`ctx.registre.lignees`, complété en
+    mémoire), puis écrit `lignee`, `lignee_maillon` et `lignee_adresse` (voir la description du
+    module). Lève `RuntimeError` sans registre ou sans génération (`ctx.generation`). Rend la
+    couverture, `{nom: (numérateur, dénominateur)}` : `lignees_publiees`,
+    `maillons_affiches_sans_filiation_en_attente`, `scissions_constatees`."""
     if ctx.registre is None:
         raise RuntimeError(
             "R-LIGNEE : aucun registre (ctx.registre est None). Le numéro et l'adresse d'une lignée "
@@ -67,6 +73,8 @@ def appliquer(ctx):
     parent = {m: m for m in par_maillon}
 
     def racine(x):
+        """Rend la racine du maillon `x` dans la forêt `parent` (union-find), en raccourcissant le
+        chemin au passage : chaque maillon visité pointe ensuite vers son grand-parent."""
         while parent[x] != x:
             parent[x] = parent[parent[x]]
             x = parent[x]

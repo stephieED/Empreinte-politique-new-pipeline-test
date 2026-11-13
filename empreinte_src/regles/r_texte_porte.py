@@ -41,6 +41,10 @@ RANG_EXAMEN_COMMISSION = 2          # échelle de R-ETAPE : 1 dépôt, 2 examen 
 
 
 def appliquer(ctx):
+    """Applique R-TEXTE-PORTE : écrit `texte_porte`, les textes portés par une personne (voir la
+    description du module). Rend la couverture, `{nom: (numérateur, dénominateur)}` :
+    `etape_etablie`, `publiable_examine_en_commission`,
+    `initiative_gouvernementale_gouvernement_etabli`, `matiere_etablie`, `sort_connu`."""
     nature = NATURE.format(d="t.document")
     ctx.x(f"""CREATE OR REPLACE TEMP TABLE _tp AS
         WITH doc AS (

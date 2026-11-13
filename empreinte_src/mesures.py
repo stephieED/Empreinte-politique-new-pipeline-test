@@ -28,11 +28,19 @@ def _remettre_pic_a_zero():
 
 
 class Mesures:
+    """Les mesures des étapes d'une tâche, dans l'ordre où elles ont fini (`etapes`, une liste de
+    dictionnaires)."""
     def __init__(self):
         self.etapes: list[dict] = []
 
     @contextmanager
     def etape(self, nom: str, **extra):
+        """Gestionnaire de contexte qui mesure une étape : `with mesures.etape("E4") as m:`.
+
+        Remet à zéro le pic de mémoire du processus en entrant, rend le dictionnaire `m`
+        (`{"etape": nom, **extra}`, que l'appelant peut compléter), et en sortant, même sur une
+        erreur, y ajoute la durée (`duree_s`) et le pic de mémoire (`pic_memoire_mo`, `None` si non
+        lu) avant de l'ajouter à `etapes`."""
         _remettre_pic_a_zero()
         debut = time.monotonic()
         m = {"etape": nom, **extra}

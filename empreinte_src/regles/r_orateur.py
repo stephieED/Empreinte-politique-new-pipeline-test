@@ -21,6 +21,13 @@ nom affiché correspond à l'état civil de cet acteur. Sinon : `acteur = NULL` 
   François Ruffin), ou libellé de fonction dont la civilité contredit l'acteur (« Mme la
   ministre » sous l'identifiant d'un homme).
 
+Nom antérieur : le nom affiché peut correspondre au nom actuel de l'acteur **ou** à un nom que
+l'Assemblée a publié pour le même identifiant dans une archive plus ancienne (archive figée d'une
+législature close : « Guillaume Gouffier-Cha » en XVe, « Gouffier Valente » ensuite). Le nom
+affiché sur le site reste le nom actuel ; `nom_anterieur` dit que le rattachement s'est fait par
+un nom antérieur. Un nom que la source n'a jamais donné à cet identifiant reste discordant
+(« Mme Alice Rufo » sous l'identifiant de François Ruffin).
+
 Présidence : `preside` est vrai quand `roledebat="president"` **ou** quand le nom affiché est
 « M. le président » / « Mme la présidente » (l'attribut manque sur plus de la moitié des
 paragraphes de présidence). Présider n'est pas intervenir dans le débat : la colonne le dit,
@@ -29,12 +36,14 @@ l'attribution est gardée (on sait qui préside). `interruption` distingue les e
 """
 
 NOM = "R-ORATEUR"
-VERSION = 1
+VERSION = 2
 DEPEND = ()
 SORTIES = ("intervention_attribuee",)
 DESCRIPTION = (
     "Une prise de parole est attribuée à une personne quand le compte rendu donne son identifiant "
-    "et que le nom affiché correspond à son état civil. Sinon elle reste non attribuée, avec sa "
+    "et que le nom affiché correspond à son état civil, actuel ou antérieur (un nom que "
+    "l'Assemblée a publié pour cette même personne dans une archive plus ancienne, par exemple "
+    "avant un changement de nom). Sinon elle reste non attribuée, avec sa "
     "raison : orateur collectif (« un député du groupe… »), plusieurs orateurs, exclamation sans "
     "identifiant, identifiant nul, négatif ou inconnu, ou nom affiché qui ne correspond pas à "
     "l'identifiant (par exemple une ministre déléguée publiée sous l'identifiant d'un député). "
@@ -68,12 +77,28 @@ def classe_qualite(x: str) -> str:
 
 
 def appliquer(ctx):
+    """Applique R-ORATEUR : écrit `intervention_attribuee`, la personne à qui chaque paragraphe
+    d'un compte rendu de séance est attribué (voir la description du module). Rend la couverture,
+    `{nom: (numérateur, dénominateur)}` : `paragraphe_attribue`,
+    `parole_hors_presidence_attribuee`."""
     repli = ", ".join(f"'{i}'" for i in IDENTIFIANTS_DE_REPLI)
     nom = "i.orateur_nom"
     n_nom = norm(nom)
     # Nom affiché réduit à « prénom nom » : sans civilité, sans « (groupe) » ni « , qualité ».
     n_aff = "regexp_replace(" + norm(f"regexp_replace({nom}, '\\s*[\\(,].*$', '')") + ", '^(m|mme|mlle) ', '')"
     n_famille = norm("regexp_replace(s.nom, '\\s*\\(.*\\)\\s*', ' ', 'g')")
+    # Noms de chaque acteur : l'actuel (archive qui fait foi) et ceux des archives plus anciennes.
+    archives = ("an_acteurs__identite_source__archives" if ctx.existe("an_acteurs__identite_source__archives")
+                else "an_acteurs__identite_source")
+    ctx.x(f"""CREATE OR REPLACE TEMP TABLE _or_noms AS
+        WITH tous AS (
+            SELECT a.uid, {norm('a.prenom')} AS np, {norm("regexp_replace(a.nom, '\\s*\\(.*\\)\\s*', ' ', 'g')")} AS nf,
+                   false AS anterieur FROM an_acteurs__identite_source a
+            UNION ALL
+            SELECT a.uid, {norm('a.prenom')}, {norm("regexp_replace(a.nom, '\\s*\\(.*\\)\\s*', ' ', 'g')")},
+                   true FROM {archives} a)
+        SELECT uid, np, nf, bool_and(anterieur) AS anterieur FROM tous
+        WHERE np <> '' AND nf <> '' GROUP BY 1, 2, 3""")
     ctx.ecrire("intervention_attribuee", f"""
         WITH i AS (
             SELECT i.*, {n_nom} AS nn,
@@ -95,14 +120,26 @@ def appliquer(ctx):
                      OR nb_ids > 1 AS plusieurs,
                    {classe_qualite('i.qualite')} AS classe_qualite
             FROM i LEFT JOIN an_acteurs__identite_source s ON s.uid = i.orateur),
-        v AS (
-            SELECT *, CASE WHEN starts_with(na, np || ' ') THEN substr(na, length(np) + 2) END AS reste
-            FROM c),
+        k AS (
+            -- Concordance du nom affiché avec chaque nom connu de l'acteur (actuel ou antérieur).
+            SELECT compte_rendu, id_syceron, bool_or(conc) AS concordant_actuel_ou_anterieur,
+                   bool_or(conc AND NOT anterieur) AS concordant_actuel
+            FROM (SELECT compte_rendu, id_syceron, anterieur,
+                         reste IS NOT NULL AND reste <> '' AND (reste = nf OR starts_with(reste, nf || ' ')
+                           OR ends_with(reste, ' ' || nf) OR starts_with(nf, reste || ' ')
+                           OR ends_with(nf, ' ' || reste)) AS conc
+                  FROM (SELECT p.compte_rendu, p.id_syceron, n.nf, n.anterieur,
+                               CASE WHEN starts_with(p.na, n.np || ' ') THEN substr(p.na, length(n.np) + 2) END AS reste
+                        FROM (SELECT DISTINCT compte_rendu, id_syceron, orateur, {n_aff} AS na
+                              FROM an_comptes_rendus__intervention i) p
+                        JOIN _or_noms n ON n.uid = p.orateur))
+            GROUP BY 1, 2),
+        v AS (SELECT c.*, coalesce(k.concordant_actuel_ou_anterieur, false) AS concordant_tout,
+                     coalesce(k.concordant_actuel, false) AS concordant_actuel
+              FROM c LEFT JOIN k USING (compte_rendu, id_syceron)),
         r AS (
             SELECT *,
-                   reste IS NOT NULL AND reste <> '' AND (reste = nf OR starts_with(reste, nf || ' ')
-                     OR ends_with(reste, ' ' || nf) OR starts_with(nf, reste || ' ')
-                     OR ends_with(nf, ' ' || reste)) AS concordant,
+                   concordant_tout AS concordant,
                    CASE
                      WHEN orateur IS NULL AND len(orateurs) = 0 THEN 'sans_orateur'
                      WHEN collectif THEN 'orateur_collectif'
@@ -120,6 +157,7 @@ def appliquer(ctx):
                coalesce(roledebat = 'president', false) OR libelle_presidence AS preside,
                coalesce(code_grammaire LIKE 'INTERRUPTION%', false) AS interruption,
                libelle_fonction AS nom_est_un_libelle,
+               raison IS NULL AND NOT libelle_fonction AND concordant AND NOT concordant_actuel AS nom_anterieur,
                orateur AS orateur_source, orateur_nom AS nom_affiche, qualite AS qualite_ecrite_libelle,
                classe_qualite AS qualite_ecrite, prov_url AS source_url
         FROM (SELECT *, coalesce(raison_forme, CASE

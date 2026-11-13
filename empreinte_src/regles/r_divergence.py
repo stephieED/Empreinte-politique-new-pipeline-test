@@ -53,6 +53,14 @@ POSITIONS = "('pour', 'contre', 'abstention')"
 
 
 def appliquer(ctx):
+    """Applique R-DIVERGENCE : écrit `divergence`, la position de chaque personne comparée à la
+    position majoritaire de son groupe, scrutin par scrutin ; les lignées (`lignee_maillon`) sont
+    lues si elles existent (voir la description du module). Rend la couverture,
+    `{nom: (numérateur, dénominateur)}` :
+    `positions_comparables_sur_positions_en_derniere_lecture`,
+    `exclues_position_du_groupe_non_etablie`, `dont_position_publiee_contredite_par_le_decompte`,
+    `exclues_groupe_sans_fiche`, `exclues_sans_groupe_a_la_date`,
+    `exclues_position_personne_non_votant`."""
     legs = ", ".join(str(x) for x in LEGISLATURES_AVEC_FICHE)
     avec_fiche = ("AND g.organe IN (SELECT unnest(m.organes) FROM lignee_maillon m "
                   "JOIN lignee l USING (lignee) WHERE l.publiee AND m.affiche)"

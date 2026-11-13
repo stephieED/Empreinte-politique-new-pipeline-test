@@ -82,6 +82,11 @@ def _decisions(ctx) -> str:
 
 
 def appliquer(ctx):
+    """Applique R-RATTACHEMENT-ACTE : écrit `couverture_jo`, `acte_rattache` (chaque acte du
+    Journal officiel rattaché à un gouvernement et à un ministère, jamais à une personne) et
+    `couverture_jo_gouvernement`, voir la description du module. Rend la couverture,
+    `{nom: (numérateur, dénominateur)}` : `gouvernement_etabli`, `ministere_precise`,
+    `ministere_etabli`, `mesure_nominative_etablie`, `dans_periode_couverte`."""
     # -- 1. Période couverte par les livraisons -------------------------------------------------
     ctx.x(f"""CREATE OR REPLACE TEMP TABLE _numero_jo AS
         WITH s AS (

@@ -45,6 +45,7 @@ def points(famille: str, legislatures=None) -> list[str]:
 
 
 def romain(n: int) -> str:
+    """Rend `n` en chiffres romains, écrits avec les seuls X, IX, V, IV et I : juste jusqu'à 39."""
     v = [(10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")]
     s, x = "", int(n)
     for k, r in v:
@@ -54,6 +55,8 @@ def romain(n: int) -> str:
 
 
 def nom_legislature(n: int) -> str:
+    """Rend le nom d'une législature : « XVIIe législature », « Ire législature » pour la
+    première."""
     return f"{romain(n)}{'re' if n == 1 else 'e'} législature"
 
 
