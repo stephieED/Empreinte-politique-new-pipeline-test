@@ -153,10 +153,15 @@ def test_lecteur_votes_et_listes(tmp_path):
     ("Résolution", "ensemble"), ("Proposition de résolution (ensemble du texte)", "ensemble"),
     ("Proposition de la Commission", "ensemble"), ("Accord provisoire", "ensemble"),
     ("Am 12", "partie"), ("am 3S", "partie"), ("§ 69/1", "partie"), ("Considérant G/2", "partie"),
-    ("Visa 4", "partie"), ("Demande de procéder au vote sur les amendements", "non_etablie")])
+    ("Visa 4", "partie"), ("Bloc 3", "partie"), ("Procédure d'approbation", "ensemble"),
+    ("Motion for a resolution (text as a whole)", "ensemble"), ("Vote final", "ensemble"),
+    ("Demande de procéder au vote sur les amendements", "procedure"),
+    ("Renvoi (article 59, paragraphe 4 du règlement)", "procedure"), ("Antrag der ECR-Fraktion", "procedure"),
+    ("Gaza", "non_etablie")])
 def test_nature_du_vote(objet, nature):
     import duckdb
-    assert duckdb.sql(f"SELECT {r_vote_pe.nature_sql(repr(objet))}").fetchall()[0][0] == nature
+    litteral = "'" + objet.replace("'", "''") + "'"
+    assert duckdb.sql(f"SELECT {r_vote_pe.nature_sql(litteral)}").fetchall()[0][0] == nature
 
 
 def test_votes_de_glucksmann(tmp_path):

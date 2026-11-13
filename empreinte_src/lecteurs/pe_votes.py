@@ -15,11 +15,13 @@ de lignes, dont la fiche n'utilise que celles de quelques candidats (R-VOTE-PE).
 gardé tel que publié, en français ; la nature du vote (ensemble d'un texte, partie) est établie
 par la règle, pas ici.
 """
+import re
+
 import orjson
 import pyarrow as pa
 
 NOM = "pe_votes"
-VERSION = 1
+VERSION = 2
 TYPES = ("votes_pe",)
 S, I = pa.string(), pa.int32()
 TABLES = {
@@ -79,7 +81,8 @@ def lire(m):
     for x in _donnees(m.octets):
         vote = x.get("activity_id") or _suffixe(x.get("id"))
         libelle = (_fr(x.get("activity_label")) or "").strip() or None
-        morceaux = [p.strip() for p in (libelle or "").split(" - ")]
+        # Le libellé sépare ses parties par un tiret court ou long (« A9-0200/2023 – … – Am 287 »).
+        morceaux = [p.strip() for p in re.split(r"\s[-–—]\s", libelle or "")]
         listes = {k[len("had_voter_"):]: [_suffixe(p) for p in v]
                   for k, v in x.items() if k.startswith("had_voter_") and isinstance(v, list)}
         out["vote_pe"].append({

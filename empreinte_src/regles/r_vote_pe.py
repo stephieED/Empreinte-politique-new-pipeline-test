@@ -14,10 +14,15 @@ libellé du vote (après le dernier « - ») :
 - `ensemble` : « Résolution », « Résolution législative », « Proposition de résolution (ensemble
   du texte) », « Proposition de la Commission », « Accord provisoire », « Vote unique », « Projet
   de recommandation / de décision / de résolution », « Proposition de décision », « Décision » ;
-- `partie` : amendement (« Am 12 »), paragraphe (« § 4 », « § 69/1 »), considérant, visa,
-  article, annexe, point ;
-- `non_etablie` : tout autre libellé (une demande de procédure, par exemple), compté dans la
-  couverture, jamais deviné.
+- `partie` : amendement (« Am 12 »), bloc d'amendements, paragraphe (« § 4 », « § 69/1 »),
+  considérant, visa, article, annexe, point ;
+- `procedure` : un vote sur la procédure, pas sur le texte (renvoi en commission, demande
+  d'un groupe, procédure d'urgence, rejet, report, ouverture de négociations) ;
+- `non_etablie` : tout autre libellé, compté dans la couverture, jamais deviné.
+
+Le portail écrit parfois ses libellés en anglais ou en allemand : leurs formes connues sont lues
+de même. Mesuré le 13/11/2026 sur les 24 002 votes de R. Glucksmann : la liste a été construite
+sur ces libellés réels.
 """
 NOM = "R-VOTE-PE"
 VERSION = 1
@@ -29,20 +34,32 @@ DESCRIPTION = (
     "après la séance est montrée à côté, sans remplacer le vote enregistré. Un vote où la personne "
     "ne figure pas n'est pas montré, et rien n'en est déduit. Chaque vote dit sa nature, lue dans son "
     "intitulé : sur l'ensemble d'un texte (une résolution, un accord, la proposition de la "
-    "Commission…), sur une partie (un amendement, un paragraphe, un considérant), ou « non établie » "
-    "quand l'intitulé ne le dit pas.")
+    "Commission…), sur une partie (un amendement, un paragraphe, un considérant), sur la procédure "
+    "(un renvoi en commission, une demande d'urgence), ou « non établie » quand l'intitulé ne le dit "
+    "pas.")
 
-ENSEMBLE = (r"^(résolution( législative)?|proposition de résolution( \(ensemble du texte\))?"
-            r"|proposition de la commission|accord provisoire|vote unique"
-            r"|projet de (recommandation|décision|résolution)|proposition de décision"
-            r"|ensemble du texte|décision)\b")
-PARTIE = r"^(am(endement)?s?\b|§|considérant|visa|article|art\.|annexe|point|\d)"
+ENSEMBLE = (r"^(résolution( législative)?|propositions? de résolution( commune)?( \(ensemble du texte\))?"
+            r"|propositions? de la commission|accord provisoire|vote unique|vote final|projet commun"
+            r"|projets? de (recommandation|recommendation|décision|résolution|règlement)|projet du conseil"
+            r"|propositions? de (décision|recommandation)|recommandation|procédure d'approbation"
+            r"|élection de la commission|ensemble du texte|décision"
+            r"|motion for a resolution|proposal for a resolution|draft (legislative )?resolution"
+            r"|commission proposal|provisional agreement|single vote|joint text|consent procedure"
+            r"|entschließungsantrag)\b")
+PARTIE = (r"^(am(endement)?s?\b|§|considérant|visa|article|art\.|annexe|point|bloc|\d"
+          r"|recital|citation|paragraph|amendment)")
+PROCEDURE = (r"^(renvoi|demande|antrag|request|motion de|motion d'|objection|ordre du jour"
+             r"|proposition de rejet|rejet|application de l'article|vote séparé|procédure d'urgence"
+             r"|report|ajournement|irrecevabilit|decision to enter)")
 POSITIONS = {"favor": "pour", "against": "contre", "abstention": "abstention"}
 
 
 def nature_sql(x: str) -> str:
-    return (f"(CASE WHEN regexp_matches(lower(trim({x})), '{ENSEMBLE}') THEN 'ensemble' "
-            f"WHEN regexp_matches(lower(trim({x})), '{PARTIE}') THEN 'partie' ELSE 'non_etablie' END)")
+    e = lambda r: r.replace("'", "''")
+    return (f"(CASE WHEN regexp_matches(lower(trim({x})), '{e(ENSEMBLE)}') THEN 'ensemble' "
+            f"WHEN regexp_matches(lower(trim({x})), '{e(PARTIE)}') THEN 'partie' "
+            f"WHEN regexp_matches(lower(trim({x})), '{e(PROCEDURE)}') THEN 'procedure' "
+            f"ELSE 'non_etablie' END)")
 
 
 def appliquer(ctx):
