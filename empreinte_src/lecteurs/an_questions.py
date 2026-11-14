@@ -98,8 +98,8 @@ _JJ_MM_AAAA = re.compile(r"(\d{2})/(\d{2})/(\d{4})")
 def d(x) -> str | None:
     """Une date de la source, en `AAAA-MM-JJ`. L'archive de la XVe les publie en `JJ/MM/AAAA`
     (toutes ses questions : écrites, orales, au gouvernement), les autres en `AAAA-MM-JJ`.
-    Version 2 du lecteur (14/11/2026) : comparées comme du texte, `15/03/2019` passait avant
-    `2012-06-20`, et les filtres par date écartaient des questions de la XVe."""
+    Version 2 du lecteur (14/11/2026) : comparées comme du texte, elles rangeaient mal les
+    questions de la XVe, et les dates servies mélangeaient deux formats."""
     x = v(x)
     m = _JJ_MM_AAAA.fullmatch(x) if x else None
     return f"{m.group(3)}-{m.group(2)}-{m.group(1)}" if m else x
