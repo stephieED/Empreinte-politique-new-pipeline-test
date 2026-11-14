@@ -855,3 +855,5 @@ Décision Q34 (« Relevé dédié, budget long »), issue #32. Mise à jour `quo
 | Calcul | publication autorisée, 72 fiches, 2 620 084 faits publiés, calcul 8 min 26 s, pic 5,9 Go ; génération 12 écrite et publiée (la nuit du 13/11, refusée par C4, est ainsi publiée, PR #122) |
 
 #32 reste ouverte pour les amendements de la XVe.
+
+Le même jour, après l'essai de la branche des octets gardés (43567645702 : amendements XVe reçus en 2 min 45 s, une reprise de 600 Mo en 123 s), relevé dédié relancé à 6 h 58 UTC (exécution 43568873116) : `an-amendements-l15` **reçu** en 315 s (648 539 281 octets, 311 934 versions nouvelles) ; publication autorisée, 72 fiches, 2 927 482 faits publiés (génération 13). #32 fermée.
