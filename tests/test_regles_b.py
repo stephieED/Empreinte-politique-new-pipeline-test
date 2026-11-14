@@ -552,3 +552,22 @@ def test_suite_absente_des_archives(tmp_path):
          for x in _lignes(ctx, "SELECT DISTINCT dossier, sort, raison_sort, fin_archive_du_dossier FROM etat_dossier")}
     assert s == {"SA": ("non_connu", "suite_absente_des_archives", "2024-09-20"),
                  "SB": ("non_connu", "aucune_decision_finale", None)}
+
+
+def test_date_de_promulgation_lue_au_journal_officiel(tmp_path):
+    """Loi 2021-191 (14/11/2026) : l'acte de promulgation de l'Assemblée est daté du 0021-02-24 ;
+    le JO date la loi du 22/02/2021. La date du JO fait foi ; celle de l'Assemblée est gardée."""
+    from empreinte_src.lecteurs import jo_actes
+    dossiers = [_dos("DL", "Report des élections"), _dos("DM", "Loi sans JO")]
+    actes = [_acte("DL", "L15-DL-P", "Promulgation_Type", "PROM-PUB", "0021-02-24", code_loi="2021-191"),
+             _acte("DM", "L17-DM-P", "Promulgation_Type", "PROM-PUB", "2025-02-14", code_loi="2025-150")]
+    z2 = _z2(tmp_path / "z2", actes=actes, dossiers=dossiers)
+    _ecrire(z2, jo_actes, "acte_reglementaire", [
+        {"uid": "jorf:JORFTEXT000043168123", "nature": "LOI", "numero": "2021-191",
+         "date_signature": "2021-02-22"}])
+    ctx, b = _relier(z2, tmp_path / "z3")
+    l = {x["numero_loi"]: x for x in _lignes(ctx, "SELECT * FROM loi")}
+    assert (l["2021-191"]["date_promulgation"], l["2021-191"]["source_date_promulgation"],
+            l["2021-191"]["date_assemblee"]) == ("2021-02-22", "journal_officiel", "0021-02-24")
+    assert (l["2025-150"]["date_promulgation"], l["2025-150"]["source_date_promulgation"]) == (
+        "2025-02-14", "assemblee")
