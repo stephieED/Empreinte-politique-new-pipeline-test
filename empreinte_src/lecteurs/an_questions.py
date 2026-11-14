@@ -23,6 +23,8 @@ aucune archive de questions de la XVe n'est disponible localement.
 Adresse publique : l'adresse `questions.assemblee-nationale.fr/q{leg}/{uid}.htm` du cahier
 (3.1.9) n'apparaît dans aucune donnée relevée ; `prov_url` reste vide.
 """
+import re
+
 import orjson
 import pyarrow as pa
 
@@ -31,7 +33,7 @@ from ..lecture import en_flux, est_nil, liste, pa_id, val
 SEUIL_FLUX = 32 << 20     # au-delà, un fichier unique de questions est lu en flux
 
 NOM = "an_questions"
-VERSION = 1
+VERSION = 2
 TYPES = ("questions_ecrites", "questions_gouvernement", "questions_orales")
 
 _ATTRIB = pa.struct([("organe", pa.string()), ("abrege", pa.string()),
@@ -90,6 +92,19 @@ def v(x):
     return str(x)
 
 
+_JJ_MM_AAAA = re.compile(r"(\d{2})/(\d{2})/(\d{4})")
+
+
+def d(x) -> str | None:
+    """Une date de la source, en `AAAA-MM-JJ`. L'archive de la XVe les publie en `JJ/MM/AAAA`
+    (toutes ses questions : écrites, orales, au gouvernement), les autres en `AAAA-MM-JJ`.
+    Version 2 du lecteur (14/11/2026) : comparées comme du texte, elles rangeaient mal les
+    questions de la XVe, et les dates servies mélangeaient deux formats."""
+    x = v(x)
+    m = _JJ_MM_AAAA.fullmatch(x) if x else None
+    return f"{m.group(3)}-{m.group(2)}-{m.group(1)}" if m else x
+
+
 def _textes(bloc, cle):
     """(texte principal, errata) d'un bloc `textesQuestion` / `textesReponse`.
     Le principal est la première publication sans `erratum` (à défaut la première)."""
@@ -98,7 +113,7 @@ def _textes(bloc, cle):
         return None, []
     a_erratum = lambda e: any(c.lower() == "erratum" for c in e)
     principal = next((e for e in elems if not a_erratum(e)), elems[0])
-    errata = [{"date_jo": v(g(e, "infoJO", "dateJO")), "num_jo": v(g(e, "infoJO", "numJO")),
+    errata = [{"date_jo": d(g(e, "infoJO", "dateJO")), "num_jo": v(g(e, "infoJO", "numJO")),
                "page_jo": v(g(e, "infoJO", "pageJO")), "erratum": v(g(e, "erratum")),
                "texte": v(g(e, "texte"))}
               for e in elems if e is not principal]
@@ -114,10 +129,10 @@ def _question(q: dict) -> dict:
     attribs = [{"organe": v(g(a, "denomination", "organeRef")),
                 "abrege": v(g(a, "denomination", "abrege")),
                 "libelle": v(g(a, "denomination", "developpe")),
-                "date_jo": v(g(a, "infoJO", "dateJO"))}
+                "date_jo": d(g(a, "infoJO", "dateJO"))}
                for a in liste(g(q, "minAttribs", "minAttrib")) if isinstance(a, dict)]
     analyses = [v(a) for a in liste(g(q, "indexationAN", "analyses", "analyse"))]
-    renouv = [v(g(r, "infoJO", "dateJO"))
+    renouv = [d(g(r, "infoJO", "dateJO"))
               for r in liste(g(q, "renouvellements", "renouvellement")) if isinstance(r, dict)]
     return {
         "uid": uid, "type": v(g(q, "type")), "type_xsi": v(g(q, "@xsi:type")),
@@ -135,20 +150,20 @@ def _question(q: dict) -> dict:
         "rubrique": v(g(q, "indexationAN", "rubrique")),
         "tete_analyse": v(g(q, "indexationAN", "teteAnalyse")),
         "analyses": [a for a in analyses if a],
-        "date_question": v(g(tq, "infoJO", "dateJO")), "num_jo_question": v(g(tq, "infoJO", "numJO")),
+        "date_question": d(g(tq, "infoJO", "dateJO")), "num_jo_question": v(g(tq, "infoJO", "numJO")),
         "page_jo_question": v(g(tq, "infoJO", "pageJO")), "texte_question": v(g(tq, "texte")),
         "errata_question": errata_q,
-        "date_reponse": v(g(tr, "infoJO", "dateJO")), "num_jo_reponse": v(g(tr, "infoJO", "numJO")),
+        "date_reponse": d(g(tr, "infoJO", "dateJO")), "num_jo_reponse": v(g(tr, "infoJO", "numJO")),
         "page_jo_reponse": v(g(tr, "infoJO", "pageJO")),
         "type_jo_reponse": v(g(tr, "infoJO", "typeJO")), "texte_reponse": v(g(tr, "texte")),
         "errata_reponse": errata_r,
-        "date_depot_signalement": v(g(q, "signalement", "dateDepotSignal")),
-        "date_jo_signalement": v(g(q, "signalement", "infoJO", "dateJO")),
+        "date_depot_signalement": d(g(q, "signalement", "dateDepotSignal")),
+        "date_jo_signalement": d(g(q, "signalement", "infoJO", "dateJO")),
         "dates_renouvellement": [r for r in renouv if r],
         "code_cloture": v(g(q, "cloture", "codeCloture")),
         "libelle_cloture": v(g(q, "cloture", "libelleCloture")),
-        "date_cloture": v(g(q, "cloture", "dateCloture")),
-        "date_jo_cloture": v(g(q, "cloture", "infoJO", "dateJO")),
+        "date_cloture": d(g(q, "cloture", "dateCloture")),
+        "date_jo_cloture": d(g(q, "cloture", "infoJO", "dateJO")),
         "prov_url": None,
     }
 

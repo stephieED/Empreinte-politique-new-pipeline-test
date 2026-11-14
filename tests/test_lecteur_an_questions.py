@@ -118,3 +118,17 @@ def test_cadre_complet_et_export_sans_doublon(tmp_path):
     assert {r["type"] for r in t} == {"QE", "QG", "QOSD"}
     res = exporter(str(tmp_path / "z2"), [an_questions], str(tmp_path / "x"))
     assert res["cles_en_double"] == 0 and res["faits_par_type"] == {"question": 6}
+
+
+def test_dates_de_la_xve_ramenees_au_format_iso():
+    """L'archive de la XVe publie ses dates en JJ/MM/AAAA (14/11/2026) : le lecteur (version 2) les
+    ramène en AAAA-MM-JJ, comme les autres législatures."""
+    from empreinte_src.lecteurs.an_questions import _question, d
+    assert d("28/08/2018") == "2018-08-28" and d("2023-02-14") == "2023-02-14" and d(None) is None
+    q = _question({"uid": "QANR5L15QE12345", "identifiant": {"legislature": "15"},
+                   "textesQuestion": {"texteQuestion": {"infoJO": {"dateJO": "28/08/2018"}, "texte": "x"}},
+                   "textesReponse": {"texteReponse": {"infoJO": {"dateJO": "22/01/2019"}, "texte": "y"}},
+                   "renouvellements": {"renouvellement": [{"infoJO": {"dateJO": "04/12/2018"}}]},
+                   "cloture": {"dateCloture": "22/01/2019"}})
+    assert (q["date_question"], q["date_reponse"], q["dates_renouvellement"], q["date_cloture"]) == (
+        "2018-08-28", "2019-01-22", ["2018-12-04"], "2019-01-22")
