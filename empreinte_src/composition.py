@@ -125,6 +125,8 @@ class Ecrivain:
         self.genere_le = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat()
         self.fichiers: dict[str, dict] = {}
         self.fiches: list[dict] = []
+        # adresses citées par des articles publiés → fiche (composeur `adresses`, issue #86)
+        self.adresses_citees: list[dict] = []
         self.faits: list[dict] = []          # lot en cours (tout, sans `chemin_faits`)
         self.nb_faits = 0
         self.chemin_faits, self.lot_faits, self._writer = chemin_faits, lot_faits, None
@@ -164,6 +166,12 @@ class Ecrivain:
                   + f"Source en panne{' depuis le ' + depuis[:10] if depuis else ''} ("
                   + ", ".join(touches) + ") : " + " ; ".join(suites) + "."})
         return c
+
+    def citer(self, adresse: str, lien: str | None, decision: str | None, raison: str | None = None):
+        """Inscrit une adresse citée par un article publié et la fiche où elle mène (`lien`,
+        `<type>/<adresse>`), ou `None` et sa `raison` ; servie dans le catalogue (issue #86)."""
+        self.adresses_citees.append({"adresse": adresse, "lien": lien, "decision": decision,
+                                     "raison": raison})
 
     def fiche(self, type_fiche: str, adresse: str, titre: str) -> Fiche:
         """Ouvre et rend une nouvelle `Fiche` ; elle sera fermée par `clore`."""
@@ -222,6 +230,17 @@ class Ecrivain:
                      "genere_le": self.genere_le,
                      "fiches": [{k: f[k] for k in ("fiche", "type", "adresse", "titre")}
                                 for f in self.fiches]}
+        if self.adresses_citees:
+            # Une cible qui n'est pas une fiche publiée cette nuit n'est jamais servie comme lien.
+            publiees = {f["fiche"] for f in self.fiches}
+            lignes = []
+            for a in sorted(self.adresses_citees, key=lambda a: a["adresse"] or ""):
+                lien, raison = a["lien"], a["raison"]
+                if lien is not None and lien not in publiees:
+                    lien, raison = None, f"la fiche {a['lien']} n'est pas publiée"
+                lignes.append([a["adresse"], lien, raison, a["decision"]])
+            catalogue["adresses_citees"] = {"colonnes": ["adresse", "lien", "raison", "decision"],
+                                            "lignes": lignes}
         self.ecrire("catalogue.json.gz", catalogue)
         manifeste = {"contrat": CONTRAT, "publication": self.id_publication,
                      "genere_le": self.genere_le,

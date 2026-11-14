@@ -16,7 +16,9 @@ motif: "L'Assemblée a renuméroté les scrutins du 10/11 ; vérifié sur les pa
 ```
 
 Types en usage : `levee_controle`, `fin_legislature`, `rattachement_portefeuille`,
-`libelle_ministere`, `filiation`, `identite`, `perimetre`, `candidature`, `borne_mandat` (mandat resté ouvert dans un organe clos, borné à une date : Q23) (voir le document 1, 1.3.3).
+`libelle_ministere`, `filiation`, `identite`, `perimetre`, `candidature`, `borne_mandat` (mandat resté ouvert dans un organe clos, borné à une date : Q23), `adresse_citee`
+(adresse de l'ancien site citée par un article publié, menant à sa fiche : issue #86) (voir le
+document 1, 1.3.3).
 
 La liste des candidats est une décision `candidature` (`candidature/<date>-franceinfo.yaml`),
 recopiée à la main de la page de franceinfo, qui n'est pas collectée : une nouvelle lecture de
