@@ -857,3 +857,12 @@ Décision Q34 (« Relevé dédié, budget long »), issue #32. Mise à jour `quo
 #32 reste ouverte pour les amendements de la XVe.
 
 Le même jour, après l'essai de la branche des octets gardés (43567645702 : amendements XVe reçus en 2 min 45 s, une reprise de 600 Mo en 123 s), relevé dédié relancé à 6 h 58 UTC (exécution 43568873116) : `an-amendements-l15` **reçu** en 315 s (648 539 281 octets, 311 934 versions nouvelles) ; publication autorisée, 72 fiches, 2 927 482 faits publiés (génération 13). #32 fermée.
+## Amendements de la XVe : octets gardés, coupures diagnostiquées (14/11/2026)
+
+Branche `etape-2-amendements-partiels`, issue #32, décision Q36 (« Garder + diagnostiquer »).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Transport : un « départ du début » de la même version saute les octets déjà reçus au lieu de les réécrire ; un transfert coupé (fichier ≥ 50 Mo) laisse son début dans `partiels/`, avec sa version (ETag, date, taille), repris par plage la fois suivante si la source sert la même version, oublié une fois le fichier reçu | relevé dédié du 14/11 : 1,03 Go transmis pour atteindre 30,7 Mo sur 649 Mo ; chaque départ du début était tronqué | 2 (2.2) |
+| Workflow : cache `partiels-<run>` restauré avant la collecte, enregistré après, même en échec | garder les octets d'une mise à jour à l'autre | 2 (2.2, 2.15) |
+| Chaque connexion est notée dans `journal_reprises` (octets apportés, durée, fin atteinte), et le journal entre dans le rapport de collecte | diagnostiquer la coupure de l'Assemblée : à la taille (≈ 30 Mo) ou au temps ? | 2 (2.10) |

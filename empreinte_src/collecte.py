@@ -34,6 +34,7 @@ def relever_archive(entrepot: Entrepot, transport: Transport, pa_cfg: dict, para
                                 last_modified=(precedent or {}).get("last_modified"))
     r.update(statut_http=rep.statut_http, octets_recus=rep.octets_recus,
              tentatives=rep.tentatives, reprises=rep.reprises, duree_s=round(rep.duree_s, 2),
+             journal_reprises=rep.journal_reprises[-80:],   # diagnostic des coupures (#32)
              etag=rep.entetes.get("etag"), last_modified=rep.entetes.get("last-modified"),
              content_length=rep.entetes.get("content-length"),
              date_source=rep.entetes.get("last-modified"), message=rep.message)
@@ -162,6 +163,7 @@ def relever_archive_globale(entrepot: Entrepot, transport: Transport, pa_cfg: di
     rep = transport.telecharger(url)
     r.update(url=url, statut_http=rep.statut_http, octets_recus=rep.octets_recus,
              tentatives=rep.tentatives, reprises=rep.reprises, duree_s=round(rep.duree_s, 2),
+             journal_reprises=rep.journal_reprises[-80:],   # diagnostic des coupures (#32)
              etag=rep.entetes.get("etag"), last_modified=rep.entetes.get("last-modified"),
              content_length=rep.entetes.get("content-length"),
              date_source=rep.entetes.get("last-modified"), message=rep.message)

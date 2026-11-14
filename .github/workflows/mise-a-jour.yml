@@ -116,6 +116,12 @@ jobs:
       - name: Superposer la nuit rattrapée
         if: needs.preparer.outputs.rattrapage_run != ''
         run: empreinte superposer --entrepot entrepot --depuis rattrapage/entrepot
+      - name: Octets gardés des gros fichiers coupés (cache, #32)
+        uses: actions/cache/restore@v4
+        with:
+          path: partiels
+          key: partiels-${{ github.run_id }}
+          restore-keys: partiels-
       - id: collecte
         name: Relever, dépaqueter, versionner (E1, E2)
         env:
@@ -127,7 +133,7 @@ jobs:
           /usr/bin/time -v -o sortie/time-collecter.txt \
             empreinte collecter --entrepot entrepot --mode "${{ needs.preparer.outputs.mode }}" \
               --rapport sortie/rapport.json --tmp "$RUNNER_TEMP" ${POINTS:+--points $POINTS} \
-              ${RATTRAPAGE_ERREUR:+--rattrapage-erreur "$RATTRAPAGE_ERREUR"}
+              --partiels partiels ${RATTRAPAGE_ERREUR:+--rattrapage-erreur "$RATTRAPAGE_ERREUR"}
           # Durée seulement : le pic de `time -v` ne vaut que pour la dernière étape (le traitement
           # remet le pic à zéro à chaque étape) ; le vrai pic est imprimé par la commande.
           grep -E "Elapsed" sortie/time-collecter.txt || true
@@ -135,6 +141,13 @@ jobs:
           echo "generation=$G" >> "$GITHUB_OUTPUT"
           # Un essai n'écrit rien : son acquis porte un autre nom, que le rattrapage ne reprend jamais.
           if [ "${{ needs.preparer.outputs.mode }}" = "essai" ]; then echo "acquis=essai-g$G"; else echo "acquis=acquis-g$G"; fi >> "$GITHUB_OUTPUT"
+      - name: Garder les octets des gros fichiers coupés (#32)
+        # Même après une collecte en échec : c'est précisément ce qu'on veut garder.
+        if: always() && hashFiles('partiels/*.part') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: partiels
+          key: partiels-${{ github.run_id }}
       - name: Remettre l'acquis à la tâche d'écriture
         uses: actions/upload-artifact@v4
         with:
