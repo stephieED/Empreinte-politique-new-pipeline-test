@@ -572,9 +572,11 @@ class Controles:
         self._avertir("A4", "Même objet affiché deux fois", objets)
 
     # Statuts de couverture qui disent pourquoi une section est vide (A5) : une section vide sur
-    # toutes les fiches d'un type n'est pas signalée si chacune déclare l'un d'eux.
-    A5_STATUTS_EXPLIQUES = ("non_collecte", "hors_perimetre", "relu_aucun", "trou_source",
-                            "borne_historique", "panne")
+    # toutes les fiches d'un type n'est pas signalée si chacune déclare l'un d'eux. Pas
+    # `relu_aucun` : « relu, rien trouvé » sur toutes les fiches d'un type est justement suspect
+    # (essai du 14/11/2026 : l'activité européenne de quatre anciens députés européens, dont des
+    # milliers d'interventions mesurées à la source, se disait « relu, aucune »).
+    A5_STATUTS_EXPLIQUES = ("non_collecte", "hors_perimetre", "trou_source", "borne_historique", "panne")
 
     def _colonnes(self, table: str) -> set[str]:
         """Les colonnes d'une table ou d'une vue de la connexion."""
@@ -595,9 +597,9 @@ class Controles:
     def a5_famille_a_zero(self):
         """Section vide sur toutes les fiches d'un type. Décision de la propriétaire du 14/11/2026
         (issue #10) : une famille dont chaque fiche déclare pourquoi elle est vide
-        (`A5_STATUTS_EXPLIQUES` : budgets « non collecté », activité européenne pas encore
-        collectée…) est seulement comptée dans le détail ; seule une section vide partout **sans
-        raison déclarée** est nommée."""
+        (`A5_STATUTS_EXPLIQUES` : budgets « non collecté », source en panne…) est seulement comptée
+        dans le détail ; une section vide partout sans raison déclarée, ou qui se dit partout
+        « relu, rien trouvé », est nommée."""
         base = lambda nom: re.sub(r"-\d{4}(-s\d)?(-\d+)?$|-\d{3}$", "", nom)
         par: dict[tuple, list] = {}
         for f in self.manifeste_fiches:

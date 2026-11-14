@@ -198,12 +198,16 @@ def test_a5_section_vide_expliquee_par_sa_couverture(tmp_path):
     (« non collecté » : les budgets) est comptée, pas signalée ; sans raison déclarée, elle l'est."""
     man = [{"fiche": f"gouvernement/{g}", "type": "gouvernement",
             "sections": {"budgets": {"lignes": 0}, "textes-2025-1": {"lignes": 0}}} for g in ("a", "b")]
+    man[0]["sections"]["paroles"] = man[1]["sections"]["paroles"] = {"lignes": 0}
     for g in ("a", "b"):
         _fiche_servie(str(tmp_path), f"gouvernement/{g}",
-                      [{"section": "budgets", "statut": "non_collecte"}, {"section": "textes-2025-1", "statut": "complet"}])
+                      [{"section": "budgets", "statut": "non_collecte"}, {"section": "textes-2025-1", "statut": "complet"},
+                       {"section": "paroles", "statut": "relu_aucun"}])
     c = _ctrl(tmp_path, manifeste=man)
     c.a5_famille_a_zero()
-    assert _an(c, "A5")[0]["exemples"] == ["gouvernement / textes : vide sur les 2 fiches"]
+    # « Relu, rien trouvé » sur toutes les fiches est suspect : signalé (essai du 14/11/2026).
+    assert _an(c, "A5")[0]["exemples"] == ["gouvernement / paroles : vide sur les 2 fiches",
+                                           "gouvernement / textes : vide sur les 2 fiches"]
     assert c.bilan_a5["expliquees"] == ["gouvernement / budgets : non_collecte"]
     assert c.bilan()["expliques"]["a5"]["expliquees"] == ["gouvernement / budgets : non_collecte"]
 
