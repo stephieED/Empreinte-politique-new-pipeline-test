@@ -843,3 +843,15 @@ Branche `etape-2-schema-paquets`. Nuit du 13/11 (exécution 43502893975) : acqui
 | --- | --- | --- |
 | C4 : un paquet (`amendements-2023-1`, numéro après une année ou un semestre) relève du schéma de sa section (`amendements-N`) quand sa forme n'est pas déclarée ; les colonnes restent vérifiées | les amendements de la XVIe, relevés pour la première fois cette nuit, font dépasser un paquet aux amendements de 2023 de François Ruffin : forme absente de toutes les données d'où le schéma avait été tiré. Vérifié sur les fichiers servis de la nuit : 0 écart avec la correction | 2 (2.8.1 C4) |
 | C1 : un fichier changé à la source depuis la **dernière publication** (et non seulement dans la génération courante) explique la perte de ses faits | défaut antérieur, révélé par l'essai de cette branche (43521640358, génération 12) : la nuit (génération 11) a été écrite sans être publiée, l'essai se compare à la g10 et ne connaissait que les changements de la g12 ; 9 points de l'ordre du jour de la XVIIe, changés à la source en g11, passaient pour perdus. Une nuit normale n'est pas touchée (dernière publication = génération précédente) | 2 (2.8.1 C1) |
+
+## Relevé dédié des amendements XVe et XVIe (14/11/2026)
+
+Décision Q34 (« Relevé dédié, budget long »), issue #32. Mise à jour `quotidien` limitée à `an-amendements-l15` et `-l16` (budget de 7 200 s chacun), exécution 43531638337, 0 h 04 → 2 h 01 UTC.
+
+| Point | Résultat |
+| --- | --- |
+| `an-amendements-l16` (363 Mo) | reçu par la nuit du 13/11 (163 789 membres, premier relevé) ; ici `304` |
+| `an-amendements-l15` (649 Mo) | échec après 6 181 s : 1,03 Go transmis, transfert coupé à 30,7 Mo sur 648,5 Mo ; reprises « 206 +832 Ko », « 206 +0 » ; budget de 2 h non atteint |
+| Calcul | publication autorisée, 72 fiches, 2 620 084 faits publiés, calcul 8 min 26 s, pic 5,9 Go ; génération 12 écrite et publiée (la nuit du 13/11, refusée par C4, est ainsi publiée, PR #122) |
+
+#32 reste ouverte pour les amendements de la XVe.
