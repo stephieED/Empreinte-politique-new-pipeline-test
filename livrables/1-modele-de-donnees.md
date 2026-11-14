@@ -1149,7 +1149,7 @@ flowchart LR
 
 | Ce qu'on voit | Objet | Règle | Fichier |
 | --- | --- | --- | --- |
-| nom, profession, date et lieu de naissance | `personne` (identité retenue, et la source de chaque champ) | R-IDENTITE | `fiche.json` → `personne` |
+| nom, profession, date et lieu de naissance | `personne` (identité retenue, et la source de chaque champ) ; une catégorie socioprofessionnelle publiée par l'Assemblée comme profession (« (33) - … ») perd son code et porte `nature` = `categorie_socioprofessionnelle` (doc. 5, Q39) | R-IDENTITE | `fiche.json` → `personne` |
 | groupe actuel, avec lien | `appartenance` en cours → `groupe` (`grp:17:…`) → sa `lignee` | R-APPARTENANCE, R-FILIATION | `fiche.json` → `personne.groupe_actuel` |
 | bouton « Source » | index `src` vers la table `sources` du fichier | — | `fiche.json` → `sources` |
 
