@@ -610,6 +610,28 @@ Page lue : [about-large-files-on-github](https://docs.github.com/en/repositories
 
 ---
 
+## 10. Wikidata — la réponse des identifiants parlementaires, nuit après nuit (14/11/2026) [M]
+
+Point `wd-identifiants-parlementaires` (requête SPARQL triée par `ORDER BY`, 7 145 éléments) :
+les 10 versions de l'entrepôt, générations 2 à 11 (06/11 → 13/11/2026), comparées ligne à ligne.
+
+| Mesure | Résultat |
+| --- | --- |
+| Version nouvelle | à chaque nuit relevée (9 transitions sur 9) |
+| Dont **ordre des clés seul** (`"article"` puis `"an"`, ou `"article"` puis `"naissance"`), mêmes lignes au même rang | 2 sur 9 (v1 → v2, v3 → v4) |
+| Dont changements réels | 7 sur 9 : 22 liens d'article sur 16 éléments, 2 dates de naissance, 1 élément nouveau |
+| Liens d'article en va-et-vient | 4 éléments (députés de la XVIIe) : l'historique de Wikidata montre l'article supprimé sur Wikipédia (`clientsitelink-remove`) puis recréé, jusqu'à deux fois en une semaine (Q85632476 : retiré le 06/11, rajouté le 10/11, retiré le 12/11, rajouté le 13/11) ; nos versions suivent avec une nuit de décalage |
+| Identifiants de l'Assemblée, du Sénat, de Sycomore changés | aucun |
+| Candidats de la liste touchés | aucun (17 des 33 éléments de la liste sont dans la réponse) |
+| Lignes en double dans chaque réponse | 144 (la même ligne, par les deux branches de l'`UNION`) |
+| Taille | 4,34 Mo reçus ; 2,80 Mo sous forme canonique ; 218 Ko compressés (zstd 9) |
+
+Décision Q40 (14/11/2026, exception à P2) : la réponse est gardée sous sa forme canonique.
+Rejouée sur les 10 versions, elle en fait 8, et le lecteur `wd_identifiants` en tire exactement
+les mêmes lignes.
+
+---
+
 ## Pièges du cahier : récapitulatif
 
 | Piège (cahier) | Verdict 04/11/2026 |

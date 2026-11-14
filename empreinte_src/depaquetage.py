@@ -6,6 +6,7 @@ membre est identifié par l'uid de son nom de fichier, pas par son dossier (doc.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import tarfile
 import zipfile
@@ -40,6 +41,29 @@ def _membre(uid: str, chemin: str, octets: bytes) -> Membre:
     return Membre(uid=uid, chemin=chemin, octets=octets, taille=len(octets),
                   crc32=zlib.crc32(octets) & 0xFFFFFFFF,
                   empreinte=hashlib.sha256(octets).hexdigest())
+
+
+def canoniser_json(m: Membre) -> Membre:
+    """Forme canonique d'une réponse JSON (réglage `canonique: json` d'un point d'accès) : clés
+    triées, écriture compacte ; pour une réponse SPARQL, lignes de `results.bindings` gardées
+    dans l'ordre de la source, sans doublon. Rien n'est perdu ; seule la présentation change.
+
+    Wikidata varie l'ordre des clés de chaque ligne d'une réponse à l'autre : sans cette forme,
+    une nuit sans changement réel faisait une version nouvelle (2 nuits sur 9, mesuré le
+    14/11/2026 ; décision de la propriétaire, « Choix 2 »). L'empreinte des octets reçus reste
+    dans le relevé."""
+    d = json.loads(m.octets)
+    lignes = (d.get("results") or {}).get("bindings") if isinstance(d, dict) else None
+    if isinstance(lignes, list):
+        vus, garde = set(), []
+        for x in lignes:
+            k = json.dumps(x, sort_keys=True, ensure_ascii=False)
+            if k not in vus:
+                vus.add(k)
+                garde.append(x)
+        d["results"]["bindings"] = garde
+    octets = json.dumps(d, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()
+    return _membre(m.uid, m.chemin, octets)
 
 
 def depaqueter(chemin_archive: str, format_: str, uid_fixe: str | None = None) -> Iterator[Membre]:

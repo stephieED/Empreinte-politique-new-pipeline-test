@@ -25,6 +25,7 @@ par changement, la plus récente en bas.
 | 13/11/2026 | Q35 : un mandat municipal 2020-2026 (fichier des sortants) se termine au 15/03/2026, date déduite et signalée ; avant 2020, borne historique | 1 (R-CARRIERE), 5 (Q35) |
 | 13/11/2026 | Q38 : R-QAG relie une question au gouvernement ou orale sans débat à sa séance par l'auteur **et** l'intitulé, dans les 10 jours qui précèdent sa publication au JO ; pas de repli sur l'auteur seul ; les questions orales sans débat comprises | 1 (1.5.4, R-QAG), 5 (Q38) |
 | 14/11/2026 | Q39 (issue #46) : une catégorie socioprofessionnelle publiée comme profession perd son code INSEE et se dit catégorie (`nature`) | 1 (R-IDENTITE), 5 (Q39) |
+| 14/11/2026 | Q40 : la réponse de Wikidata est gardée sous sa forme canonique (exception à P2) ; la mesure « à mesurer » du 06/11 est faite (annexe `autres-sources.md`, § 10) | 0 (cadrage, P2), 2 (sources), 5 (Q40) |
 
 ## Corrections demandées par la commande de réalisation
 
