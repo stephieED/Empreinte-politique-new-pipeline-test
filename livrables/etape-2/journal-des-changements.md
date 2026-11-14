@@ -853,3 +853,11 @@ Branche `etape-2-amendements-partiels`, issue #32, décision Q36 (« Garder + di
 | Transport : un « départ du début » de la même version saute les octets déjà reçus au lieu de les réécrire ; un transfert coupé (fichier ≥ 50 Mo) laisse son début dans `partiels/`, avec sa version (ETag, date, taille), repris par plage la fois suivante si la source sert la même version, oublié une fois le fichier reçu | relevé dédié du 14/11 : 1,03 Go transmis pour atteindre 30,7 Mo sur 649 Mo ; chaque départ du début était tronqué | 2 (2.2) |
 | Workflow : cache `partiels-<run>` restauré avant la collecte, enregistré après, même en échec | garder les octets d'une mise à jour à l'autre | 2 (2.2, 2.15) |
 | Chaque connexion est notée dans `journal_reprises` (octets apportés, durée, fin atteinte), et le journal entre dans le rapport de collecte | diagnostiquer la coupure de l'Assemblée : à la taille (≈ 30 Mo) ou au temps ? | 2 (2.10) |
+
+## Questions de la XVe : dates ramenées au format ISO (14/11/2026)
+
+Branche `etape-2-dates-questions-xv`, issue #125 (constat de la session candidats ; correction confiée par la propriétaire).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Lecteur `an_questions` (version 2) : toutes les dates (question, réponse, signalement, renouvellements, clôture, attributions, errata) ramenées de `JJ/MM/AAAA` à `AAAA-MM-JJ` | l'archive de la XVe publie ses dates en `JJ/MM/AAAA` ; comparées comme du texte, `15/03/2019` passait avant `2012-06-20`. Mesuré (g10) : 52 232 questions de la XVe attribuées, 18 006 seulement retenues par le filtre de date des fiches ; après : 52 231. Relecture des questions une fois (≈ 1 min 30 en local) | 1 (1.4, questions) |
