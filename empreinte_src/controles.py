@@ -753,7 +753,12 @@ class Controles:
         return {"publication_autorisee": not bloquantes, "anomalies": self.anomalies,
                 "bloquantes": [a["empreinte"] for a in bloquantes],
                 "avertissements": [a["empreinte"] for a in self.anomalies if a["controle"].startswith("A")],
-                "c3": getattr(self, "bilan_c3", None), "a2": getattr(self, "bilan_a2", None)}
+                "c3": getattr(self, "bilan_c3", None), "a2": getattr(self, "bilan_a2", None),
+                # Ce que A3, A5 et A6 ont compté comme expliqué : gardé même quand l'avertissement se
+                # tait, pour que le rapport de la nuit le dise (décisions du 13 et du 14/11/2026).
+                "expliques": {k: v for k, v in (("a3", getattr(self, "bilan_a3", None)),
+                                                ("a5", getattr(self, "bilan_a5", None)),
+                                                ("a6", getattr(self, "bilan_a6", None))) if v}}
 
 
 def _touche(valeur_json: str, uids: set[str]) -> bool:

@@ -205,6 +205,7 @@ def test_a5_section_vide_expliquee_par_sa_couverture(tmp_path):
     c.a5_famille_a_zero()
     assert _an(c, "A5")[0]["exemples"] == ["gouvernement / textes : vide sur les 2 fiches"]
     assert c.bilan_a5["expliquees"] == ["gouvernement / budgets : non_collecte"]
+    assert c.bilan()["expliques"]["a5"]["expliquees"] == ["gouvernement / budgets : non_collecte"]
 
 
 def _paroles_a_la_source(lignes):
