@@ -31,7 +31,7 @@ import pyarrow as pa
 from .r_candidatures import vue_ou_vide
 
 NOM = "R-IDENTITE"
-VERSION = 3
+VERSION = 4
 DEPEND = ("R-CANDIDATURES",)
 SORTIES = ("candidat", "personne_identite", "correspondance")
 DESCRIPTION = (
@@ -41,11 +41,15 @@ DESCRIPTION = (
     "que si un identifiant déclaré les relie, jamais par le nom seul. Le nom, la date et le "
     "lieu de naissance et la profession viennent, dans cet ordre, de l'Assemblée nationale, du "
     "Sénat, de Wikidata, de Wikipédia, puis de la liste des candidats, et la fiche dit d'où "
-    "vient chaque champ. Une date "
+    "vient chaque champ. Quand l'Assemblée donne pour profession une catégorie "
+    "socioprofessionnelle de l'INSEE précédée de son code (« (33) - Cadre de la fonction "
+    "publique »), le code est ôté et la fiche dit qu'il s'agit d'une catégorie. Une date "
     "de naissance manifestement fausse n'est pas retenue. L'adresse de la fiche est le nom "
     "écrit simplement ; deux personnes de même nom se distinguent par leur année de naissance.")
 
 URL_DEPUTE = "https://www.assemblee-nationale.fr/dyn/deputes/"
+# Code de catégorie socioprofessionnelle en tête d'un libellé de profession (« (85) - … »).
+CODE_PCS = r"^\s*\(\d+\)\s*-\s*"
 
 
 def slug(x: str) -> str:
@@ -157,7 +161,16 @@ def appliquer(ctx):
                 coalesce(naiss_an, naiss_sen, naissance_wikidata) IS NOT NULL
                     AND NOT ({valide.format(d='naiss_an')} OR {valide.format(d='naiss_sen')}
                              OR {valide.format(d='naissance_wikidata')}) AS naissance_aberrante
-            FROM j)
+            FROM j),
+        k2 AS (
+            -- Issue #46 (décision du 14/11/2026, « Libellé sans le code ») : l'Assemblée publie
+            -- parfois dans `profession` la catégorie socioprofessionnelle de l'INSEE, précédée de
+            -- son code (« (33) - Cadre de la fonction publique » ; 128 acteurs sur 2 164 avec une
+            -- profession, mesuré le 14/11/2026). Le code est ôté, le libellé gardé tel quel (même
+            -- tronqué par la source), et `profession_nature` dit qu'il s'agit d'une catégorie.
+            SELECT k.*, regexp_matches(prof_an, '{CODE_PCS}') AS prof_an_code,
+                   nullif(trim(regexp_replace(prof_an, '{CODE_PCS}', '')), '') AS prof_an_net
+            FROM k)
         SELECT per,
                coalesce(nom_an, nom_sen, nom_famille_wikipedia, nom_wikipedia) AS nom,
                coalesce(prenom_an, prenom_sen, prenom_wikipedia) AS prenom,
@@ -166,7 +179,10 @@ def appliquer(ctx):
                     CASE WHEN departement_naissance IS NOT NULL THEN ' (' || departement_naissance || ')'
                          WHEN pays_naissance IS NOT NULL AND pays_naissance <> 'France' THEN ' (' || pays_naissance || ')'
                          ELSE '' END END AS lieu_naissance,
-               coalesce(prof_an, prof_sen) AS profession,
+               coalesce(prof_an_net, prof_sen) AS profession,
+               CASE WHEN prof_an_net IS NOT NULL AND prof_an_code THEN 'categorie_socioprofessionnelle'
+                    WHEN coalesce(prof_an_net, prof_sen) IS NOT NULL THEN 'profession' END AS profession_nature,
+               CASE WHEN prof_an_net IS NOT NULL AND prof_an_code THEN prof_an END AS profession_libelle_source,
                coalesce(civ_an, civ_sen) AS civilite,
                coalesce(deces_an, deces_sen) AS deces,
                nom_wikipedia AS nom_usage_wikipedia,
@@ -176,19 +192,19 @@ def appliquer(ctx):
                     WHEN prenom_wikipedia IS NOT NULL THEN 'wikipedia' END AS source_prenom,
                source_naissance,
                CASE WHEN ville_naissance IS NOT NULL THEN 'an' END AS source_lieu_naissance,
-               CASE WHEN prof_an IS NOT NULL THEN 'an' WHEN prof_sen IS NOT NULL THEN 'senat' END AS source_profession,
+               CASE WHEN prof_an_net IS NOT NULL THEN 'an' WHEN prof_sen IS NOT NULL THEN 'senat' END AS source_profession,
                CASE WHEN naissance IS NOT NULL THEN NULL
                     WHEN naissance_aberrante THEN 'date de naissance aberrante à la source : non retenue'
                     ELSE 'non connue de nos sources' END AS raison_naissance,
                CASE WHEN ville_naissance IS NULL THEN 'non connu de nos sources' END AS raison_lieu_naissance,
-               CASE WHEN coalesce(prof_an, prof_sen) IS NULL THEN 'non connue de nos sources' END AS raison_profession,
+               CASE WHEN coalesce(prof_an_net, prof_sen) IS NULL THEN 'non connue de nos sources' END AS raison_profession,
                CASE WHEN naiss_an IS NULL OR naissance_wikidata IS NULL THEN 'une_source'
                     WHEN naiss_an = naissance_wikidata THEN 'concordante' ELSE 'divergente' END AS naissance_concordance,
                CASE WHEN an_ok THEN '{URL_DEPUTE}' || acteur
                     ELSE coalesce(article_url, element_url, liste_url) END AS source_url,
                article_url AS source_url_wikipedia, element_url AS source_url_wikidata,
                acteur, matricule_senat, an_ok AS acteur_present_an, sen_ok AS matricule_present_senat
-        FROM k ORDER BY per""")
+        FROM k2 ORDER BY per""")
 
     # Adresse : homonymes parmi les candidats et parmi les acteurs de l'Assemblée (pas lui-même).
     ctx.x(f"""CREATE OR REPLACE TEMP TABLE _adr AS

@@ -482,7 +482,10 @@ def _personne(c, ident, commun) -> dict:
     return {
         "per": c["per"], "nom": i.get("nom") or c["nom"], "prenom": i.get("prenom"),
         "nom_affiche": c["nom"], "civilite": i.get("civilite"),
-        "profession": champ(i.get("profession"), i.get("source_profession"), i.get("raison_profession")),
+        "profession": {**champ(i.get("profession"), i.get("source_profession"), i.get("raison_profession")),
+                       # « profession » ou « categorie_socioprofessionnelle » (code INSEE ôté, issue #46)
+                       "nature": i.get("profession_nature"),
+                       "libelle_source": i.get("profession_libelle_source")},
         "naissance": {**champ(i.get("naissance"), i.get("source_naissance"), i.get("raison_naissance")),
                       "lieu": i.get("lieu_naissance"), "source_lieu": i.get("source_lieu_naissance"),
                       "raison_lieu": i.get("raison_lieu_naissance"),

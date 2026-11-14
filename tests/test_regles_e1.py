@@ -239,6 +239,30 @@ def test_identite_sourcee_champ_par_champ(reel):
     assert i["source_url"] == "https://www.assemblee-nationale.fr/dyn/deputes/PA722142"
 
 
+def test_profession_code_insee_ote(z2_reel, tmp_path):
+    """Issue #46 (décision du 14/11/2026, « Libellé sans le code ») : une catégorie
+    socioprofessionnelle publiée par l'Assemblée avec son code perd le code, garde son libellé
+    (même tronqué) et se dit catégorie ; le libellé de la source reste lisible."""
+    import shutil
+    z2 = tmp_path / "z2"
+    shutil.copytree(z2_reel, z2)
+    p = z2 / "an_acteurs__identite_source.parquet"
+    t = pq.read_table(p)
+    brut = "(85) - Personne diverse sans activité professionnelle de moins de 60 ans (sauf r"
+    rows = [{**r, "profession": brut} if r["uid"] == "PA722142" else r for r in t.to_pylist()]
+    pq.write_table(pa.Table.from_pylist(rows, schema=t.schema), p)
+    ctx, bilan, _ = _relier(z2, tmp_path / "z3", tmp_path / "r")
+    i = _lignes(ctx, "SELECT * FROM personne_identite WHERE acteur = 'PA722142'")[0]
+    assert (i["profession"], i["profession_nature"], i["source_profession"], i["raison_profession"]) == (
+        "Personne diverse sans activité professionnelle de moins de 60 ans (sauf r",
+        "categorie_socioprofessionnelle", "an", None)
+    assert i["profession_libelle_source"] == brut
+    autres = _lignes(ctx, """SELECT profession_nature, profession_libelle_source FROM personne_identite
+                             WHERE profession IS NOT NULL AND acteur IS DISTINCT FROM 'PA722142'""")
+    assert autres and all(a["profession_nature"] == "profession" and a["profession_libelle_source"] is None
+                          for a in autres)
+
+
 def test_jamais_par_le_nom_seul(tmp_path):
     z2 = tmp_path / "z2"
     _ecrire(z2, wp_candidatures, "candidature", [

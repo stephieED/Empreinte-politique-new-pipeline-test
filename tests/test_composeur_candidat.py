@@ -50,6 +50,7 @@ def _ident(per, nom, prenom, acteur=None, src="an"):
             "source_prenom": src, "source_naissance": "an" if acteur else None,
             "source_lieu_naissance": "an" if acteur else None,
             "source_profession": "an" if acteur else None,
+            "profession_nature": "profession" if acteur else None, "profession_libelle_source": None,
             "raison_naissance": None if acteur else "non connue de nos sources",
             "raison_lieu_naissance": None, "raison_profession": None, "naissance_concordance": "une_source",
             "source_url": None, "source_url_wikipedia": None, "source_url_wikidata": None,
@@ -288,7 +289,8 @@ def test_entete_identite_groupe_et_liens_publies(sortie):
     f = _lire(racine, "candidats/alice-martin/fiche.json.gz")
     assert f["titre"] == "Alice Martin"
     assert f["personne"]["profession"] == {"valeur": "Reporter", "source": "an",
-                                           "source_point": "an-amo30-l17", "raison": None}
+                                           "source_point": "an-amo30-l17", "raison": None,
+                                           "nature": "profession", "libelle_source": None}
     g = f["groupe_actuel"]
     # Sans lignée publiée pour ce groupe : pas de lien, la raison est écrite.
     assert g["sigle"] == "ECOS" and g["lien"] is None and g["raison_lien"] == "groupe sans lignée publiée"
