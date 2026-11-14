@@ -884,3 +884,12 @@ Branche `etape-2-fin-legislatures` (constat transmis par la session d'analyse ; 
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
 | Décisions `fin_legislature` : XIVe (fin le 20/06/2017) et XVe (21/06/2022) « terme » ; XVIe (09/06/2024) « dissolution », décret du 9 juin 2024 (NOR PREX2415533D, JORF n°0134 du 10 juin 2024), lu dans le Journal officiel collecté | les trois fiches servaient `mode_fin: non_etabli` : l'Assemblée ne publie pas le mode de fin, il vient d'une décision sourcée (R-LEGISLATURES), et aucune n'était saisie. Couverture `mode_de_fin_etabli` : 1 sur 6 → 4 sur 6 (XIIe et XIIIe, non publiées, restent non établies) | 1 (1.3.3) |
+
+## Date de promulgation lue au Journal officiel (14/11/2026)
+
+Branche `etape-2-dates-promulgation`, issue #128 (constat transmis par la session d'analyse).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-LOIS (version 2) : date de promulgation = date de signature de la loi au JO quand il la connaît (`source_date_promulgation` : `journal_officiel` ou `assemblee`), date de l'acte de l'Assemblée gardée (`date_assemblee`) ; A7 nomme les désaccords ; couverture `date_de_promulgation_lue_au_jo` | #128 : sept lois mal datées par l'Assemblée (acte ou JO cité), dont 2021-191 datée du 0021-02-24 ; la date de signature du JO est juste dans les sept cas (vérifié sur la g13) | 1 (1.6 R-LOIS) |
+| `perimetre.py` : docstring alignée (mandats locaux et volet européen hors de ce module, budgets hors périmètre) | elle disait encore « sans mandats locaux » après la PR #91 ; aucune constante ne les excluait | — |
