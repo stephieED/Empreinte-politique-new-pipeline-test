@@ -571,41 +571,109 @@ class Controles:
                   ON a.copie = f.id_amendement AND a.copie <> a.amendement ORDER BY 1""")]
         self._avertir("A4", "Même objet affiché deux fois", objets)
 
+    # Statuts de couverture qui disent pourquoi une section est vide (A5) : une section vide sur
+    # toutes les fiches d'un type n'est pas signalée si chacune déclare l'un d'eux. Pas
+    # `relu_aucun` : « relu, rien trouvé » sur toutes les fiches d'un type est justement suspect
+    # (essai du 14/11/2026 : l'activité européenne de quatre anciens députés européens, dont des
+    # milliers d'interventions mesurées à la source, se disait « relu, aucune »).
+    A5_STATUTS_EXPLIQUES = ("non_collecte", "hors_perimetre", "trou_source", "borne_historique", "panne")
+
+    def _colonnes(self, table: str) -> set[str]:
+        """Les colonnes d'une table ou d'une vue de la connexion."""
+        return {r[0] for r in self._x(f"DESCRIBE {table}")}
+
+    def _statuts_couverture(self, fiche: str) -> dict[str, str]:
+        """{section: statut} de la couverture déclarée dans `fiche.json` d'une fiche servie
+        (`candidat/x` → `candidats/x/fiche.json.gz`) ; vide si la fiche est illisible."""
+        type_fiche, _, adresse = fiche.partition("/")
+        chemin = os.path.join(self.racine, f"{type_fiche}s", adresse, "fiche.json.gz")
+        try:
+            with gzip.open(chemin, "rt", encoding="utf-8") as f:
+                couverture = json.load(f).get("couverture") or []
+        except (OSError, ValueError):
+            return {}
+        return {c.get("section"): c.get("statut") for c in couverture if isinstance(c, dict)}
+
     def a5_famille_a_zero(self):
-        import re as _re
+        """Section vide sur toutes les fiches d'un type. Décision de la propriétaire du 14/11/2026
+        (issue #10) : une famille dont chaque fiche déclare pourquoi elle est vide
+        (`A5_STATUTS_EXPLIQUES` : budgets « non collecté », source en panne…) est seulement comptée
+        dans le détail ; une section vide partout sans raison déclarée, ou qui se dit partout
+        « relu, rien trouvé », est nommée."""
+        base = lambda nom: re.sub(r"-\d{4}(-s\d)?(-\d+)?$|-\d{3}$", "", nom)
         par: dict[tuple, list] = {}
         for f in self.manifeste_fiches:
             for nom, info in (f.get("sections") or {}).items():
-                base = _re.sub(r"-\d{4}(-s\d)?(-\d+)?$|-\d{3}$", "", nom)
-                par.setdefault((f["type"], base), []).append(info.get("lignes"))
-        objets = [f"{t} / {b} : vide sur les {len(v)} fiches" for (t, b), v in sorted(par.items())
-                  if len(v) >= 2 and all(x == 0 for x in v)]
-        self._avertir("A5", "Section vide pour toutes les fiches d'un type", objets)
+                par.setdefault((f["type"], base(nom)), []).append((f.get("fiche"), info.get("lignes")))
+        vides = [(t, b, v) for (t, b), v in sorted(par.items()) if len(v) >= 2 and all(x == 0 for _, x in v)]
+        statuts: dict[str, dict] = {}
+        objets, expliquees = [], []
+        for t, b, v in vides:
+            raisons = set()
+            for fiche, _ in v:
+                if fiche not in statuts:
+                    statuts[fiche] = self._statuts_couverture(fiche or "")
+                raisons |= {st for sec, st in statuts[fiche].items() if sec and base(sec) == b} or {None}
+            if raisons <= set(self.A5_STATUTS_EXPLIQUES):
+                expliquees.append(f"{t} / {b} : {', '.join(sorted(raisons))}")
+            else:
+                objets.append(f"{t} / {b} : vide sur les {len(v)} fiches")
+        self.bilan_a5 = {"familles_vides": len(vides), "expliquees": expliquees}
+        self._avertir("A5", "Section vide pour toutes les fiches d'un type", objets, detail=self.bilan_a5)
 
     def a6_couverture(self):
-        objets = []
+        """Couverture insuffisante. Décision de la propriétaire du 14/11/2026 (issue #11) : seuls
+        les cas inexpliqués sont nommés, les autres sont comptés dans le détail.
+        - Un candidat sans fiche a toujours une raison établie (C7 bloque sinon) : candidature
+          retirée, absent de la liste, décision. Il est compté, jamais signalé.
+        - Un membre de groupe sans parole servie pendant la législature est **expliqué** quand la
+          source ne lui attribue aucun paragraphe (hors présidence de séance) pendant son
+          appartenance au groupe : arrivée récente, mandat court, député qui ne prend pas la
+          parole. Il est **signalé** (en décompte, jamais par son nom) quand la source a des
+          paragraphes sous son identifiant pendant son appartenance, mais qu'aucun n'est servi :
+          c'est le cas qui a révélé les paroles écartées après un changement de nom (#67)."""
+        objets, detail = [], {}
         if self._a("population"):
-            objets += [f"candidat {q} sans fiche : {r}" for q, r in self._x("""
-                SELECT coalesce(per, acteur), raison_sortie FROM population
-                WHERE population = 'candidat' AND raison_sortie IS NOT NULL ORDER BY 1""")]
+            detail["candidats_sans_fiche"] = dict(self._x("""
+                SELECT raison_sortie, count(*) FROM population
+                WHERE population = 'candidat' AND raison_sortie IS NOT NULL GROUP BY 1 ORDER BY 1"""))
         if self._a("parole_personne"):
             from .perimetre import LEGISLATURES_PAROLES, nom_legislature
             bornes = dict((n, (d, f)) for n, d, f in self._x("SELECT numero, debut, fin FROM legislature")) \
                 if self._a("legislature") else {}
+            a_la_source = ("EXISTS (SELECT 1 FROM intervention_attribuee i JOIN _ctl_lm p "
+                           "ON p.acteur = i.orateur_source AND p.legislature = ? "
+                           "AND i.date BETWEEN p.debut AND p.fin "
+                           "WHERE i.orateur_source = m.acteur AND NOT coalesce(i.preside, false))"
+                           if self._a("intervention_attribuee")
+                           and {"orateur_source", "preside", "date"} <= self._colonnes("intervention_attribuee")
+                           else "true")
             for leg in LEGISLATURES_PAROLES:
                 d0, d1 = bornes.get(leg, (None, None))
-                n, tot = self._x("""
-                    WITH m AS (SELECT DISTINCT acteur FROM _ctl_lm WHERE legislature = ?)
-                    SELECT count(*) FILTER (NOT EXISTS (
+                sans, inexpliques, tot = self._x(f"""
+                    WITH m AS (SELECT DISTINCT acteur FROM _ctl_lm WHERE legislature = ?),
+                    s AS (SELECT m.acteur, NOT EXISTS (
                                SELECT 1 FROM _ctl_fp f WHERE f.id_acteur = m.acteur
                                AND f.section LIKE 'paroles-textes%'
-                               AND (f.date IS NULL OR f.date BETWEEN coalesce(?, '0000') AND coalesce(?, '9999')))),
-                           count(*) FROM m""", [leg, d0, d1])[0]
-                if n:
+                               AND (f.date IS NULL OR f.date BETWEEN coalesce(?, '0000') AND coalesce(?, '9999')))
+                             AS sans_parole_servie,
+                             {a_la_source} AS paroles_a_la_source
+                          FROM m)
+                    SELECT count(*) FILTER (sans_parole_servie),
+                           count(*) FILTER (sans_parole_servie AND paroles_a_la_source),
+                           count(*) FROM s""",
+                    [leg, d0, d1] + ([leg] if a_la_source != "true" else []))[0]
+                if sans:
+                    detail[f"membres_sans_parole_servie_{leg}"] = {
+                        "sans_parole_servie": sans, "sans_paragraphe_a_la_source": sans - inexpliques,
+                        "membres": tot}
+                if inexpliques:
                     # Un décompte, jamais une liste de noms : ce serait un indice individuel.
-                    objets.append(f"{n} membres de groupes de la {nom_legislature(leg)} sur {tot} "
-                                  "sans prise de parole servie pendant cette législature")
-        self._avertir("A6", "Couverture insuffisante", objets)
+                    objets.append(f"{inexpliques} membres de groupes de la {nom_legislature(leg)} sur {tot} "
+                                  "ont des paroles à la source pendant leur appartenance au groupe, "
+                                  "mais aucune n'est servie")
+        self.bilan_a6 = detail
+        self._avertir("A6", "Couverture insuffisante", objets, detail=detail or None)
 
     def a7_non_resolues(self, decisions: dict):
         objets = []
@@ -687,7 +755,12 @@ class Controles:
         return {"publication_autorisee": not bloquantes, "anomalies": self.anomalies,
                 "bloquantes": [a["empreinte"] for a in bloquantes],
                 "avertissements": [a["empreinte"] for a in self.anomalies if a["controle"].startswith("A")],
-                "c3": getattr(self, "bilan_c3", None), "a2": getattr(self, "bilan_a2", None)}
+                "c3": getattr(self, "bilan_c3", None), "a2": getattr(self, "bilan_a2", None),
+                # Ce que A3, A5 et A6 ont compté comme expliqué : gardé même quand l'avertissement se
+                # tait, pour que le rapport de la nuit le dise (décisions du 13 et du 14/11/2026).
+                "expliques": {k: v for k, v in (("a3", getattr(self, "bilan_a3", None)),
+                                                ("a5", getattr(self, "bilan_a5", None)),
+                                                ("a6", getattr(self, "bilan_a6", None))) if v}}
 
 
 def _touche(valeur_json: str, uids: set[str]) -> bool:
