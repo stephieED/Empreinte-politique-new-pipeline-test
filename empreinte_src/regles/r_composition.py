@@ -23,15 +23,23 @@ Ce que fait la règle (mesures `an-acteurs.md`, 2.2) :
 - un ministre délégué, un secrétaire d'État, un haut-commissaire n'ont **aucun champ** qui dise
   leur ministère de tutelle : il se lit dans le libellé (« … auprès du ministre de l'économie… »).
   La règle rattache le portefeuille quand le libellé désigne **un seul** ministre de plein
-  exercice (ou le Premier ministre) du même gouvernement, en fonction à la même date ; sinon
-  `tutelle_statut = 'non_etabli'` et sa raison (libellé sans « auprès », aucun ministère
-  correspondant, plusieurs ministres désignés). Une décision `rattachement_portefeuille`
-  (objet : l'organe ministère délégué ou le mandat ; décision : l'organe de tutelle `PO…`)
-  l'emporte toujours.
+  exercice (ou le Premier ministre) du même gouvernement, en fonction à la même date
+  (`etabli`). Quand il en désigne **plusieurs** (« auprès du ministre de l'intérieur et du
+  ministre de la transition écologique ») et que chacun est reconnu, c'est une co-tutelle
+  (`co_tutelle`, version 2, issue #80, décision du 14/11/2026 « Tous les ministres ») : toutes
+  les tutelles sont servies, dans l'ordre du libellé, et aucune n'est choisie à la place de
+  l'interface. Sinon `tutelle_statut = 'non_etabli'` et sa raison (libellé sans « auprès »,
+  aucun ministère correspondant, plusieurs ministres désignés dont l'un au moins n'est pas
+  reconnu). Une décision `rattachement_portefeuille` (objet : l'organe ministère délégué ou le
+  mandat ; décision : `rattache_a` suivi du ou des organes de tutelle `PO…`, dans l'ordre du
+  libellé) l'emporte toujours ;
+- `ministeres_tutelle` est la liste de toutes les tutelles (une seule pour `etabli`, plusieurs
+  pour `co_tutelle`, celles de la décision pour `decision`) ; `ministere_tutelle` ne porte une
+  valeur que s'il n'y en a qu'une.
 """
 
 NOM = "R-COMPOSITION"
-VERSION = 1
+VERSION = 2
 DEPEND = ("R-GOUVERNEMENTS",)
 SORTIES = ("membre_gouvernement", "mandat_ouvert_organe_clos")
 DESCRIPTION = (
@@ -42,8 +50,9 @@ DESCRIPTION = (
     "des fonctions ministérielles et sont écartées. Aucun champ ne dit à quel ministère un ministre "
     "délégué ou un secrétaire d'État est rattaché : nous le lisons dans le libellé (« auprès du "
     "ministre de… ») et ne le retenons que si le libellé désigne un seul ministre du même "
-    "gouvernement en fonction à la même date ; sinon le rattachement est « non établi », sauf "
-    "décision publiée. Un mandat de membre du gouvernement resté ouvert alors que le gouvernement "
+    "gouvernement en fonction à la même date. Quand le libellé désigne plusieurs ministres et que "
+    "chacun est reconnu, le portefeuille est rattaché à tous, dans l'ordre du libellé (co-tutelle). "
+    "Sinon le rattachement est « non établi », sauf décision publiée.Un mandat de membre du gouvernement resté ouvert alors que le gouvernement "
     "est clos n'entre pas dans la composition : il est signalé.")
 
 # Archive courante : si plusieurs archives AMO portent le même mandat, la plus récente
@@ -66,6 +75,12 @@ _BORNES = (",", " et ", " - ", " – ", ".", " charge")
 DESIGNE = " OR ".join(
     f"strpos(d.texte_tutelle || ',', '{x} ' || t.cle || '{b}') > 0"
     for x in ("ministre", "ministere") for b in _BORNES)
+# Où le libellé désigne ce ministère (première occurrence) : ordonne les tutelles d'une co-tutelle.
+POSITION = "list_min(list_filter([" + ", ".join(
+    f"strpos(d.texte_tutelle || ',', '{x} ' || t.cle || '{b}')"
+    for x in ("ministre", "ministere") for b in _BORNES) + "], lambda p: p > 0))"
+POSITION_PM = ("list_min(list_filter([strpos(d.texte_tutelle, 'premier ministre'), "
+               "strpos(d.texte_tutelle, 'premiere ministre')], lambda p: p > 0))")
 
 
 # Qualités qui supposent un ministère de tutelle même quand le libellé ne dit pas « auprès ».
@@ -103,11 +118,12 @@ def appliquer(ctx):
     # « auprès des ministres… ») : s'il en désigne plusieurs et qu'un seul est reconnu, la tutelle
     # n'est pas établie (on ne garde pas la moitié d'une co-tutelle).
     ctx.x("""CREATE OR REPLACE TEMP TABLE _ga_portefeuille2 AS
-        SELECT *, (strpos(coalesce(texte_tutelle, ''), 'des ministres') > 0
-                   OR len(regexp_extract_all(coalesce(texte_tutelle, ''),
-                          '(^|\\s)(du|de la|des) (ministre|ministere|premier ministre|premiere ministre|garde des sceaux)')) > 1)
-                  AS plusieurs_designes
-        FROM _ga_portefeuille2""")
+        SELECT *, (des_ministres OR nb_designes > 1) AS plusieurs_designes
+        FROM (SELECT *, strpos(coalesce(texte_tutelle, ''), 'des ministres') > 0 AS des_ministres,
+                     len(regexp_extract_all(coalesce(texte_tutelle, ''),
+                         '(^|\\s)(du|de la|des) (ministre|ministere|premier ministre|premiere ministre|garde des sceaux)'))
+                       AS nb_designes
+              FROM _ga_portefeuille2)""")
 
     # 2. Ministères de plein exercice (et Premier ministre) : candidats à la tutelle, avec la clé
     #    qui permet de les reconnaître dans un libellé (« Ministère de la culture » -> « de la culture »).
@@ -121,6 +137,8 @@ def appliquer(ctx):
           ON p.ministere = c.ministere AND NOT p.a_rattacher""")
     ctx.x("""CREATE OR REPLACE TEMP TABLE _ga_correspond AS
         SELECT d.mandat, t.ministere AS tutelle, t.cle,
+               min(CASE WHEN t.premier_ministre THEN """ + POSITION_PM + """
+                        ELSE """ + POSITION + """ END) AS pos,
                -- en fonction au début du portefeuille (un ministre qui part ce jour-là ne compte pas)
                bool_or(t.t_debut <= d.debut AND d.debut < t.t_fin) AS au_debut,
                bool_or(t.t_debut <= coalesce(d.fin, '9999-12-31') AND d.debut <= t.t_fin) AS chevauche
@@ -140,18 +158,27 @@ def appliquer(ctx):
             SELECT c.* FROM _ga_correspond c
             WHERE c.au_debut OR (c.chevauche AND NOT EXISTS (
                 SELECT 1 FROM _ga_correspond x WHERE x.mandat = c.mandat AND x.au_debut)))
-        SELECT r.mandat, r.tutelle FROM r
+        SELECT r.mandat, r.tutelle, r.pos FROM r
         WHERE NOT EXISTS (SELECT 1 FROM r r2 WHERE r2.mandat = r.mandat AND r2.cle <> r.cle
                           AND starts_with(r2.cle, r.cle))""")
     ctx.x("""CREATE OR REPLACE TEMP TABLE _ga_tutelle AS
-        SELECT mandat, list_sort(list(DISTINCT tutelle)) AS candidates FROM _ga_retenu GROUP BY 1""")
+        SELECT mandat, list(tutelle ORDER BY pos, tutelle) AS candidates
+        FROM (SELECT mandat, tutelle, min(pos) AS pos FROM _ga_retenu GROUP BY 1, 2) GROUP BY 1""")
+    # Une seule tutelle ; ou une co-tutelle : le libellé désigne plusieurs ministres (sans « des
+    # ministres », dont on ne sait pas compter les désignations) et autant de ministres du
+    # gouvernement sont reconnus que de désignations (on ne garde pas une partie d'une co-tutelle).
+    seul = "(len(t.candidates) = 1 AND NOT p.plusieurs_designes)"
+    co = ("(p.plusieurs_designes AND NOT p.des_ministres AND len(t.candidates) >= 2 "
+          "AND len(t.candidates) = p.nb_designes)")
 
     if ctx.existe("decision_rattachement_portefeuille"):
-        decision = """(SELECT objet, regexp_extract(CAST(decision AS VARCHAR), 'PO[0-9]+') AS tutelle,
+        # « rattache_a PO1 » ; pour une co-tutelle « rattache_a PO1 PO2 », dans l'ordre du libellé
+        decision = """(SELECT objet, regexp_extract_all(CAST(decision AS VARCHAR), 'PO[0-9]+') AS tutelles,
                               fichier FROM decision_rattachement_portefeuille
-                       WHERE regexp_extract(CAST(decision AS VARCHAR), 'PO[0-9]+') <> '')"""
+                       WHERE len(regexp_extract_all(CAST(decision AS VARCHAR), 'PO[0-9]+')) > 0)"""
     else:
-        decision = "(SELECT NULL::VARCHAR AS objet, NULL::VARCHAR AS tutelle, NULL::VARCHAR AS fichier WHERE false)"
+        decision = ("(SELECT NULL::VARCHAR AS objet, NULL::VARCHAR[] AS tutelles, NULL::VARCHAR AS fichier "
+                    "WHERE false)")
 
     # 3. Mandat GOUVERNEMENT apparié : par l'uid (PM15 + numéro), sinon par la période.
     ctx.ecrire("membre_gouvernement", f"""
@@ -169,19 +196,24 @@ def appliquer(ctx):
                    EXISTS (SELECT 1 FROM g WHERE g.uid = 'PM15' || substr(p.mandat, 3)
                              AND g.acteur = p.acteur AND g.organe = p.gouvernement) AS par_uid
             FROM _ga_portefeuille2 p),
-        dec AS (SELECT p.mandat, any_value(d.tutelle) AS tutelle, any_value(d.fichier) AS fichier
+        dec AS (SELECT p.mandat, any_value(d.tutelles) AS tutelles, any_value(d.fichier) AS fichier
                 FROM _ga_portefeuille2 p JOIN {decision} d ON d.objet IN (p.ministere, p.mandat)
                 GROUP BY 1)
         SELECT p.gouvernement, p.acteur, p.portefeuille, p.qualite, p.ministere,
-               CASE WHEN dec.tutelle IS NOT NULL THEN dec.tutelle
+               CASE WHEN dec.tutelles IS NOT NULL THEN (CASE WHEN len(dec.tutelles) = 1 THEN dec.tutelles[1] END)
                     WHEN NOT p.a_rattacher THEN NULL
-                    WHEN (len(t.candidates) = 1 AND NOT p.plusieurs_designes) THEN t.candidates[1] END AS ministere_tutelle,
-               CASE WHEN dec.tutelle IS NOT NULL THEN 'decision'
+                    WHEN {seul} THEN t.candidates[1] END AS ministere_tutelle,
+               CASE WHEN dec.tutelles IS NOT NULL THEN dec.tutelles
+                    WHEN NOT p.a_rattacher THEN NULL
+                    WHEN {seul} OR {co} THEN t.candidates END AS ministeres_tutelle,
+               CASE WHEN dec.tutelles IS NOT NULL THEN 'decision'
                     WHEN NOT p.a_rattacher THEN 'sans_objet'
-                    WHEN (len(t.candidates) = 1 AND NOT p.plusieurs_designes) THEN 'etabli'
+                    WHEN {seul} THEN 'etabli'
+                    WHEN {co} THEN 'co_tutelle'
                     ELSE 'non_etabli' END AS tutelle_statut,
                p.debut, p.fin, p.premier_ministre,
-               CASE WHEN dec.tutelle IS NOT NULL OR NOT p.a_rattacher OR (len(t.candidates) = 1 AND NOT p.plusieurs_designes) THEN NULL
+               CASE WHEN dec.tutelles IS NOT NULL OR NOT p.a_rattacher OR {seul} THEN NULL
+                    WHEN {co} THEN 'le libellé désigne plusieurs ministres'
                     WHEN p.texte_tutelle IS NULL THEN 'le libellé ne désigne aucun ministre (pas de « auprès »)'
                     WHEN t.candidates IS NULL THEN 'aucun ministre du gouvernement en fonction à cette date ne correspond au libellé'
                     ELSE 'le libellé désigne plusieurs ministres' END AS raison_tutelle,
@@ -212,7 +244,7 @@ def appliquer(ctx):
 
     n = ctx.un("SELECT count(*) FROM membre_gouvernement")
     a_ratt = ctx.un("SELECT count(*) FROM membre_gouvernement WHERE tutelle_statut <> 'sans_objet'")
-    ratt = ctx.un("SELECT count(*) FROM membre_gouvernement WHERE tutelle_statut IN ('etabli', 'decision')")
+    ratt = ctx.un("SELECT count(*) FROM membre_gouvernement WHERE tutelle_statut IN ('etabli', 'co_tutelle', 'decision')")
     apparie = ctx.un("SELECT count(*) FROM membre_gouvernement WHERE mandat_gouvernement IS NOT NULL")
     gouv = ctx.un(f"SELECT count(*) FROM {MANDAT} WHERE type_organe = 'GOUVERNEMENT'")
     gouv_compo = ctx.un("SELECT count(DISTINCT mandat_gouvernement) FROM membre_gouvernement")

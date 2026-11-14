@@ -231,8 +231,8 @@ def _composition(ctx, f, g, commun, limites):
     fin_effective = g["fin"] or au
     licence = commun["lic_amo"]
     lignes = _lignes(ctx, """
-        SELECT acteur, portefeuille, qualite, ministere, ministere_tutelle, tutelle_statut,
-               raison_tutelle, debut, fin, premier_ministre, preseance, mandat, source_url
+        SELECT acteur, portefeuille, qualite, ministere, ministere_tutelle, ministeres_tutelle,
+               tutelle_statut, raison_tutelle, debut, fin, premier_ministre, preseance, mandat, source_url
         FROM membre_gouvernement WHERE gouvernement = ?""", [org])
     par_ministere = defaultdict(list)
     for r in lignes:
@@ -289,15 +289,20 @@ def _composition(ctx, f, g, commun, limites):
             r["debut"] or "", tri_nom(r["acteur"]), r["mandat"]))
         for r in rs:
             m = r["_racine"]
+            tutelles = list(r["ministeres_tutelle"] or [])
             sortie.append({
                 "ministere_groupe": m, "ministere_groupe_libelle": libelle(m) if m else None,
-                "rattachement": ("non_etabli" if m is None else
+                # co-tutelle : plusieurs ministères, aucun choisi à la place de l'interface (#80)
+                "rattachement": ("co_tutelle" if m is None and len(tutelles) > 1 else
+                                 "non_etabli" if m is None else
                                  "titulaire" if r["ministere"] == m else "rattache"),
                 "acteur": r["acteur"], "nom": commun["noms"].get(r["acteur"], {}).get("nom"),
                 "portefeuille": r["portefeuille"], "qualite": r["qualite"],
                 "ministere": r["ministere"], "premier_ministre": bool(r["premier_ministre"]),
                 "ministere_tutelle": r["ministere_tutelle"],
                 "ministere_tutelle_libelle": libelle(r["ministere_tutelle"]) if r["ministere_tutelle"] else None,
+                "ministeres_tutelle": tutelles or None,
+                "ministeres_tutelle_libelles": [libelle(t) for t in tutelles] or None,
                 "tutelle_statut": r["tutelle_statut"],
                 "raison_tutelle": r["raison_tutelle"],
                 "debut": r["debut"], "fin": r["fin"], "preseance": r["preseance"],
@@ -305,15 +310,17 @@ def _composition(ctx, f, g, commun, limites):
                 "source_point": commun["pa_amo"][0], "licence": licence})
 
     a_ratt = [r for r in lignes if r["tutelle_statut"] != "sans_objet"]
-    ratt = [r for r in a_ratt if r["tutelle_statut"] in ("etabli", "decision")]
+    ratt = [r for r in a_ratt if r["tutelle_statut"] in ("etabli", "co_tutelle", "decision")]
+    co = sum(1 for r in ratt if len(r["ministeres_tutelle"] or []) > 1)
     ouverts = []
     if _vue(ctx, "mandat_ouvert_organe_clos"):
         ouverts = [r[0] for r in ctx.x("""SELECT mandat FROM mandat_ouvert_organe_clos
                                            WHERE organe = ? ORDER BY mandat""", [org])]
     detail = (f"Composition lue dans les mandats « ministère » publiés par l'Assemblée. "
               f"{len(ratt)} portefeuilles sur {len(a_ratt)} à rattacher sont rattachés à leur ministère "
-              f"de tutelle ; les autres sont dits « rattachement non établi » (le libellé ne désigne pas "
-              f"un seul ministre du gouvernement en fonction à la même date).")
+              f"de tutelle ({co} à plusieurs ministères, co-tutelle) ; les autres sont dits « rattachement "
+              f"non établi » (le libellé ne désigne pas de ministre du gouvernement en fonction à la même "
+              f"date, ou n'en reconnaît qu'une partie).")
     if ouverts:
         detail += (f" {len(ouverts)} mandats « membre du gouvernement » restés ouverts alors que le "
                    f"gouvernement est clos, sans portefeuille, n'entrent pas dans la composition (signalés).")

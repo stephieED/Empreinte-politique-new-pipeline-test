@@ -344,7 +344,7 @@ Types prévus et ce qu'ils alimentent :
 | `perimetre` | sortie d'une personne avec sa raison | candidature retirée |
 | `filiation` | cas que la règle de filiation ne tranche pas | 4.3 |
 | `continuite_groupe` | un groupe qui change d'organe en cours de législature | 3.1.1 |
-| `rattachement_portefeuille` | ministère de tutelle d'un ministre délégué quand la source ne le donne pas | 4.4 |
+| `rattachement_portefeuille` | ministère de tutelle d'un ministre délégué quand la source ne le donne pas : `rattache_a` suivi d'un ou de plusieurs `PO…` (co-tutelle, dans l'ordre de la source), avec le texte qui l'établit (décret de composition au JO, sinon le libellé de l'Assemblée) | 4.4 |
 | `libelle_ministere` | table des 260 libellés libres du JO → ministère normalisé | 3.6 |
 | `fin_legislature` | mode de fin (dissolution / terme) avec le décret (lien Légifrance) | 4.5 |
 | `absence_etablie` | « relu, aucun » : source lue en entier, date, ce qu'elle ne couvre pas | 4.7 |
@@ -805,7 +805,10 @@ Dérivés (Z3) : `membre_gouvernement`, `acte_rattache`, `exercice_rattache`.
 - Le **numéro de loi** est le lien sûr entre un dossier de l'Assemblée et le Journal officiel
   (le NOR manque souvent).
 - Un ministre délégué est rattaché à son ministère de tutelle par son libellé (« auprès
-  du ministre… »), confirmé par une table décidée (`rattachement_portefeuille`).
+  du ministre… »), confirmé par une table décidée (`rattachement_portefeuille`). Une
+  co-tutelle (« auprès du ministre A et du ministre B ») garde toutes ses tutelles, dans
+  l'ordre du libellé (`ministeres_tutelle`, décision du 14/11/2026, Q41) : aucune n'est choisie
+  à la place de l'interface.
 
 ### 1.5.5 Couverture
 

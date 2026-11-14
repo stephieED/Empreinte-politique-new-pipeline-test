@@ -875,3 +875,15 @@ Branche `etape-2-dates-questions-xv`, issue #125 (constat de la session candidat
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
 | Lecteur `an_questions` (version 2) : toutes les dates (question, réponse, signalement, renouvellements, clôture, attributions, errata) ramenées de `JJ/MM/AAAA` à `AAAA-MM-JJ` | l'archive de la XVe publie ses dates en `JJ/MM/AAAA` (52 232 questions attribuées, g10) : le tri chronologique des questions d'une fiche était faux, et les dates servies et exportées mélangeaient deux formats. Aucune question n'était perdue : la section des questions n'a pas de filtre de date (une première mesure, appliquant à tort le filtre des votes, annonçait l'inverse). Relecture des questions une fois (≈ 1 min 30 en local) | 1 (1.4, questions) |
+
+## Ministres délégués : co-tutelles et rattachements décidés (14/11/2026)
+
+Branche `etape-2-tutelles-portefeuilles`, issue #80, décision Q41 (« Tous les ministres »).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-COMPOSITION version 2 : un libellé qui désigne plusieurs ministres, tous reconnus, donne une co-tutelle (`tutelle_statut = 'co_tutelle'`) ; nouvelle colonne `ministeres_tutelle`, toutes les tutelles dans l'ordre du libellé ; `ministere_tutelle` ne porte une valeur que s'il n'y en a qu'une. Une co-tutelle dont un ministre n'est pas reconnu reste « non établie » | 20 des 45 portefeuilles non établis de g13 étaient des co-tutelles ; la règle en établit 15 seule | 1 (1.5.4, 1.6 R-COMPOSITION) |
+| Décision `rattachement_portefeuille` : `rattache_a` accepte plusieurs `PO…` (co-tutelle) | 5 co-tutelles que la règle ne sait pas lire (« auprès des ministres de… et de… », coquille de la source, ministre cité deux fois) | 1 (1.3.3) |
+| 30 décisions (`decisions/rattachement_portefeuille/2026-11-14-tutelles-non-etablies.yaml`) : 21 portefeuilles d'Ayrault II et celui de Delevoye d'après les décrets de composition du JO, 3 de Bayrou et 5 co-tutelles d'après le libellé | les 45 portefeuilles non établis des gouvernements publiés sont tous rattachés (mesure locale sur l'archive AMO30 du 14/11/2026) | — |
+| Section `composition` des gouvernements : colonnes `ministeres_tutelle` et `ministeres_tutelle_libelles` ; `rattachement = 'co_tutelle'`, sans groupe de ministère imposé (l'interface choisit) ; schéma C4 mis à jour | besoin de l'interface (#80) | 1 (1.7) |
+
