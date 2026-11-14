@@ -24,12 +24,20 @@ Ce que ce module garantit (doc. 2, 2.2) :
   (35 points sur `data.assemblee-nationale.fr`, issue #37) ;
 - une échéance pour toute la collecte (`fin_collecte`, horloge monotone) : passée, les points
   restants échouent tout de suite et la collecte se termine normalement, au lieu d'être coupée par
-  la limite de la tâche, qui perdait tout l'acquis de la nuit (issue #38).
+  la limite de la tâche, qui perdait tout l'acquis de la nuit (issue #38) ;
+- les octets reçus d'un gros fichier ne sont plus jetés (#32, décision du 14/11/2026 « Garder +
+  diagnostiquer ») : un « départ du début » saute ce qui est déjà reçu au lieu de le réécrire, et
+  un transfert coupé laisse son début dans `dossier_partiels` (avec sa version : ETag, date,
+  taille), repris par plage la fois suivante si la source sert la même version. Chaque connexion
+  note dans `journal_reprises` ce qu'elle a apporté et en combien de secondes (diagnostic des
+  coupures de l'Assemblée : à la taille, ou au temps ?).
 """
 from __future__ import annotations
 
 import hashlib
+import json
 import os
+import shutil
 import tempfile
 import time
 from dataclasses import dataclass, field
@@ -67,7 +75,8 @@ class Transport:
                  reprises_max: int = 40, dossier_tmp: str | None = None, pause_reprise_s: float = 2.0,
                  budget_s: float | None = 1800.0, reprises_vides_max: int = 3,
                  budgets_par_url: dict[str, float] | None = None, echecs_hote_max: int = 3,
-                 fin_collecte: float | None = None):
+                 fin_collecte: float | None = None, dossier_partiels: str | None = None,
+                 partiel_min_octets: int = 50 << 20):
         self.session = requests.Session()
         self.session.headers["User-Agent"] = user_agent
         # Octets bruts : un encodage de transport fausserait la comparaison à Content-Length.
@@ -88,6 +97,9 @@ class Transport:
         self.echecs_hote_max = echecs_hote_max
         self.echecs_hote: dict[str, int] = {}       # échecs de suite sans un octet, par hôte
         self.fin_collecte = fin_collecte
+        # Début des gros fichiers coupés, gardé d'une mise à jour à l'autre (#32).
+        self.dossier_partiels = dossier_partiels
+        self.partiel_min_octets = partiel_min_octets
         self._debut = time.monotonic()
         self._budget = budget_s
 
@@ -104,6 +116,58 @@ class Transport:
 
     def _copier(self, reponse, f) -> int:
         return _copier(reponse, f, self._limite())
+
+    def _copier_note(self, reponse, f, rep, quoi: str, sauter: int = 0) -> int:
+        """Copie en notant la connexion (diagnostic : octets apportés et durée). `sauter` : octets
+        du début déjà reçus, lus sans être réécrits (départ du début qui ne jette rien)."""
+        t0 = time.monotonic()
+        n = _copier(reponse, f, self._limite(), sauter=sauter)
+        rep.journal_reprises.append(f"{quoi} +{_taille_lisible(n)} en {time.monotonic() - t0:.0f} s"
+                                    + (f" (fin à {_taille_lisible(f.tell())})" if quoi != "206" else ""))
+        return n
+
+    # -- octets gardés d'une mise à jour à l'autre (#32) -----------------------------------
+    def _partiel(self, url) -> tuple[str, str] | None:
+        if not self.dossier_partiels:
+            return None
+        h = hashlib.sha1(url.encode()).hexdigest()[:16]
+        return (os.path.join(self.dossier_partiels, h + ".part"),
+                os.path.join(self.dossier_partiels, h + ".json"))
+
+    def _lire_partiel(self, url, attendu, etag, date) -> str | None:
+        """Le début gardé de ce fichier, s'il est de la même version (taille, ETag ou date)."""
+        p = self._partiel(url)
+        if not p or not os.path.exists(p[0]) or not os.path.exists(p[1]):
+            return None
+        try:
+            meta = json.load(open(p[1]))
+        except ValueError:
+            return None
+        meme = meta.get("taille") == attendu and (
+            (etag and meta.get("etag") == etag) or (not etag and date and meta.get("date") == date))
+        if not meme or os.path.getsize(p[0]) >= (attendu or 0):
+            return None
+        return p[0]
+
+    def _garder_partiel(self, url, chemin, attendu, etag, date):
+        p = self._partiel(url)
+        if not p or not attendu or attendu < self.partiel_min_octets or not (etag or date):
+            return
+        taille = os.path.getsize(chemin)
+        if taille == 0 or (os.path.exists(p[0]) and os.path.getsize(p[0]) >= taille
+                           and self._lire_partiel(url, attendu, etag, date)):
+            return
+        os.makedirs(self.dossier_partiels, exist_ok=True)
+        shutil.copyfile(chemin, p[0] + ".tmp")
+        os.replace(p[0] + ".tmp", p[0])
+        with open(p[1], "w") as f:
+            json.dump({"url": url, "etag": etag, "date": date, "taille": attendu, "octets": taille}, f)
+
+    def _oublier_partiel(self, url):
+        p = self._partiel(url)
+        for x in (p or ()):
+            if os.path.exists(x):
+                os.unlink(x)
 
     # -- requêtes simples (listes, API) -------------------------------------------------
     def texte(self, url: str) -> tuple[int, str, dict]:
@@ -174,9 +238,19 @@ class Transport:
         etag_recu = rep.entetes.get("etag")
         date_recue = rep.entetes.get("last-modified")
         fd, chemin = tempfile.mkstemp(prefix="releve-", dir=self.dossier_tmp)
+        fini = False
         try:
             with os.fdopen(fd, "wb") as f:
-                rep.octets_recus += self._copier(r, f)
+                garde = self._lire_partiel(url, attendu, etag_recu, date_recue)
+                if garde:
+                    # Début gardé d'une mise à jour précédente, même version : on le reprend, et la
+                    # suite vient par plage (boucle ci-dessous).
+                    r.close()
+                    with open(garde, "rb") as g:
+                        shutil.copyfileobj(g, f)
+                    rep.journal_reprises.append(f"début gardé repris : {_taille_lisible(f.tell())}")
+                else:
+                    rep.octets_recus += self._copier_note(r, f, rep, "200")
                 reprises = vides = 0
                 while attendu is not None and f.tell() < attendu:
                     # Transfert coupé. Reprise seulement si un validateur garantit la même version.
@@ -199,9 +273,8 @@ class Transport:
                         continue
                     h = {k.lower(): v for k, v in rr.headers.items()}
                     if rr.status_code == 206 and _meme_suite(h, debut_reprise, attendu, etag_recu, date_recue):
-                        n = self._copier(rr, f)
+                        n = self._copier_note(rr, f, rep, "206")
                         rep.octets_recus += n
-                        rep.journal_reprises.append(f"206 +{_taille_lisible(n)}")
                         vides = vides + 1 if n < TAILLE_BLOC else 0
                         if vides >= self.reprises_vides_max and f.tell() < attendu:
                             # La plage n'avance plus : repartir du début, qui avance mieux.
@@ -214,14 +287,23 @@ class Transport:
                             if rr.status_code != 200:
                                 rr.close()
                                 continue
-                            rep.journal_reprises.append("départ du début")
-                            f.seek(0)
-                            f.truncate()
-                            rep.entetes = {k.lower(): v for k, v in rr.headers.items()}
-                            attendu = _entier(rep.entetes.get("content-length"))
-                            etag_recu = rep.entetes.get("etag")
-                            date_recue = rep.entetes.get("last-modified")
-                            rep.octets_recus += self._copier(rr, f)
+                            h2 = {k.lower(): v for k, v in rr.headers.items()}
+                            meme = (_entier(h2.get("content-length")) == attendu
+                                    and (h2.get("etag") == etag_recu if etag_recu
+                                         else h2.get("last-modified") == date_recue))
+                            if meme:
+                                # Même version : les octets déjà reçus sont lus sans être réécrits
+                                # (#32 : on ne jette plus rien).
+                                deja = f.tell()
+                                rep.octets_recus += self._copier_note(rr, f, rep, "départ du début",
+                                                                      sauter=deja)
+                            else:
+                                f.seek(0)
+                                f.truncate()
+                                rep.entetes = h2
+                                attendu = _entier(h2.get("content-length"))
+                                etag_recu, date_recue = h2.get("etag"), h2.get("last-modified")
+                                rep.octets_recus += self._copier_note(rr, f, rep, "départ du début, autre version")
                     elif rr.status_code in (200, 206):
                         # Autre version servie, ou serveur qui ignore la plage : on repart de zéro
                         # avec la version entière.
@@ -254,9 +336,13 @@ class Transport:
             rep.chemin, rep.taille, rep.empreinte = chemin, taille, _sha256(chemin)
             rep.issue = "nouveau"
             chemin = None  # ne pas effacer : le fichier est rendu à l'appelant
+            fini = True
+            self._oublier_partiel(url)
             return True
         finally:
             if chemin and os.path.exists(chemin):
+                if not fini:
+                    self._garder_partiel(url, chemin, attendu, etag_recu, date_recue)
                 os.unlink(chemin)
 
 
@@ -280,14 +366,21 @@ def _meme_suite(h: dict, debut: int, attendu: int, etag: str | None, date: str |
     return bool(date) and h.get("last-modified") == date
 
 
-def _copier(reponse, f, limite: float | None = None) -> int:
+def _copier(reponse, f, limite: float | None = None, sauter: int = 0) -> int:
     """Copie la réponse dans `f` ; s'arrête à l'instant `limite` (horloge monotone), même si le
-    serveur envoie encore : la taille reçue dira que le fichier est incomplet."""
+    serveur envoie encore : la taille reçue dira que le fichier est incomplet. Les `sauter` premiers
+    octets sont lus sans être écrits (déjà reçus) ; `f` est alors positionné à leur fin. Rend les
+    octets transmis."""
     n = 0
     try:
         for bloc in reponse.iter_content(TAILLE_BLOC):
-            f.write(bloc)
             n += len(bloc)
+            if sauter:
+                if n <= sauter:
+                    continue
+                bloc = bloc[len(bloc) - (n - sauter):]
+                sauter = 0
+            f.write(bloc)
             if limite is not None and time.monotonic() > limite:
                 break
     except requests.RequestException:

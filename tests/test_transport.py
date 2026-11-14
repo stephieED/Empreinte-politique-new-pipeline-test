@@ -141,14 +141,14 @@ def test_coupures_repetees_reprises_jusqu_au_bout(serveur, tmp_path):
     rep = _t(tmp_path).telecharger(serveur)
     assert rep.issue == "nouveau" and open(rep.chemin, "rb").read() == V1
     assert rep.tentatives == 1 and 14 <= rep.reprises <= 16
-    assert all(j.startswith("206") for j in rep.journal_reprises)
+    assert rep.journal_reprises[0].startswith("200 +7 Ko") and all(j.startswith("206 +") for j in rep.journal_reprises[1:])
 
 
 def test_connexion_fermee_pendant_une_reprise_n_est_pas_un_nouveau_depart(serveur, tmp_path):
     Etat.couper_au, Etat.fermer_reprises = 10 * 1024, 2
     rep = _t(tmp_path).telecharger(serveur)
     assert rep.issue == "nouveau" and open(rep.chemin, "rb").read() == V1
-    assert rep.tentatives == 1 and rep.journal_reprises[:2] == ["coupure (ConnectionError)"] * 2
+    assert rep.tentatives == 1 and rep.journal_reprises[1:3] == ["coupure (ConnectionError)"] * 2
 
 
 def test_serveur_qui_ignore_la_plage(serveur, tmp_path):
@@ -157,14 +157,14 @@ def test_serveur_qui_ignore_la_plage(serveur, tmp_path):
     Etat.couper_au, Etat.ignorer_plage = 10 * 1024, True
     rep = _t(tmp_path).telecharger(serveur)
     assert rep.issue == "nouveau" and open(rep.chemin, "rb").read() == V1
-    assert rep.journal_reprises == ["200 autre version : départ à zéro"]
+    assert rep.journal_reprises[1:] == ["200 autre version : départ à zéro"]
 
 
 def test_echec_dit_ce_que_les_reprises_ont_recu(serveur, tmp_path):
     Etat.couper_chaque = 1024
     t = Transport("test", pauses=(), delai_s=5, dossier_tmp=str(tmp_path), reprises_max=3, pause_reprise_s=0)
     rep = t.telecharger(serveur)
-    assert rep.issue == "echec" and "reprises : 206 +1 Ko, 206 +1 Ko, 206 +1 Ko" in rep.message
+    assert rep.issue == "echec" and "reprises : 200 +1 Ko en 0 s (fin à 1 Ko), 206 +1 Ko en 0 s, 206 +1 Ko en 0 s" in rep.message
 
 
 def test_plages_vides_on_repart_du_debut(serveur, tmp_path):
@@ -173,7 +173,7 @@ def test_plages_vides_on_repart_du_debut(serveur, tmp_path):
     Etat.couper_au, Etat.plage_vide = 10 * 1024, True
     rep = _t(tmp_path).telecharger(serveur)
     assert rep.issue == "nouveau" and open(rep.chemin, "rb").read() == V1
-    assert rep.journal_reprises[-1] == "départ du début" and rep.tentatives == 1
+    assert rep.journal_reprises[-1].startswith("départ du début +100 Ko") and rep.tentatives == 1
 
 
 def test_budget_de_temps_par_fichier(serveur, tmp_path):
@@ -182,3 +182,34 @@ def test_budget_de_temps_par_fichier(serveur, tmp_path):
                   budget_s=0.3)
     rep = t.telecharger(serveur)
     assert rep.issue == "echec" and "budget de 0 s dépassé" in rep.message
+
+
+
+def test_octets_gardes_d_une_mise_a_jour_a_l_autre(serveur, tmp_path):
+    """#32 (décision du 14/11/2026) : un transfert coupé laisse son début de côté ; la mise à jour
+    suivante, si la source sert la même version, le reprend et ne demande que la suite."""
+    Etat.couper_chaque = 30 * 1024
+    t = Transport("test", pauses=(), delai_s=5, dossier_tmp=str(tmp_path), reprises_max=0, pause_reprise_s=0,
+                  dossier_partiels=str(tmp_path / "partiels"), partiel_min_octets=0)
+    r1 = t.telecharger(serveur)
+    assert r1.issue == "echec" and len(list((tmp_path / "partiels").glob("*.part"))) == 1
+    Etat.couper_chaque = None
+    Etat.requetes = []
+    t2 = Transport("test", pauses=(), delai_s=5, dossier_tmp=str(tmp_path), pause_reprise_s=0,
+                   dossier_partiels=str(tmp_path / "partiels"), partiel_min_octets=0)
+    r2 = t2.telecharger(serveur)
+    assert r2.issue == "nouveau" and open(r2.chemin, "rb").read() == V1
+    assert r2.journal_reprises[0] == "début gardé repris : 30 Ko"
+    assert Etat.requetes[-1].get("Range") == f"bytes={30 * 1024}-"         # seule la suite est demandée
+    assert not list((tmp_path / "partiels").glob("*.part"))                  # oublié une fois reçu
+
+
+def test_octets_gardes_d_une_autre_version_ignores(serveur, tmp_path):
+    Etat.couper_chaque = 30 * 1024
+    kw = dict(pauses=(), delai_s=5, dossier_tmp=str(tmp_path), pause_reprise_s=0,
+              dossier_partiels=str(tmp_path / "partiels"), partiel_min_octets=0)
+    Transport("test", reprises_max=0, **kw).telecharger(serveur)
+    Etat.couper_chaque, Etat.contenu, Etat.etag = None, V2, '"v2"'               # la source a changé
+    r = Transport("test", **kw).telecharger(serveur)
+    assert r.issue == "nouveau" and open(r.chemin, "rb").read() == V2
+    assert not any(j.startswith("début gardé") for j in r.journal_reprises)
