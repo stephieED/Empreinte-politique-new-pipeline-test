@@ -807,7 +807,7 @@ Dérivés (Z3) : `membre_gouvernement`, `acte_rattache`, `exercice_rattache`.
 - Un ministre délégué est rattaché à son ministère de tutelle par son libellé (« auprès
   du ministre… »), confirmé par une table décidée (`rattachement_portefeuille`). Une
   co-tutelle (« auprès du ministre A et du ministre B ») garde toutes ses tutelles, dans
-  l'ordre du libellé (`ministeres_tutelle`, décision du 14/11/2026, Q40) : aucune n'est choisie
+  l'ordre du libellé (`ministeres_tutelle`, décision du 14/11/2026, Q41) : aucune n'est choisie
   à la place de l'interface.
 
 ### 1.5.5 Couverture

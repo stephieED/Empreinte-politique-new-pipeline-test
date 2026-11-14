@@ -878,7 +878,7 @@ Branche `etape-2-dates-questions-xv`, issue #125 (constat de la session candidat
 
 ## Ministres délégués : co-tutelles et rattachements décidés (14/11/2026)
 
-Branche `etape-2-tutelles-portefeuilles`, issue #80, décision Q40 (« Tous les ministres »).
+Branche `etape-2-tutelles-portefeuilles`, issue #80, décision Q41 (« Tous les ministres »).
 
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
