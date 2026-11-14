@@ -520,3 +520,50 @@ def test_questions_en_seance_reliees_au_compte_rendu(tmp_path):
     f = _lire(racine, "candidats/alice-martin/fiche.json.gz")
     cv = next(c for c in f["couverture"] if c["section"] == "questions")
     assert "1 sur 1" in cv["detail"]
+
+
+def _europe_tables(sources_lues):
+    """Alice Martin, députée européenne 2014 → aujourd'hui, sans aucune activité à son nom.
+    `sources_lues` : les tables des sources ont-elles des lignes (d'autres députés) ?"""
+    cand = [dict(c, eurodepute="999") if c["per"] == "per:000001" else c for c in TABLES["candidat"]]
+    car = TABLES["carriere"] + [dict(_car("per:000001", "2014-07-01", None, None, None),
+                                     institution="parlement_europeen", source="pe")]
+    autre = [{"mep": "1", "type": "WQ", "rang": 0, "date": "2018-01-01"}] if sources_lues else []
+    autre_pe = [{"personne": "1", "intervention": "x", "date": "2020-01-01"}] if sources_lues else []
+    vote = [{"vote": "v", "date": "2018-01-01"}] if sources_lues else []
+    vide = [{"per": None, "eurodepute": None, "famille": None, "date": None, "annee": None, "activite": None,
+             "source": None, "source_point": None, "heure": None, "numero": None, "nature": None}]
+    return dict(candidat=cand, carriere=car,
+                activite_pe=[], vote_personne_pe=[],
+                parltrack_activites__activite_pt=autre or None, pe_eurodeputes__intervention_pe=autre_pe or None,
+                parltrack_votes__vote_pt=vote or None, pe_votes__vote_pe=vote or None), vide
+
+
+@pytest.mark.parametrize("lues, attendu", [(False, "non_collecte"), (True, "relu_aucun")])
+def test_europe_source_jamais_relevee_n_est_pas_relu_aucun(tmp_path, lues, attendu):
+    """Essai du 14/11/2026 : avant le premier relevé de Parltrack, le lecteur écrit des tables
+    vides ; les six sections d'activité disaient « relu, aucune activité ». Une source n'est lue
+    que si sa table a des lignes."""
+    remplace, vide = _europe_tables(lues)
+    os.makedirs(tmp_path / "z2", exist_ok=True)
+    ctx = Contexte(str(tmp_path / "z2"), str(tmp_path / "z3"), date_reference=AU)
+    for nom, lignes in {**TABLES, **remplace}.items():
+        if nom in ("activite_pe", "vote_personne_pe"):
+            ctx.con.register(nom, pa.Table.from_pylist(vide).filter(pa.array([False])))
+        elif nom.startswith(("parltrack_", "pe_")):
+            # table vide écrite par un lecteur sans version, ou table lue
+            t = (pa.Table.from_pylist([{**l, "prov_point": nom, "licence": "odbl-1.0"} for l in lignes]) if lignes
+                 else pa.table({"prov_point": pa.array([], pa.string()), "licence": pa.array([], pa.string())}))
+            ctx.con.register(nom, t)
+        elif lignes is not None:
+            ctx.con.register(nom, pa.Table.from_pylist(lignes))
+    ecr = Ecrivain(str(tmp_path / "site"), "essai")
+    composeur.composer(ctx, ecr)
+    ecr.clore()
+    racine = os.path.join(str(tmp_path / "site"), "donnees", "essai")
+    f = _lire(racine, "candidats/alice-martin/fiche.json.gz")
+    st = {c["section"]: c["statut"] for c in f["couverture"]}
+    for fam in ("interventions", "rapports", "resolutions", "questions", "explications", "autres"):
+        # Parltrack figé : un mandat ouvert est « partiel » quand la source est lue, sans ligne.
+        assert st[f"europe-{fam}"] in ((attendu,) if not lues or fam == "interventions" else ("partiel",))
+    assert st["europe"] == ("non_collecte" if not lues else "complet")

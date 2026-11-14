@@ -893,3 +893,12 @@ Branche `etape-2-dates-promulgation`, issue #128 (constat transmis par la sessio
 | --- | --- | --- |
 | R-LOIS (version 2) : date de promulgation = date de signature de la loi au JO quand il la connaît (`source_date_promulgation` : `journal_officiel` ou `assemblee`), date de l'acte de l'Assemblée gardée (`date_assemblee`) ; A7 nomme les désaccords ; couverture `date_de_promulgation_lue_au_jo` | #128 : sept lois mal datées par l'Assemblée (acte ou JO cité), dont 2021-191 datée du 0021-02-24 ; la date de signature du JO est juste dans les sept cas (vérifié sur la g13) | 1 (1.6 R-LOIS) |
 | `perimetre.py` : docstring alignée (mandats locaux et volet européen hors de ce module, budgets hors périmètre) | elle disait encore « sans mandats locaux » après la PR #91 ; aucune constante ne les excluait | — |
+
+## Volet européen : une source jamais relevée n'est plus « relue, rien trouvé » (14/11/2026)
+
+Branche `etape-2-europe-activite-couverture`, défaut signalé par la session « New pipeline » (essai 43614040736).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Composeur candidat : une source européenne (Parltrack, portail du PE) est lue si sa table a au moins une ligne (`_lu`), plus seulement si elle existe ; votes et six sections d'activité | un lecteur dont le point n'a jamais été relevé écrit une table vide : avant le premier relevé de Parltrack, les six sections d'activité de Mélenchon, Le Pen, Philippot et Glucksmann disaient « relu, aucune activité » (`relu_aucun`) au lieu de « non collecté » | — |
+
