@@ -875,3 +875,11 @@ Branche `etape-2-dates-questions-xv`, issue #125 (constat de la session candidat
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
 | Lecteur `an_questions` (version 2) : toutes les dates (question, réponse, signalement, renouvellements, clôture, attributions, errata) ramenées de `JJ/MM/AAAA` à `AAAA-MM-JJ` | l'archive de la XVe publie ses dates en `JJ/MM/AAAA` (52 232 questions attribuées, g10) : le tri chronologique des questions d'une fiche était faux, et les dates servies et exportées mélangeaient deux formats. Aucune question n'était perdue : la section des questions n'a pas de filtre de date (une première mesure, appliquant à tort le filtre des votes, annonçait l'inverse). Relecture des questions une fois (≈ 1 min 30 en local) | 1 (1.4, questions) |
+
+## Mode de fin des législatures closes (14/11/2026)
+
+Branche `etape-2-fin-legislatures` (constat transmis par la session d'analyse ; préparation acceptée par la propriétaire, validée par la fusion).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Décisions `fin_legislature` : XIVe (fin le 20/06/2017) et XVe (21/06/2022) « terme » ; XVIe (09/06/2024) « dissolution », décret du 9 juin 2024 (NOR PREX2415533D, JORF n°0134 du 10 juin 2024), lu dans le Journal officiel collecté | les trois fiches servaient `mode_fin: non_etabli` : l'Assemblée ne publie pas le mode de fin, il vient d'une décision sourcée (R-LEGISLATURES), et aucune n'était saisie. Couverture `mode_de_fin_etabli` : 1 sur 6 → 4 sur 6 (XIIe et XIIIe, non publiées, restent non établies) | 1 (1.3.3) |
