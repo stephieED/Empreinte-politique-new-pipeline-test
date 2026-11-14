@@ -76,7 +76,9 @@ def cmd_collecter(a):
                                    if p.get("budget_s") and p.get("url") and p["id"] in (a.points or [])},
                   # Échéance de toute la collecte, avant la limite de la tâche (330 min) : la collecte
                   # se termine et l'acquis est déposé, au lieu d'être perdu (#38).
-                  fin_collecte=time.monotonic() + params.get("duree_collecte_max_s", 270 * 60))
+                  fin_collecte=time.monotonic() + params.get("duree_collecte_max_s", 270 * 60),
+                  # Début des gros fichiers coupés, gardé d'une mise à jour à l'autre (#32).
+                  dossier_partiels=getattr(a, "partiels", None))
     if a.mode == "complet":
         for r in e._releves:            # relecture forcée : on oublie les ETag
             r["etag"] = r["last_modified"] = None
@@ -417,6 +419,8 @@ def main(argv=None):
     s = sp.add_parser("collecter", parents=[commun]); s.set_defaults(f=cmd_collecter)
     s.add_argument("--mode", default="quotidien"); s.add_argument("--points", nargs="*")
     s.add_argument("--tmp", default=None)
+    s.add_argument("--partiels", default=None,
+                   help="dossier où garder le début des gros fichiers coupés, d'une mise à jour à l'autre")
     s.add_argument("--rattrapage-erreur", default=None,
                    help="erreur de la recherche d'un acquis à rattraper (tâche preparer), mise au rapport")
     s = sp.add_parser("calculer", parents=[commun]); s.set_defaults(f=cmd_calculer)

@@ -843,3 +843,13 @@ Branche `etape-2-schema-paquets`. Nuit du 13/11 (exécution 43502893975) : acqui
 | --- | --- | --- |
 | C4 : un paquet (`amendements-2023-1`, numéro après une année ou un semestre) relève du schéma de sa section (`amendements-N`) quand sa forme n'est pas déclarée ; les colonnes restent vérifiées | les amendements de la XVIe, relevés pour la première fois cette nuit, font dépasser un paquet aux amendements de 2023 de François Ruffin : forme absente de toutes les données d'où le schéma avait été tiré. Vérifié sur les fichiers servis de la nuit : 0 écart avec la correction | 2 (2.8.1 C4) |
 | C1 : un fichier changé à la source depuis la **dernière publication** (et non seulement dans la génération courante) explique la perte de ses faits | défaut antérieur, révélé par l'essai de cette branche (43521640358, génération 12) : la nuit (génération 11) a été écrite sans être publiée, l'essai se compare à la g10 et ne connaissait que les changements de la g12 ; 9 points de l'ordre du jour de la XVIIe, changés à la source en g11, passaient pour perdus. Une nuit normale n'est pas touchée (dernière publication = génération précédente) | 2 (2.8.1 C1) |
+
+## Amendements de la XVe : octets gardés, coupures diagnostiquées (14/11/2026)
+
+Branche `etape-2-amendements-partiels`, issue #32, décision Q36 (« Garder + diagnostiquer »).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Transport : un « départ du début » de la même version saute les octets déjà reçus au lieu de les réécrire ; un transfert coupé (fichier ≥ 50 Mo) laisse son début dans `partiels/`, avec sa version (ETag, date, taille), repris par plage la fois suivante si la source sert la même version, oublié une fois le fichier reçu | relevé dédié du 14/11 : 1,03 Go transmis pour atteindre 30,7 Mo sur 649 Mo ; chaque départ du début était tronqué | 2 (2.2) |
+| Workflow : cache `partiels-<run>` restauré avant la collecte, enregistré après, même en échec | garder les octets d'une mise à jour à l'autre | 2 (2.2, 2.15) |
+| Chaque connexion est notée dans `journal_reprises` (octets apportés, durée, fin atteinte), et le journal entre dans le rapport de collecte | diagnostiquer la coupure de l'Assemblée : à la taille (≈ 30 Mo) ou au temps ? | 2 (2.10) |
