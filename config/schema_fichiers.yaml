@@ -556,6 +556,8 @@ colonnes:
   - premier_ministre
   - ministere_tutelle
   - ministere_tutelle_libelle
+  - ministeres_tutelle
+  - ministeres_tutelle_libelles
   - tutelle_statut
   - raison_tutelle
   - debut

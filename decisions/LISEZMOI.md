@@ -18,6 +18,10 @@ motif: "L'Assemblée a renuméroté les scrutins du 10/11 ; vérifié sur les pa
 Types en usage : `levee_controle`, `fin_legislature`, `rattachement_portefeuille`,
 `libelle_ministere`, `filiation`, `identite`, `perimetre`, `candidature`, `borne_mandat` (mandat resté ouvert dans un organe clos, borné à une date : Q23) (voir le document 1, 1.3.3).
 
+Une décision `rattachement_portefeuille` donne le ou les ministères de tutelle d'un portefeuille
+(`rattache_a PO…`, ou `rattache_a PO… PO…` pour une co-tutelle, dans l'ordre où la source les
+nomme), avec le texte qui l'établit (`source`).
+
 La liste des candidats est une décision `candidature` (`candidature/<date>-franceinfo.yaml`),
 recopiée à la main de la page de franceinfo, qui n'est pas collectée : une nouvelle lecture de
 la page est un nouveau fichier, la liste en vigueur est celle du fichier le plus récent.
