@@ -904,4 +904,12 @@ Branche `etape-2-tutelles-portefeuilles`, issue #80, décision Q41 (« Tous les 
 | Décision `rattachement_portefeuille` : `rattache_a` accepte plusieurs `PO…` (co-tutelle) | 5 co-tutelles que la règle ne sait pas lire (« auprès des ministres de… et de… », coquille de la source, ministre cité deux fois) | 1 (1.3.3) |
 | 30 décisions (`decisions/rattachement_portefeuille/2026-11-14-tutelles-non-etablies.yaml`) : 21 portefeuilles d'Ayrault II et celui de Delevoye d'après les décrets de composition du JO, 3 de Bayrou et 5 co-tutelles d'après le libellé | les 45 portefeuilles non établis des gouvernements publiés sont tous rattachés (mesure locale sur l'archive AMO30 du 14/11/2026) | — |
 | Section `composition` des gouvernements : colonnes `ministeres_tutelle` et `ministeres_tutelle_libelles` ; `rattachement = 'co_tutelle'`, sans groupe de ministère imposé (l'interface choisit) ; schéma C4 mis à jour | besoin de l'interface (#80) | 1 (1.7) |
+## Adresses citées par des articles publiés (14/11/2026)
+
+Branche `etape-2-adresses-citees`, issue #86 (révisée le 14/11/2026 : douze adresses seulement).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Type de décision `adresse_citee` : une adresse de l'ancien site → sa fiche, désignée par un identifiant stable (lignée `lig:…`, gouvernement `PO…`) ; douze décisions (`decisions/adresse_citee/2026-11-14-articles.yaml`), validées par la propriétaire | des articles datés, qui ne seront plus modifiés, citent ces adresses ; la forme des adresses des fiches est libre (cadrage du 14/11/2026) | 1 (1.3.3) |
+| Composeur `adresses` : résout chaque décision (une lignée fusionnée mène à celle qui l'a reçue) ; le catalogue (`catalogue.json.gz`) sert la table `adresses_citees` (adresse, `lien`, raison, décision) ; une cible non publiée n'est jamais servie comme lien, A7 la nomme | besoin de l'interface (#86) ; un lien faux est pire qu'un lien absent (cahier 4.7) ; C2 vérifie la colonne `lien` | 1 (1.7.2) |
 

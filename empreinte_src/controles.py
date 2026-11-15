@@ -630,6 +630,13 @@ class Controles:
                    {r[0] for r in self._x("SELECT DISTINCT coalesce(acteur, '') FROM population")}
             objets += [f"décision {d.get('fichier')} sans objet : {d.get('personne')}"
                        for d in decisions.get("perimetre", []) if d.get("personne") not in pers]
+        # Adresse citée par un article publié qui ne mène à aucune fiche (#86) : servie sans lien.
+        p_cat = os.path.join(self.racine, "catalogue.json.gz")
+        if os.path.exists(p_cat):
+            with gzip.open(p_cat) as f:
+                cit = json.load(f).get("adresses_citees") or {}
+            objets += [f"adresse citée {a} sans fiche : {r} (décision {d})"
+                       for a, lien, r, d in cit.get("lignes", []) if lien is None]
         empreintes = {a["empreinte"] for a in self.anomalies}
         objets += [f"levée {l.get('fichier')} sans objet cette nuit : {e}" for e, l in sorted(self.levees.items())
                    if e not in empreintes]
