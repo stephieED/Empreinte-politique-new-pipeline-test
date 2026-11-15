@@ -25,7 +25,7 @@ local.
 - **Z0, Z1** (`entrepot`) : les relevés et les fichiers reçus, versionnés ; c'est l'acquis,
   gardé pour toujours dans la release `entrepot` du dépôt.
 - **ZI** (`identites`) : le registre des identités, en ajout seul.
-- **ZD** (dossier `decisions/`) : les décisions de la propriétaire.
+- **ZD** (dossier `references/`) : les décisions de la propriétaire.
 - **Z2** (`lecture`) : les faits lus, recalculés depuis Z1.
 - **Z3** (`liaison`) : le graphe relié, recalculé à chaque mise à jour.
 - **Z4** (`composition`) : les fichiers servis des fiches.

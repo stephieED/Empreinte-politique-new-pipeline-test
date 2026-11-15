@@ -4,7 +4,7 @@ source (cahier 3.10 et 4.1 ; décisions de la propriétaire du 06/11 et du 13/11
 **La liste** est celle de franceinfo (« la liste de candidats doit se baser sur celle de
 franceinfo », 13/11/2026). franceinfo réserve la fouille de textes et de données et interdit son
 site aux robots d'IA : la page n'est pas collectée. Elle est recopiée à la main dans une décision
-`candidature` (`decisions/candidature/<date>-franceinfo.yaml`, une entrée par candidat : nom,
+`candidature` (`references/candidature/<date>-franceinfo.yaml`, une entrée par candidat : nom,
 statut, parti, élément Wikidata), que la propriétaire valide en fusionnant la pull request
 (option « A » du 13/11/2026). La liste en vigueur est celle du fichier le plus récent (champ
 `date`) ; une personne d'une liste plus ancienne qui n'est plus dans la dernière garde sa ligne,

@@ -893,3 +893,15 @@ Branche `etape-2-dates-promulgation`, issue #128 (constat transmis par la sessio
 | --- | --- | --- |
 | R-LOIS (version 2) : date de promulgation = date de signature de la loi au JO quand il la connaît (`source_date_promulgation` : `journal_officiel` ou `assemblee`), date de l'acte de l'Assemblée gardée (`date_assemblee`) ; A7 nomme les désaccords ; couverture `date_de_promulgation_lue_au_jo` | #128 : sept lois mal datées par l'Assemblée (acte ou JO cité), dont 2021-191 datée du 0021-02-24 ; la date de signature du JO est juste dans les sept cas (vérifié sur la g13) | 1 (1.6 R-LOIS) |
 | `perimetre.py` : docstring alignée (mandats locaux et volet européen hors de ce module, budgets hors périmètre) | elle disait encore « sans mandats locaux » après la PR #91 ; aucune constante ne les excluait | — |
+
+## Le dossier des décisions s'appelle `references/` (15/11/2026)
+
+Question de la propriétaire (14/11) : le nom `decisions/` est-il intuitif pour qui ne connaît ni le
+projet ni le dépôt ? Le mot prêtait à confusion : les données parlent elles-mêmes de « décisions »
+(décisions en séance de l'Assemblée, avertissement A7), la documentation a une rubrique « Décisions »,
+et le dossier contient aussi des saisies (liste des candidats). Choix de la propriétaire :
+« references », renommé tout de suite (cadrage).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| `decisions/` → `references/` (`git mv`) ; chemins corrigés dans le code, le workflow (`--references references`), `config/points_acces.yaml` (clé `references`, l'ancienne `decisions` encore lue), les tests, `docs/exploitation.md` et les livrables décrivant l'état actuel (docs 1, 2, 5, cadrage, migration) ; `references/LISEZMOI.md` explique le nom. L'option `--decisions` reste un alias de `--references`. Les entrées datées de ce journal gardent l'ancien chemin | un nom qui dise ce que sont ces fichiers : ce que le traitement prend pour référence face aux sources | 1, 2 (faits) |

@@ -414,7 +414,7 @@ def test_decision_reelle_de_la_liste_bien_formee():
     clés partout (la table des décisions prend ses colonnes à la première entrée)."""
     import glob
     import re
-    racine = os.path.join(os.path.dirname(__file__), "..", "decisions", "candidature")
+    racine = os.path.join(os.path.dirname(__file__), "..", "references", "candidature")
     fichiers = sorted(glob.glob(os.path.join(racine, "*.yaml")))
     assert fichiers
     for f in fichiers:

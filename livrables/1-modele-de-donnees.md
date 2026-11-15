@@ -45,7 +45,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | **Z0 Relevés** | le journal des accès aux sources | entrepôt (*releases* du dépôt public) | perte irréparable |
 | **Z1 Entrepôt brut** | chaque objet source, chaque version, filtré des données interdites et gardé sous forme canonique (re-sérialisé), en segments de 90 Mo au plus | entrepôt | perte irréparable |
-| **ZD Décisions** | identité validée, filiation tranchée, levée de contrôle… | écrites dans `decisions/` du dépôt privé, recopiées chaque soir dans `decisions/` du dépôt public | perte irréparable (mais git en garde l'historique) |
+| **ZD Décisions** | identité validée, filiation tranchée, levée de contrôle… | écrites dans `references/` du dépôt privé, recopiées chaque soir dans `references/` du dépôt public | perte irréparable (mais git en garde l'historique) |
 | **Z2 Faits lus** | des tables normalisées, avec provenance | cache de GitHub Actions (accélérateur) | on relit Z1 |
 | **Z3 Graphe relié** | tout ce que les règles calculent | temporaire, pendant la mise à jour | on recalcule |
 | **Z4 Publication** | ce que le navigateur télécharge | GitHub Pages ; copies gardées pour la traçabilité | on rejoue |
@@ -103,7 +103,7 @@ Trois idées tiennent l'ensemble :
 | --- | --- | --- | --- | --- |
 | **Z0 Relevés** | le journal de chaque accès à une source : quoi, quand, réponse, empreinte, complétude | acquis | Parquet, un fichier par mois | entrepôt (actifs de *releases* du dépôt public) |
 | **Z1 Entrepôt brut** | chaque fichier membre des archives reçues (un acteur, un scrutin, un amendement, une séance, un texte du JO…), **à l'octet près, version par version** | acquis | segments Parquet (octets exacts compressés zstd, 90 Mo au plus par segment) + index des versions | entrepôt |
-| **ZD Décisions** | les décisions de la propriétaire (identité validée, filiation tranchée, levée de contrôle…) | acquis | fichiers YAML, un par décision | écrites dans `decisions/` du dépôt **privé**, importées chaque soir dans `decisions/` du dépôt public, où elles deviennent publiques et datées (versionné par git) |
+| **ZD Décisions** | les décisions de la propriétaire (identité validée, filiation tranchée, levée de contrôle…) | acquis | fichiers YAML, un par décision | écrites dans `references/` du dépôt **privé**, importées chaque soir dans `references/` du dépôt public, où elles deviennent publiques et datées (versionné par git) |
 | **ZI Registres d'identité** | l'attribution de chaque identifiant interne (`per:…`) et de chaque adresse publique, en ajout seul (étape 2, correction P1) | acquis | Parquet | entrepôt |
 | **Z2 Faits lus** | tables normalisées, une ligne par fait, avec provenance | recalculé (mis en cache) | Parquet partitionné par famille et législature | cache de GitHub Actions (accélérateur seulement : s'il est évincé, Z2 se reconstruit depuis Z1, voir doc. 4) |
 | **Z3 Graphe relié** | identités résolues, liens entre objets, classifications, périodes, positions, comptes, couverture | recalculé | Parquet / DuckDB | temporaire, pendant la mise à jour |
@@ -320,7 +320,7 @@ R-ARBITRAGE-ARCHIVES (1.6) dit laquelle fait foi pour quel champ.
 
 ### 1.3.3 Décision (ZD)
 
-Une décision est un fichier YAML dans `decisions/<type>/`, écrit par la propriétaire sur le
+Une décision est un fichier YAML dans `references/<type>/`, écrit par la propriétaire sur le
 dépôt privé à tout moment, puis importé par la tâche du soir sur le dépôt public (doc. 2,
 2.12) ; c'est ce commit d'import qui la rend publique et datée, avec son auteur :
 
