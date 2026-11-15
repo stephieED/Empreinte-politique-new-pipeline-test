@@ -23,9 +23,10 @@ URL_CR = "https://www.assemblee-nationale.fr/dyn/17/comptes-rendus/seance/"
 
 
 def _mg(gouv, acteur, portefeuille, ministere, debut, fin=None, qualite="Ministre", tutelle=None,
-        statut="sans_objet", pm=False, preseance=30, mandat=None, raison=None):
+        statut="sans_objet", pm=False, preseance=30, mandat=None, raison=None, tutelles=None):
     return {"gouvernement": gouv, "acteur": acteur, "portefeuille": portefeuille, "qualite": qualite,
-            "ministere": ministere, "ministere_tutelle": tutelle, "tutelle_statut": statut,
+            "ministere": ministere, "ministere_tutelle": tutelle,
+            "ministeres_tutelle": tutelles or ([tutelle] if tutelle else None), "tutelle_statut": statut,
             "raison_tutelle": raison, "debut": debut, "fin": fin, "premier_ministre": pm,
             "preseance": preseance, "mandat": mandat or f"PM{acteur}{ministere}", "source_url": None}
 
@@ -84,6 +85,9 @@ TABLES = {
             "Secrétaire d'État", statut="non_etabli", preseance=50, raison="le libellé désigne plusieurs ministres"),
         _mg("PO3", "PA15", "Ministère délégué auprès du Premier ministre", "M36", "2024-09-21", "2024-12-13",
             "Ministre délégué", tutelle="M31", statut="etabli", preseance=40),
+        _mg("PO3", "PA16", "Ministère délégué auprès du ministre de l'intérieur et de la ministre de la culture",
+            "M37", "2024-09-21", "2024-12-13", "Ministre délégué", tutelles=["M33", "M32"],
+            statut="co_tutelle", preseance=45, raison="le libellé désigne plusieurs ministres"),
         # Delta II : remaniement, la culture change d'organe sans changer de libellé.
         _mg("PO4", "PA20", "Premier ministre", "M41", "2025-10-11", None, "Premier ministre", pm=True,
             preseance=1),
@@ -149,7 +153,7 @@ TABLES = {
         {"uid": f"PA{n}", "prenom": p, "nom": nm, "nom_alpha": nm, "prov_point": "an-amo30-l17"}
         for n, p, nm in [(1, "Gabriel", "Attal"), (2, "Rachida", "Dati"), (10, "Michel", "Barnier"),
                          (11, "Rachida", "Dati"), (12, "Bruno", "Retailleau"), (13, "Nicolas", "Daragon"),
-                         (14, "Ana", "Zed"), (15, "Maud", "Bregeon"), (20, "Sébastien", "Lecornu"),
+                         (14, "Ana", "Zed"), (15, "Maud", "Bregeon"), (16, "Léa", "Co"), (20, "Sébastien", "Lecornu"),
                          (21, "Rachida", "Dati"), (22, "Catherine", "Pégard"), (23, "Catherine", "Vautrin")]],
     "an_acteurs__mandat": [{"prov_point": "an-amo30-l17", "licence": "etalab-2.0"}],
     "an_dossiers__dossier": [{"prov_point": "an-dossiers-l17", "licence": "etalab-2.0"}],
@@ -249,20 +253,26 @@ def test_composition_ordre_protocolaire_et_tutelles(sortie):
         ("Bruno Retailleau", "titulaire"),           # préséance 10
         ("Nicolas Daragon", "rattache"),             # délégué rattaché à l'intérieur
         ("Rachida Dati", "titulaire"),               # préséance 30
+        ("Léa Co", "co_tutelle"),                    # co-tutelle : aucun groupe choisi (#80)
         ("Ana Zed", "non_etabli")]                   # rattachement non établi, à part
+    co = rows[-2]
+    assert co["ministere_groupe"] is None and co["ministere_tutelle"] is None
+    assert co["ministeres_tutelle"] == ["M33", "M32"]
+    assert co["ministeres_tutelle_libelles"] == ["Ministère de l'intérieur", "Ministère de la culture"]
+    assert rows[3]["ministeres_tutelle"] == ["M33"] and rows[0]["ministeres_tutelle"] is None
     zed = rows[-1]
     assert zed["ministere_groupe"] is None and zed["raison_tutelle"]
     assert rows[3]["ministere_tutelle_libelle"] == "Ministère de l'intérieur"
     assert "ordre" in d
     entete = _lire(racine, "gouvernements/gamma/fiche.json.gz")["en_bref"]["composition"]
-    assert entete["nb_membres"] == 6
+    assert entete["nb_membres"] == 7
     # Minimum lu après la formation (Premier ministre seul du 06 au 20/09, puis ses ministres) :
-    # 6, pas 1 (décision du 07/11/2026).
-    assert entete["effectif_minimal"] == {"valeur": 6, "periodes": [{"du": "2024-09-21", "au": "2024-12-13"}]}
-    assert entete["effectif_maximal"]["valeur"] == 6
+    # 7, pas 1 (décision du 07/11/2026).
+    assert entete["effectif_minimal"] == {"valeur": 7, "periodes": [{"du": "2024-09-21", "au": "2024-12-13"}]}
+    assert entete["effectif_maximal"]["valeur"] == 7
     assert entete["nb_vagues"] == 2 and entete["remaniements"] == 0 and entete["remaniements_definition"]
     assert [v["nature"] for v in entete["vagues"]] == ["formation", "formation"]
-    assert entete["tutelle"] == {"etablie": 2, "a_rattacher": 3}
+    assert entete["tutelle"] == {"etablie": 3, "a_rattacher": 4}
     limites = _lire(racine, "gouvernements/gamma/fiche.json.gz")["limites"]
     assert any(l["famille"] == "composition" and l["mandats"] == ["PM15999"] for l in limites)
 
@@ -329,7 +339,7 @@ def test_paroles_index_leger_et_extraits_a_part(sortie):
     assert [x for x in ex if x["id_syceron"] == "20"][0]["extrait"] == "Le patrimoine est protégé."
     assert all(x["source_url"].startswith(URL_CR) for x in ex)
     b = _lire(racine, "gouvernements/gamma/fiche.json.gz")["en_bref"]["paroles"]
-    assert (b["nb_membres_intervenus"], b["nb_membres"], b["nb_sujets"]) == (3, 6, 3)
+    assert (b["nb_membres_intervenus"], b["nb_membres"], b["nb_sujets"]) == (3, 7, 3)
     faits = [f for f in ecr.faits if f["fiche"] == "gouvernement/gamma" and f["type_fait"] == "parole_extrait"]
     assert len(faits) == 4 and {f["id_compte_rendu"] for f in faits} == {"CR1", "CR2", "CR3"}
 
