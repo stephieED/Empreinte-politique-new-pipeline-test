@@ -25,7 +25,7 @@ from ..perimetre import LEGISLATURES
 
 NOM = "regroupements"
 VERSION = 1
-DEPEND = ("R-MATIERE",)
+DEPEND = ("R-MATIERE", "R-QUALITE")
 
 # nom du regroupement → (tables lues, requête des codes présents, champs du code par priorité).
 # La requête rend une ligne par code : les champs visés par les entrées, et `libelle_source`. Le
@@ -38,6 +38,10 @@ SOURCES = {
         FROM matiere m LEFT JOIN an_acteurs__organe o ON o.uid = m.commission
         WHERE CAST(m.legislature AS VARCHAR) IN ({legs})
         GROUP BY m.commission, m.statut""", ("commission", "matiere_statut")),
+    # #75 : la qualité de l'orateur (R-QUALITE) ; une qualité non établie reste hors des cases
+    "qualite_orateur": (("qualite_orateur",), """
+        SELECT qualite, NULL::VARCHAR AS libelle_source
+        FROM qualite_orateur WHERE qualite IS NOT NULL GROUP BY qualite""", ("qualite",)),
 }
 
 
