@@ -956,3 +956,15 @@ Branche `etape-2-lois-contre-le-jo`, issue #63 (première famille : les lois), d
 | A3 : avertissement « Lois du Journal officiel et de l'Assemblée qui ne se correspondent pas ». Par législature du périmètre : lois au JO, présentes à l'Assemblée, reliées par le JO, expliquées avant les travaux au JO, nommées, lois de l'Assemblée absentes du JO (`expliques.a3_lois` du rapport, gardé même quand l'avertissement se tait) | #63 : aucun fait servi sur les lois n'était confronté à une source tenue hors de l'Assemblée. Mesuré sur la g14 : XVIe et XVIIe identiques au JO ; XIVe 448 au JO pour 396, XVe 353 pour 334 ; 11 lois nommées (2015-1704, 2015-1705, 2016-113, 2018-1068, 2018-1214, 2019-127, 2019-282, 2019-284, 2019-983, 2020-43, 2020-839), aucune loi de l'Assemblée absente du JO | 2 (2.8, A3) |
 
 Reste de #63 : mandats de député, signataires d'amendement, stades et dates des textes, toujours sans confrontation à une autre source.
+## Regroupements pour l'affichage : forme commune, et la légende des commissions (14–15/11/2026)
+
+Branche `etape-2-regroupements`, issue #88 ; forme commune décidée le 14/11/2026 (cadrage), légende Q42.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Type de décision `regroupement` : une entrée par code de la source (`champ` = `valeur`) et sa case (`groupe`, `libelle`), dans l'ordre de la légende ; un code est rangé par la première entrée qui lui correspond | neuf issues demandent un regroupement pour l'affichage (#75 à #89) : une seule forme, fixée sur le premier | 1 (1.3.3) |
+| Composeur `regroupements` : sert `regroupements.json.gz`, avec les cases de chaque regroupement et chaque code présent dans le corpus (périmètre XIVe–XVIIe), sa case et l'entrée qui l'y a mis. Les fiches ne changent pas | changer un regroupement ne doit demander ni recollecte ni réécriture des fiches ; chaque valeur affichée se rattache à son code d'origine | 1 (1.7.2) |
+| A7 : un code sans case (ou un regroupement sans source) est nommé ; jamais rangé par défaut | une case par défaut cacherait un code nouveau | 2 (2.8) |
+| Page de méthodologie (« Le traitement, étape par étape ») : section 6, chaque regroupement avec ses cases et les codes qui y vont | le regroupement appliqué est déclaré dans la méthodologie (contrainte commune des issues) | — |
+| Première table : `references/regroupement/commission_saisie.yaml` (#88), 11 cases : les 8 commissions permanentes (ordre de l'article 36 du Règlement), les commissions spéciales (type `CNPS`), « Saisi au Sénat seulement », « Matière non établie » | Q42 | — |
+

@@ -1,0 +1,37 @@
+# Issue #88 : légende des commissions saisies au fond (la « matière » d'un texte), pour
+# l'affichage. Décisions de la propriétaire du 14/11/2026 : la table vit ici et le traitement la
+# sert à part (`regroupements.json.gz`), les fiches gardent les codes d'origine ; « Saisi au
+# Sénat seulement » a sa propre case (11 cases), distincte de « Matière non établie » (Q19).
+#
+# Un regroupement est une lecture propre à l'affichage d'aujourd'hui : le changer, c'est
+# modifier ce fichier, sans recollecte ni perte (les codes de la source restent servis).
+#
+# Chaque entrée : une case de la légende (`groupe`, `libelle`) et un code de la source qui y va
+# (`champ` = `valeur`). L'ordre des cases est celui de leur première apparition ici. Un code est
+# rangé par la première entrée qui lui correspond : un code d'organe d'abord, son type ensuite.
+#
+# Les huit commissions permanentes, dans l'ordre de l'article 36, alinéa 2, du Règlement de
+# l'Assemblée nationale (lu le 15/11/2026) ; les mêmes organes de la XIVe à la XVIIe.
+type: regroupement
+date: 2026-11-15
+nom: commission_saisie
+titre: "Matière d'un texte : la commission saisie au fond"
+description: >-
+  La matière d'un texte est la commission de l'Assemblée saisie au fond (règle R-MATIERE). Pour la
+  légende, les huit commissions permanentes gardent chacune leur case ; les commissions spéciales,
+  créées pour un texte, sont réunies en une case ; les textes saisis au fond au seul Sénat, et ceux
+  dont la matière n'est pas établie, ont chacun la leur. La commission exacte reste donnée pour
+  chaque texte.
+decisions:
+  - {groupe: affaires_culturelles, libelle: "Affaires culturelles et éducation", champ: commission, valeur: PO419604}
+  - {groupe: affaires_economiques, libelle: "Affaires économiques", champ: commission, valeur: PO419610}
+  - {groupe: affaires_etrangeres, libelle: "Affaires étrangères", champ: commission, valeur: PO59047}
+  - {groupe: affaires_sociales, libelle: "Affaires sociales", champ: commission, valeur: PO420120}
+  - {groupe: defense, libelle: "Défense nationale et forces armées", champ: commission, valeur: PO59046}
+  - {groupe: developpement_durable, libelle: "Développement durable et aménagement du territoire", champ: commission, valeur: PO419865}
+  - {groupe: finances, libelle: "Finances", champ: commission, valeur: PO59048}
+  - {groupe: lois, libelle: "Lois", champ: commission, valeur: PO59051}
+  # Commissions spéciales (organe de type CNPS) : 27 dans le corpus le 14/11/2026, une par texte.
+  - {groupe: commissions_speciales, libelle: "Commissions spéciales", champ: type_commission, valeur: CNPS}
+  - {groupe: senat_seulement, libelle: "Saisi au Sénat seulement", champ: matiere_statut, valeur: senat_seulement}
+  - {groupe: non_etablie, libelle: "Matière non établie", champ: matiere_statut, valeur: non_etablie}

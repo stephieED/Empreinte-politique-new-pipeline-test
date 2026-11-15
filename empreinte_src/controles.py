@@ -768,6 +768,15 @@ class Controles:
                 cit = json.load(f).get("adresses_citees") or {}
             objets += [f"adresse citée {a} sans fiche : {r} (décision {d})"
                        for a, lien, r, d in cit.get("lignes", []) if lien is None]
+        # Regroupements pour l'affichage (#88) : un code sans case n'est jamais rangé par défaut.
+        p_reg = os.path.join(self.racine, "regroupements.json.gz")
+        if os.path.exists(p_reg):
+            with gzip.open(p_reg) as f:
+                for t in json.load(f).get("regroupements", []):
+                    if t.get("raison"):
+                        objets.append(f"regroupement {t.get('nom')} non appliqué : {t['raison']}")
+                    objets += [f"regroupement {t.get('nom')} : {ch} {code} (« {lib} ») sans case"
+                               for ch, code, lib, g, _ in t.get("codes", {}).get("lignes", []) if g is None]
         empreintes = {a["empreinte"] for a in self.anomalies}
         objets += [f"levée {l.get('fichier')} sans objet cette nuit : {e}" for e, l in sorted(self.levees.items())
                    if e not in empreintes]
