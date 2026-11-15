@@ -1,0 +1,33 @@
+# Issue #75 : les qualités d'orateur ramenées à trois cases pour l'affichage (député, membre du
+# gouvernement, député européen). Forme commune des regroupements : voir commission_saisie.yaml.
+#
+# Les codes sont ceux de R-QUALITE (qualité écrite par le compte rendu, sinon déduite des
+# fonctions à la date). Toute personne qui parle en séance à l'Assemblée sans être membre du
+# gouvernement est députée : rapporteur, président de commission, président de séance et
+# qualité écrite « autre » vont dans « Député ». La présidence de séance reste distinguée dans
+# les fiches (colonne `preside`) ; mesuré sur g13, les paroles servies aux candidats n'en
+# contiennent aucune (député 17 562, membre du gouvernement 6 281, rapporteur 413).
+#
+# « Député européen » n'a aucun code à l'Assemblée : les interventions au Parlement européen
+# viennent d'autres sources (volet européen, Q37), où l'orateur parle toujours à ce titre.
+# Une qualité non établie (ni écrite ni déduite) n'entre dans aucune case : elle reste non
+# établie, et la couverture la compte.
+type: regroupement
+date: 2026-11-15
+nom: qualite_orateur
+titre: "Qualité de l'orateur"
+description: >-
+  La qualité d'un orateur à l'Assemblée est celle que le compte rendu écrit, sinon celle que ses
+  fonctions à la date donnent (règle R-QUALITE). Pour l'affichage, elle est ramenée à trois cases :
+  député (y compris comme rapporteur, président de commission ou président de séance), membre du
+  gouvernement, et député européen pour les interventions au Parlement européen. La qualité exacte
+  reste donnée pour chaque prise de parole.
+decisions:
+  - {groupe: depute, libelle: "Député", champ: qualite, valeur: depute}
+  - {groupe: depute, libelle: "Député", champ: qualite, valeur: rapporteur}
+  - {groupe: depute, libelle: "Député", champ: qualite, valeur: president_de_commission}
+  - {groupe: depute, libelle: "Député", champ: qualite, valeur: president_de_seance}
+  - {groupe: depute, libelle: "Député", champ: qualite, valeur: autre}
+  - {groupe: membre_du_gouvernement, libelle: "Membre du gouvernement", champ: qualite, valeur: membre_du_gouvernement}
+  # aucun code à l'Assemblée : case des interventions au Parlement européen
+  - {groupe: depute_europeen, libelle: "Député européen"}

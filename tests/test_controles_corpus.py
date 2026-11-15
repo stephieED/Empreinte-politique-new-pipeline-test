@@ -291,6 +291,55 @@ def test_a3_tous_expliques_pas_d_avertissement(tmp_path):
     assert _an(c, "A3") == [] and c.bilan_a3["expliques_transition"] == 1
 
 
+def test_a3_lois_contre_le_journal_officiel(tmp_path):
+    """Issue #63 (décision du 15/11/2026) : les lois servies (Assemblée) contre celles du JO. Une loi
+    du JO absente de l'Assemblée est expliquée si R-LOI-DOSSIER la relie, ou si elle est sans
+    travaux préparatoires et antérieure à la première loi que le JO publie avec les siens ; toute
+    autre est nommée, comme une loi de l'Assemblée absente du JO."""
+    loi = lambda n, d, l: {"numero_loi": n, "date_promulgation": d, "legislature": l, "dossier": "D" + n}
+    acte = lambda n, d, nature="LOI": {"uid": "jorf:" + n, "nature": nature, "numero": n, "date_signature": d}
+    lien = lambda n, dossier=None, raison=None: {"numero_loi": n, "dossier": dossier, "raison": raison}
+    t = dict(TABLES,
+             legislature=[{"numero": 14, "debut": "2012-06-20", "fin": "2017-06-20"},
+                          {"numero": 15, "debut": "2017-06-21", "fin": "2022-06-21"}],
+             loi=[loi("2016-1", "2016-03-01", 14), loi("2017-9", "2017-01-01", 14), loi("2018-9", "2018-02-01", 15)],
+             jo_actes__acte_reglementaire=[
+                 acte("2016-1", "2016-03-01"), acte("2018-9", "2018-02-01"),
+                 acte("2013-5", "2013-04-01"),                       # avant les travaux au JO : expliquée
+                 acte("2016-8", "2016-06-01"),                       # sans travaux, mais après : nommée
+                 acte("2016-7", "2016-05-01"),                       # aucun document : nommée
+                 acte("2018-3", "2018-03-01"),                       # reliée par le JO : expliquée
+                 acte("2018-4", "2018-04-01", "LOI_ORGANIQUE"),      # nommée
+                 acte("2018-5", "2018-05-01", "DECRET")],            # pas une loi
+             loi_dossier_jo=[lien("2016-1", "D2016-1"), lien("2018-9", "D2018-9"),
+                             lien("2013-5", raison="pas_de_travaux_preparatoires"),
+                             lien("2016-8", raison="pas_de_travaux_preparatoires"),
+                             lien("2016-7", raison="aucun_document"), lien("2018-3", "D3"),
+                             lien("2018-4", raison="aucun_document")])
+    c = _ctrl(tmp_path, tables=t)
+    c.a3_totaux()
+    lois = [a for a in _an(c, "A3") if a["titre"].startswith("Lois du Journal officiel")][0]
+    assert lois["exemples"] == sorted([
+        "loi 2016-7 (2016-05-01) publiée au JO, absente de l'Assemblée et non reliée à un dossier (aucun_document)",
+        "loi 2016-8 (2016-06-01) publiée au JO, absente de l'Assemblée et non reliée à un dossier "
+        "(pas_de_travaux_preparatoires)",
+        "loi 2018-4 (2018-04-01) publiée au JO, absente de l'Assemblée et non reliée à un dossier (aucun_document)",
+        "loi 2017-9 (2017-01-01) promulguée selon l'Assemblée, absente du JO"])
+    assert lois["detail"] == {
+        "14": {"lois_au_jo": 4, "presentes_a_l_assemblee": 1, "reliees_par_le_jo": 0,
+               "expliquees_avant_les_travaux_au_jo": 1, "nommees": 2, "assemblee_absentes_du_jo": 1},
+        "15": {"lois_au_jo": 3, "presentes_a_l_assemblee": 1, "reliees_par_le_jo": 1,
+               "expliquees_avant_les_travaux_au_jo": 0, "nommees": 1, "assemblee_absentes_du_jo": 0}}
+    assert c.bilan()["expliques"]["a3_lois"] == lois["detail"]
+
+
+def test_a3_lois_sans_le_jo_rien_a_comparer(tmp_path):
+    c = _ctrl(tmp_path, tables=dict(TABLES, loi=[{"numero_loi": "2016-1", "date_promulgation": "2016-03-01",
+                                                  "legislature": 14, "dossier": "D"}]))
+    c.a3_totaux()
+    assert not [a for a in _an(c, "A3") if a["titre"].startswith("Lois du Journal officiel")]
+
+
 PAGE = """<div>Nombre de votants : <b>3</b></span> Pour l'adoption : <b>2</b></span>
 Contre : <b>1</b></span> Abstention : <b>0</b></span>
 <li data-organe-id="PO17S"><span class="h6 _colored-travaux">Pour</span><span>: 2</span>
@@ -307,7 +356,8 @@ def test_lire_page_de_scrutin():
 
 
 def test_a2_verification_croisee(tmp_path):
-    c = _ctrl(tmp_path)
+    # Un vote du Parlement européen servi n'a pas de page à l'Assemblée : il n'est pas tiré.
+    c = _ctrl(tmp_path, faits=FAITS + [_fait("candidat/alice-martin", "europe-votes", scrutin="MTG-PL-2020-01-15")])
     r = c.a2_verification_croisee(1, lambda url: PAGE, nb_scrutins=5)
     assert (r["tires"], r["faits"], r["verifies"], r["ecarts"]) == (1, 2, 2, [])
     assert not _an(c, "A2")
@@ -324,6 +374,68 @@ def test_a2_verification_croisee(tmp_path):
     r = c.a2_verification_croisee(1, panne, nb_scrutins=5)
     assert r["ecarts"] == [] and len(r["non_verifies"]) == 2
     assert _an(c, "A2")[0]["titre"].startswith("Vérification croisée impossible")
+
+
+PAGE_AM = """<div class="amendement-section-body"><button><b>Déposé par :</b>
+<span class="@TogglableBox-a"> M. Un</span></button>
+<div class="swiper-slide" data-tipsy="#t1"></div><div id="t1"><a href="/dyn/deputes/PA1">fiche</a></div>
+<div id="t2"><a href="/dyn/deputes/PA3">fiche</a></div><div id="t3"><a href="/dyn/deputes/PA3">fiche</a></div>
+</div><div class="amendement-section-body"><a href="/dyn/deputes/PA9">autre bloc</a></div>"""
+PAGE_AM_XIV = """<meta name="AUTEUR_ID" content="267527">\n<meta name="GROUPE_ID" content="656006">
+<meta name="COSIGNATAIRES_ID" content="608826;335159">"""
+PAGE_AM_XIV_COMMISSION = """<meta name="AUTEURS" content=" M.&nbsp;Denaja, rapporteur pour avis">
+<meta name="AUTEUR_ID" content="59051">\n<meta name="GROUPE_ID" content="">\n<meta name="COSIGNATAIRES_ID" content="">"""
+
+
+def test_a2_lire_signataires_des_deux_sites():
+    """Issue #63 (15/11/2026) : pages relevées le jour même. Site actuel (XVe à XVIIe) : bloc
+    « Déposé par », liens vers les fiches dans l'ordre, sans doublon ; ancien site (XIVe) :
+    métadonnées ; un amendement de commission y a pour auteur la commission (non comparé)."""
+    from empreinte_src.verification import adresse_amendement, lire_signataires
+    assert lire_signataires(PAGE_AM) == {"auteur": "PA1", "cosignataires": ["PA3"]}
+    assert lire_signataires(PAGE_AM_XIV) == {"auteur": "PA267527", "cosignataires": ["PA608826", "PA335159"]}
+    assert lire_signataires(PAGE_AM_XIV_COMMISSION) == {"auteur": None, "cosignataires": []}
+    assert lire_signataires("<html>amendement du Gouvernement</html>") is None
+    assert adresse_amendement("AMANR5L17PO838901B3211P0D1N000811", None) == \
+        "https://www.assemblee-nationale.fr/dyn/17/amendements/AMANR5L17PO838901B3211P0D1N000811"
+    assert adresse_amendement("AMANR5L14SEA644420BTC2553P0D1N317", "/14/amendements/2553/AN/317.pdf") == \
+        "https://www.assemblee-nationale.fr/14/amendements/2553/AN/317.asp"
+    assert adresse_amendement("AMANR5L14SEA644420BTC2553P0D1N317", None) is None
+
+
+def test_a2_signataires_d_amendement(tmp_path):
+    t = dict(TABLES,
+             amendement_canonique=[{"amendement": "AM1", "acteur": "PA1", "date_depot": "2025-01-20",
+                                    "alias": ["AM1B"], "document_uri": None}],
+             amendement_auteur=[{"acteur": "PA1", "amendement": "AM1", "role": "auteur", "rang": 0},
+                                {"acteur": "PA3", "amendement": "AM1", "role": "cosignataire", "rang": 1}])
+    # AM1 n'a pas d'adresse (pas de législature dans l'identifiant de test) : non vérifié.
+    c = _ctrl(tmp_path, tables=t)
+    r = c.a2_signataires(1, lambda url: PAGE_AM, nb_amendements=5)
+    assert (r["tires"], r["verifies"], r["ecarts"]) == (1, 0, [])
+    assert r["non_verifies"] == ["AM1 signataires (adresse de la page inconnue)"]
+    am = "AMANR5L17PO838901B3211P0D1N000811"
+    t2 = dict(t, amendement_canonique=[dict(t["amendement_canonique"][0], amendement=am)],
+              amendement_auteur=[dict(x, amendement=am) for x in t["amendement_auteur"]])
+    faits = [_fait("lignee/soc", "amendements-2025", amendement=am)]
+    c = _ctrl(tmp_path, tables=t2, faits=faits)
+    r = c.a2_signataires(1, lambda url: PAGE_AM, nb_amendements=5)
+    assert (r["tires"], r["verifies"], r["ecarts"], r["non_verifies"]) == (1, 1, [], [])
+    assert not [a for a in _an(c, "A2") if "Signataires" in a["titre"]]
+    # La page nomme un autre cosignataire : écart nommé, avec l'adresse.
+    c = _ctrl(tmp_path, tables=t2, faits=faits)
+    r = c.a2_signataires(1, lambda url: PAGE_AM.replace("PA3", "PA4"), nb_amendements=5)
+    assert r["ecarts"] == [f"{am} cosignataires : 1 sur la page seulement (PA4) ; 1 chez nous seulement (PA3)"
+                           f" — https://www.assemblee-nationale.fr/dyn/17/amendements/{am}"]
+    a2 = [a for a in _an(c, "A2") if a["titre"].startswith("Signataires")][0]
+    assert a2["bloquant"] is False and c.bilan()["a2_amendements"]["ecarts"] == 1
+
+    def panne(url):
+        raise TimeoutError
+    c = _ctrl(tmp_path, tables=t2, faits=faits)
+    r = c.a2_signataires(1, panne, nb_amendements=5)
+    assert r["ecarts"] == [] and len(r["non_verifies"]) == 1
+    assert [a for a in _an(c, "A2") if a["titre"].startswith("Vérification des signataires impossible")]
 
 
 def test_a2_page_de_la_legislature_du_scrutin():
