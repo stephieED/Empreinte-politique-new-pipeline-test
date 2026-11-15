@@ -356,7 +356,8 @@ def test_lire_page_de_scrutin():
 
 
 def test_a2_verification_croisee(tmp_path):
-    c = _ctrl(tmp_path)
+    # Un vote du Parlement européen servi n'a pas de page à l'Assemblée : il n'est pas tiré.
+    c = _ctrl(tmp_path, faits=FAITS + [_fait("candidat/alice-martin", "europe-votes", scrutin="MTG-PL-2020-01-15")])
     r = c.a2_verification_croisee(1, lambda url: PAGE, nb_scrutins=5)
     assert (r["tires"], r["faits"], r["verifies"], r["ecarts"]) == (1, 2, 2, [])
     assert not _an(c, "A2")

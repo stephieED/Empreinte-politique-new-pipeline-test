@@ -164,7 +164,11 @@ def _rang(*cles) -> str:
 
 def verifier(con, generation: int, recuperer, nb_scrutins: int = 20, legislature: int = 17) -> dict:
     """`recuperer(url) -> str | None` lit une page (None : injoignable). Rend le bilan et les écarts."""
-    servis = [r[0] for r in con.execute("SELECT DISTINCT id_scrutin FROM _ctl_fp WHERE id_scrutin IS NOT NULL").fetchall()]
+    # Scrutins de l'Assemblée seulement : les votes du Parlement européen servis (`MTG-PL…`, `pt-…` :
+    # 27 000 sur 47 000 en g14) n'ont pas de page à l'Assemblée ; tirés, ils étaient comptés « non
+    # vérifiés » (10 des 20 tirés à l'essai du 15/11/2026).
+    servis = [r[0] for r in con.execute("SELECT DISTINCT id_scrutin FROM _ctl_fp WHERE id_scrutin IN "
+                                        "(SELECT uid FROM an_scrutins__scrutin)").fetchall()]
     servis.sort(key=lambda s: _rang(generation, s))
     tires = servis[:nb_scrutins]
     ecarts, non_verifies, verifies = [], [], 0
