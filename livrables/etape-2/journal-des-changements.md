@@ -984,3 +984,15 @@ Branche `etape-2-qualites-orateur` (sur `etape-2-regroupements`), issue #75.
 | --- | --- | --- |
 | Regroupement `qualite_orateur` (`references/regroupement/qualite_orateur.yaml`) : « Député » (député, rapporteur, président de commission, président de séance, qualité écrite « autre »), « Membre du gouvernement », « Député européen » (aucun code à l'Assemblée : interventions au Parlement européen) ; une qualité non établie reste hors des cases | besoin de l'interface (#75) ; à l'Assemblée, qui parle sans être membre du gouvernement est député. Mesuré sur g13 : les paroles servies aux candidats ne portent que trois qualités (député 17 562, membre du gouvernement 6 281, rapporteur 413) | — |
 | Composeur `regroupements` : source `qualite_orateur` (R-QUALITE) ; page de méthodologie : une case sans code de la source le dit | forme commune (#88) | — |
+
+## Natures de prise de parole (15/11/2026)
+
+Branche `etape-2-natures-parole`, issue #87.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-SUJET version 2 : `code_creneau` (`QG`, `QOSD`, `QPM`, lu dans le code du point de la question, sinon dans l'intitulé du créneau) et `genre_point` (`explications_de_vote` : sous-point codé `DISC_ARTICLES_1_2` ou `EXPL_VOTE_PERSO_1_10`, ou intitulé ; `motion_de_censure` : point de niveau 1 qui nomme une motion de censure, hors créneau). Rien ne change de ce que lit R-QAG (`type_sujet`, `point`, `sujet_publie`) | la nature d'une parole ne se lisait que dans des intitulés écrits de plusieurs façons, et les explications de vote (sous-point) étaient perdues ; mesuré sur les comptes rendus XVIe–XVIIe | 1 (1.6 R-SUJET) |
+| R-PAROLE-PERSONNE version 2 : fait suivre `code_creneau` et `genre_point` ; paroles des candidats et des lignées : `genre_point` dans l'index, `code_creneau` dans les sujets ; schéma C4 mis à jour | besoin de l'interface (#87) : filtrer les paroles par nature | 1 (1.7.2) |
+| Regroupement `nature_parole` (`references/regroupement/nature_parole.yaml`), 7 cases : questions au gouvernement (QG, QPM), questions orales (QOSD), textes, motion de censure, explications de vote, commission (aucun code : comptes rendus de commission non relevés), autres | issue #87 | — |
+| Forme commune : `ordre` facultatif d'une case (l'ordre de la légende peut différer de l'ordre de rangement) ; le fichier servi donne `champs`, l'ordre dans lequel le code d'une valeur est cherché | une motion de censure doit être rangée avant « Textes » mais vient après dans la légende | 1 (1.3.3) |
+

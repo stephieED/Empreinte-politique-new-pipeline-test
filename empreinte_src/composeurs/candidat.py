@@ -1096,13 +1096,15 @@ def _divergences(ctx, f, acteur, perim, commun) -> dict:
 
 # -- ce qu'il a dit -------------------------------------------------------------------------
 
-COLS_PAROLES = ["n", "date", "qualite", "qualite_source", "preside", "interruption", "sujet_id",
+# `genre_point` (R-SUJET v2) : explications de vote, motion de censure ; `code_creneau` : le
+# créneau d'une question (QG, QOSD, QPM). Les deux servent le regroupement des natures (#87).
+COLS_PAROLES = ["n", "date", "qualite", "qualite_source", "preside", "interruption", "sujet_id", "genre_point",
                 "periode", "fichier", "ligne", "compte_rendu", "id_syceron", "acteur", "source_url",
                 "licence"]
 COLS_EXTRAITS = ["n", "date", "compte_rendu", "id_syceron", "extrait", "extrait_tronque", "longueur",
                  "qualite", "preside", "interruption", "sujet_id", "dossier", "acteur", "source_url",
                  "licence"]
-COLS_SUJETS = ["sujet_id", "sujet", "sujet_libelle", "type_sujet", "creneau", "statut_sujet",
+COLS_SUJETS = ["sujet_id", "sujet", "sujet_libelle", "type_sujet", "creneau", "code_creneau", "statut_sujet",
                "dossier", "titre_dossier", "premiere_date", "derniere_date"]
 
 
@@ -1122,7 +1124,8 @@ def _paroles(ctx, f, acteur, perim, commun, idx) -> dict:
         if k not in sujets:
             sujets[k] = {"sujet_id": len(sujets) + 1, "sujet": r["sujet"],
                          "sujet_libelle": r["sujet"] or "Intitulé non publié", "type_sujet": r["type_sujet"],
-                         "creneau": r["creneau"], "statut_sujet": r["statut_sujet"], "dossier": r["dossier"],
+                         "creneau": r["creneau"], "code_creneau": r.get("code_creneau"),
+                         "statut_sujet": r["statut_sujet"], "dossier": r["dossier"],
                          "titre_dossier": commun["titres"].get(r["dossier"]),
                          "premiere_date": r["date"], "derniere_date": r["date"]}
         s = sujets[k]

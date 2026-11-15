@@ -7,8 +7,8 @@ commune, fixée avec la propriétaire le 14/11/2026 :
 
 - **la table est une décision** (`references/regroupement/<nom>.yaml`), validée en fusionnant :
   chaque entrée met un code de la source (`champ` = `valeur`) dans une case (`groupe`,
-  `libelle`) ; l'ordre des cases est celui de leur première apparition ; un code est rangé par
-  la première entrée qui lui correspond ;
+  `libelle`) ; l'ordre des cases est celui de leur première apparition, ou celui de leur champ
+  `ordre` quand la table le donne ; un code est rangé par la première entrée qui lui correspond ;
 - **elle est servie à part**, dans `regroupements.json.gz` : pour chaque regroupement, ses cases
   dans l'ordre, et chaque code présent dans le corpus avec sa case et l'entrée qui l'y a mis.
   Les fiches ne changent pas : elles gardent les codes de la source, à leur granularité
@@ -25,7 +25,7 @@ from ..perimetre import LEGISLATURES
 
 NOM = "regroupements"
 VERSION = 1
-DEPEND = ("R-MATIERE", "R-QUALITE")
+DEPEND = ("R-MATIERE", "R-QUALITE", "R-SUJET")
 
 # nom du regroupement → (tables lues, requête des codes présents, champs du code par priorité).
 # La requête rend une ligne par code : les champs visés par les entrées, et `libelle_source`. Le
@@ -38,6 +38,10 @@ SOURCES = {
         FROM matiere m LEFT JOIN an_acteurs__organe o ON o.uid = m.commission
         WHERE CAST(m.legislature AS VARCHAR) IN ({legs})
         GROUP BY m.commission, m.statut""", ("commission", "matiere_statut")),
+    # #87 : la nature d'une prise de parole (R-SUJET v2) : genre du point, créneau, type de sujet
+    "nature_parole": (("sujet_intervention",), """
+        SELECT DISTINCT genre_point, code_creneau, type_sujet, NULL::VARCHAR AS libelle_source
+        FROM sujet_intervention""", ("genre_point", "code_creneau", "type_sujet")),
     # #75 : la qualité de l'orateur (R-QUALITE) ; une qualité non établie reste hors des cases
     "qualite_orateur": (("qualite_orateur",), """
         SELECT qualite, NULL::VARCHAR AS libelle_source
@@ -63,8 +67,11 @@ def composer(ctx, ecr):
         groupes: list[list] = []
         for e in entrees:
             if e.get("groupe") not in [g[0] for g in groupes]:
-                groupes.append([e.get("groupe"), e.get("libelle"), len(groupes) + 1])
-        codes, raison = [], None
+                groupes.append([e.get("groupe"), e.get("libelle"), e.get("ordre")])
+        # ordre de la légende : le champ `ordre` s'il est donné, sinon l'ordre d'apparition
+        groupes.sort(key=lambda g: (g[2] is None, g[2] if g[2] is not None else 0))
+        groupes = [[g, lib, k] for k, (g, lib, _) in enumerate(groupes, 1)]
+        codes, raison, champs = [], None, []
         source = SOURCES.get(nom)
         if source is None:
             raison = "aucune source connue pour ce regroupement"
@@ -72,6 +79,7 @@ def composer(ctx, ecr):
             raison = "tables absentes cette nuit : " + ", ".join(t for t in source[0] if not ctx.existe(t))
         else:
             _, sql, champs_code = source
+            champs = list(champs_code)
             legs = ", ".join(f"'{n}'" for n in LEGISLATURES)
             res = ctx.con.execute(sql.format(legs=legs))
             cols = [c[0] for c in res.description]
@@ -80,13 +88,16 @@ def composer(ctx, ecr):
                 champ = next((c for c in champs_code if r.get(c) is not None), champs_code[-1])
                 e = next((e for e in entrees if r.get(e.get("champ")) is not None
                           and str(r.get(e.get("champ"))) == str(e.get("valeur"))), None)
-                codes.append([champ, r.get(champ), r.get("libelle_source"),
-                              e.get("groupe") if e else None,
-                              f"{e.get('champ')} = {e.get('valeur')}" if e else None])
+                ligne_code = [champ, r.get(champ), r.get("libelle_source"), e.get("groupe") if e else None,
+                              f"{e.get('champ')} = {e.get('valeur')}" if e else None]
+                if ligne_code not in codes:            # plusieurs lignes de la source, un même code
+                    codes.append(ligne_code)
         d0 = entrees[0]
         tables.append({
             "nom": nom, "titre": d0.get("titre"), "description": d0.get("description"),
             "decision": str(d0.get("fichier", "")).split("#")[0], "date": str(d0.get("date")),
+            # le code d'une valeur est son premier champ non vide, dans cet ordre
+            "champs": champs,
             "groupes": {"colonnes": ["groupe", "libelle", "ordre"], "lignes": groupes},
             "codes": {"colonnes": ["champ", "code", "libelle_source", "groupe", "par"], "lignes": codes},
             "raison": raison})

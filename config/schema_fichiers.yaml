@@ -335,6 +335,7 @@ colonnes:
   - preside
   - interruption
   - sujet_id
+  - genre_point
   - periode
   - fichier
   - ligne
@@ -839,6 +840,7 @@ colonnes:
   - acteur
   - preside
   - sujet_id
+  - genre_point
   - fichier
   - ligne
   - compte_rendu

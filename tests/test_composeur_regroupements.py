@@ -105,3 +105,39 @@ def test_qualites_d_orateur_en_trois_cases(tmp_path):
                      "president_de_seance": "depute", "rapporteur": "depute"}
     page = methodologie.rendre(methodologie.donnees())
     assert "| Député européen | *aucun code de cette source* |" in page
+
+
+def test_natures_de_parole_ordre_de_legende_et_priorite(tmp_path):
+    """#87 : la légende suit `ordre`, le rangement suit l'ordre du fichier (une motion de censure
+    est d'abord une motion, pas un texte) ; le code d'une valeur est son premier champ non vide."""
+    d = tmp_path / "references" / "regroupement"
+    d.mkdir(parents=True)
+    shutil.copy(os.path.join(RACINE, "references", "regroupement", "nature_parole.yaml"), d)
+    (tmp_path / "z2").mkdir()
+    ctx = Contexte(str(tmp_path / "z2"), str(tmp_path / "z3"), str(tmp_path / "references"))
+    ctx.con.execute("""CREATE VIEW sujet_intervention AS SELECT * FROM (VALUES
+        ('motion_de_censure', NULL, 'texte'), ('explications_de_vote', NULL, 'texte'),
+        (NULL, 'QG', 'question'), (NULL, 'QPM', 'question'), (NULL, 'QOSD', 'question'),
+        (NULL, 'QG', 'creneau'), (NULL, NULL, 'texte'), (NULL, NULL, 'loi_de_finances'),
+        (NULL, NULL, 'hors_point'), (NULL, NULL, 'procedure'))
+        t(genre_point, code_creneau, type_sujet)""")
+    ecr = Ecrivain(str(tmp_path / "site"), "g000001")
+    regroupements.composer(ctx, ecr)
+    with gzip.open(os.path.join(ecr.racine, "regroupements.json.gz")) as f:
+        (t,) = json.load(f)["regroupements"]
+    assert t["champs"] == ["genre_point", "code_creneau", "type_sujet"]
+    assert [g[1] for g in t["groupes"]["lignes"]] == [
+        "Questions au gouvernement", "Questions orales", "Textes", "Motion de censure",
+        "Explications de vote", "Commission", "Autres"]
+    codes = {(l[0], l[1]): l[3] for l in t["codes"]["lignes"]}
+    assert codes == {("genre_point", "motion_de_censure"): "motion_de_censure",
+                     ("genre_point", "explications_de_vote"): "explications_de_vote",
+                     ("code_creneau", "QG"): "questions_au_gouvernement",
+                     ("code_creneau", "QPM"): "questions_au_gouvernement",
+                     ("code_creneau", "QOSD"): "questions_orales",
+                     ("type_sujet", "texte"): "textes", ("type_sujet", "loi_de_finances"): "textes",
+                     ("type_sujet", "hors_point"): "autres", ("type_sujet", "procedure"): "autres"}
+    # QG vient de deux lignes (question, paragraphe du créneau) : servi une fois
+    assert sum(1 for l in t["codes"]["lignes"] if l[1] == "QG") == 1
+    (r,) = [r for r in methodologie.regroupements() if r["nom"] == "nature_parole"]
+    assert [c["libelle"] for c in r["cases"]][:3] == ["Questions au gouvernement", "Questions orales", "Textes"]

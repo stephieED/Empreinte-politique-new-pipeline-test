@@ -213,11 +213,12 @@ def regroupements(dossier: str | None = DECISIONS) -> list[dict]:
             y = yaml.safe_load(f) or {}
         cases: dict[str, dict] = {}
         for e in y.get("decisions") or []:
-            c = cases.setdefault(e.get("groupe"), {"libelle": e.get("libelle"), "codes": []})
+            c = cases.setdefault(e.get("groupe"), {"libelle": e.get("libelle"), "codes": [],
+                                                   "ordre": e.get("ordre")})
             if e.get("champ"):
                 c["codes"].append(f"{e.get('champ')} = {e.get('valeur')}")
         out.append({"nom": y.get("nom"), "titre": y.get("titre"), "description": y.get("description"),
-                    "fichier": f"references/regroupement/{n}", "cases": list(cases.values())})
+                    "fichier": f"references/regroupement/{n}", "cases": sorted(cases.values(), key=lambda c: (c["ordre"] is None, c["ordre"] or 0))})
     return out
 
 
