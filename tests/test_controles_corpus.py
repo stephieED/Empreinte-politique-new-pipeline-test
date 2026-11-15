@@ -1,6 +1,8 @@
 """Contrôles C3 (données laissées de côté), C7 (personne attendue écartée en silence), règle
 R-PERIMETRE, et avertissements A1 à A8 (doc. 2, 2.8), sur de petites tables à la forme exacte des
 sorties des règles et de l'export des faits publiés."""
+import os
+
 import duckdb
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -170,14 +172,86 @@ def test_avertissements_sans_bloquer(tmp_path):
     assert _an(c, "A5")[0]["exemples"] == ["candidat / questions : vide sur les 2 fiches"]
     a6 = _an(c, "A6")[0]["exemples"]
     # Un décompte, jamais de nom : PA2 (aucune parole servie) n'est pas nommé.
-    assert ("1 membres de groupes de la XVIIe législature sur 2 sans prise de parole servie pendant cette "
-            "législature") in a6
+    # Sans colonne `orateur_source` (table de test réduite), un membre sans parole servie reste signalé.
+    assert ("1 membres de groupes de la XVIIe législature sur 2 ont des paroles à la source pendant leur "
+            "appartenance au groupe, mais aucune n'est servie") in a6
     assert not any("PA2" in x for x in a6)
     a7 = _an(c, "A7")[0]["exemples"]
     assert "filiation à trancher : grp:16:X → grp:17:PO17S" in a7
     assert "décision filiation/z.yaml sans objet : grp:15:Z → grp:16:Z" in a7
     assert "levée levee_controle/vieille.yaml sans objet cette nuit : C1:0000" in a7
     assert _an(c, "A8")[0]["exemples"] == ["PM9 (PA7) dans PO-G, clos le 2025-09-09"]
+
+
+def _fiche_servie(racine, fiche, couverture):
+    import gzip
+    import json
+    t, _, adresse = fiche.partition("/")
+    d = os.path.join(racine, f"{t}s", adresse)
+    os.makedirs(d, exist_ok=True)
+    with gzip.open(os.path.join(d, "fiche.json.gz"), "wt", encoding="utf-8") as f:
+        json.dump({"fiche": fiche, "couverture": couverture}, f)
+
+
+def test_a5_section_vide_expliquee_par_sa_couverture(tmp_path):
+    """Issue #10 (14/11/2026) : une section vide partout dont chaque fiche dit pourquoi
+    (« non collecté » : les budgets) est comptée, pas signalée ; sans raison déclarée, elle l'est."""
+    man = [{"fiche": f"gouvernement/{g}", "type": "gouvernement",
+            "sections": {"budgets": {"lignes": 0}, "textes-2025-1": {"lignes": 0}}} for g in ("a", "b")]
+    man[0]["sections"]["paroles"] = man[1]["sections"]["paroles"] = {"lignes": 0}
+    for g in ("a", "b"):
+        _fiche_servie(str(tmp_path), f"gouvernement/{g}",
+                      [{"section": "budgets", "statut": "non_collecte"}, {"section": "textes-2025-1", "statut": "complet"},
+                       {"section": "paroles", "statut": "relu_aucun"}])
+    c = _ctrl(tmp_path, manifeste=man)
+    c.a5_famille_a_zero()
+    # « Relu, rien trouvé » sur toutes les fiches est suspect : signalé (essai du 14/11/2026).
+    assert _an(c, "A5")[0]["exemples"] == ["gouvernement / paroles : vide sur les 2 fiches",
+                                           "gouvernement / textes : vide sur les 2 fiches"]
+    assert c.bilan_a5["expliquees"] == ["gouvernement / budgets : non_collecte"]
+    assert c.bilan()["expliques"]["a5"]["expliquees"] == ["gouvernement / budgets : non_collecte"]
+
+
+def _paroles_a_la_source(lignes):
+    t = dict(TABLES)
+    t["intervention_attribuee"] = [dict(r, preside=r.get("preside", False)) for r in lignes]
+    return t
+
+
+def test_a6_membre_sans_paragraphe_a_la_source_explique(tmp_path):
+    """Issue #11 (14/11/2026) : PA2 n'a aucun paragraphe à la source pendant son appartenance (seulement
+    une présidence de séance) : compté, pas signalé. Les candidats sans fiche, tous avec une raison
+    établie, sont comptés."""
+    t = _paroles_a_la_source([
+        {"compte_rendu": "CR1", "id_syceron": "1", "acteur": "PA1", "orateur_source": "PA1", "date": "2025-01-30"},
+        {"compte_rendu": "CR2", "id_syceron": "9", "acteur": "PA2", "orateur_source": "PA2", "date": "2024-12-01",
+         "preside": True}])
+    c = _ctrl(tmp_path, tables=t)
+    c.a6_couverture()
+    assert _an(c, "A6") == []
+    assert c.bilan_a6["membres_sans_parole_servie_17"] == {
+        "sans_parole_servie": 1, "sans_paragraphe_a_la_source": 1, "membres": 2}
+    assert c.bilan_a6["candidats_sans_fiche"] == {"absent_de_la_liste_des_candidats": 1,
+                                                 "candidature_retiree_a_la_source": 1}
+
+
+def test_a6_paroles_a_la_source_non_servies_signalees(tmp_path):
+    """PA2 a un paragraphe sous son identifiant pendant son appartenance, mais rien n'est servi (nom
+    discordant, par exemple) : signalé, en décompte, sans nom. Une parole d'après son départ du groupe
+    (le 01/01/2025) n'aurait pas compté."""
+    t = _paroles_a_la_source([
+        {"compte_rendu": "CR1", "id_syceron": "1", "acteur": "PA1", "orateur_source": "PA1", "date": "2025-01-30"},
+        {"compte_rendu": "CR2", "id_syceron": "9", "acteur": None, "orateur_source": "PA2", "date": "2024-12-01"}])
+    c = _ctrl(tmp_path, tables=t)
+    c.a6_couverture()
+    assert _an(c, "A6")[0]["exemples"] == [
+        "1 membres de groupes de la XVIIe législature sur 2 ont des paroles à la source pendant leur "
+        "appartenance au groupe, mais aucune n'est servie"]
+    t = _paroles_a_la_source([
+        {"compte_rendu": "CR2", "id_syceron": "9", "acteur": None, "orateur_source": "PA2", "date": "2025-03-01"}])
+    c = _ctrl(tmp_path, tables=t)
+    c.a6_couverture()
+    assert _an(c, "A6") == []
 
 
 def test_a3_effectif_different_du_decompte_publie(tmp_path):

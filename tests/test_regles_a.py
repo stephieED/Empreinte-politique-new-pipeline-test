@@ -109,7 +109,7 @@ def test_composition_premier_ministre_delegue_et_mission(reel):
     assert culture["tutelle_statut"] == "sans_objet" and culture["ministere_tutelle"] is None
     # Une mission auprès de la Première ministre n'est pas une fonction ministérielle.
     assert "PM822029" not in m and not any(r["acteur"] == "PA795908" for r in m.values())
-    assert all(r["regle"] == "R-COMPOSITION@1" for r in m.values())
+    assert all(r["regle"] == "R-COMPOSITION@2" for r in m.values())
 
 
 def test_mandat_gouvernement_ouvert_dans_un_gouvernement_clos(reel):
@@ -133,7 +133,7 @@ def test_tutelle_par_le_libelle(tmp_path):
                _min("PO12", g, "Ministère de l’intérieur et des outre-mer"),
                _min("PO13", g, "Ministère de la transition écologique et de la cohésion des territoires"),
                _min("PO14", g, "Ministère de l' économie et des finances"),   # espace après l'apostrophe
-               # deux ministres désignés : non établi
+               # deux ministres désignés, tous deux reconnus : co-tutelle (version 2, #80)
                _min("PO20", g, "Ministère auprès du ministre de l’intérieur et des outre-mer et du ministre "
                                "de la transition écologique et de la cohésion des territoires, chargé des collectivités"),
                # « de l'intérieur » est contenu dans « de l'intérieur et des outre-mer » : à la date,
@@ -175,9 +175,14 @@ def test_tutelle_par_le_libelle(tmp_path):
                          decisions=tmp_path / "decisions")
     t = {r["ministere"]: r for r in _lignes(ctx, "SELECT * FROM membre_gouvernement")}
     assert "PO10" in t and len(t) == 12                        # la mission est écartée
-    assert t["PO20"]["tutelle_statut"] == "non_etabli"
+    assert t["PO20"]["tutelle_statut"] == "co_tutelle"
     assert t["PO20"]["raison_tutelle"] == "le libellé désigne plusieurs ministres"
     assert t["PO20"]["tutelles_candidates"] == ["PO12", "PO13"]
+    # toutes les tutelles, aucune choisie : `ministere_tutelle` reste vide
+    assert (t["PO20"]["ministeres_tutelle"], t["PO20"]["ministere_tutelle"]) == (["PO12", "PO13"], None)
+    assert t["PO21"]["ministeres_tutelle"] == ["PO12"]
+    assert t["PO25"]["ministeres_tutelle"] == ["PO10"]
+    assert t["PO23"]["ministeres_tutelle"] is None and t["PO11"]["ministeres_tutelle"] is None
     assert (t["PO21"]["ministere_tutelle"], t["PO21"]["tutelle_statut"]) == ("PO12", "etabli")
     assert (t["PO22"]["ministere_tutelle"], t["PO22"]["tutelle_statut"]) == ("PO14", "etabli")
     assert t["PO23"]["tutelle_statut"] == "non_etabli" and "auprès" in t["PO23"]["raison_tutelle"]
@@ -187,9 +192,49 @@ def test_tutelle_par_le_libelle(tmp_path):
     assert t["PO25"]["decision"] == "rattachement_portefeuille/PO25.yaml"
     assert t["PO11"]["tutelle_statut"] == "sans_objet"
     assert (t["PO26"]["tutelle_statut"], t["PO26"]["tutelles_candidates"]) == ("non_etabli", ["PO12"])
+    assert t["PO26"]["ministeres_tutelle"] is None
     assert t["PO26"]["raison_tutelle"] == "le libellé désigne plusieurs ministres"
-    # établis : PO21, PO22 (règle) + PO25 (décision) ; à rattacher : PO20 à PO26
-    assert bilan["R-COMPOSITION"]["couverture"]["tutelle_etablie"] == [3, 7]
+    # établis : PO21, PO22 (règle), PO20 (co-tutelle) + PO25 (décision) ; à rattacher : PO20 à PO26
+    assert bilan["R-COMPOSITION"]["couverture"]["tutelle_etablie"] == [4, 7]
+
+
+def test_co_tutelle_ordre_du_libelle_et_decision_a_plusieurs_tutelles(tmp_path):
+    """Les tutelles d'une co-tutelle suivent l'ordre du libellé, pas celui des identifiants ; une
+    décision peut nommer plusieurs tutelles ; « des ministres de… et de… » ne se compte pas (#80)."""
+    g = "PO1"
+    organes = [_gouv(g, "2022-05-17", "2024-01-09"),
+               _min("PO10", g, "Première ministre"),
+               _min("PO12", g, "Ministère de l’intérieur et des outre-mer"),
+               _min("PO13", g, "Ministère de la transition écologique et de la cohésion des territoires"),
+               _min("PO20", g, "Ministère auprès du ministre de la transition écologique et de la cohésion "
+                               "des territoires et du ministre de l’intérieur et des outre-mer, chargé des collectivités"),
+               _min("PO21", g, "Ministère délégué auprès de la Première ministre et du ministre de l’intérieur "
+                               "et des outre-mer, chargé de la citoyenneté"),
+               _min("PO22", g, "Secrétariat d'État auprès des ministres de l’intérieur et des outre-mer, et de "
+                               "la transition écologique et de la cohésion des territoires, chargé de la ville"),
+               _min("PO23", g, "Secrétariat d'État auprès des ministres de l’intérieur et des outre-mer, et de "
+                               "la transition écologique et de la cohésion des territoires, chargé de la mer")]
+    mandats = [_mm("PM100", "PA1", "PO10", "Premier ministre", "2022-05-17", "2024-01-09"),
+               _mm("PM102", "PA2", "PO12", "Ministre", "2022-05-21", "2024-01-09"),
+               _mm("PM103", "PA3", "PO13", "Ministre", "2022-05-21", "2024-01-09"),
+               _mm("PM120", "PA5", "PO20", "Ministre délégué", "2022-07-05", "2024-01-09"),
+               _mm("PM121", "PA6", "PO21", "Ministre délégué", "2022-07-05", "2024-01-09"),
+               _mm("PM122", "PA7", "PO22", "Secrétaire d'État", "2022-07-05", "2024-01-09"),
+               _mm("PM123", "PA8", "PO23", "Secrétaire d'État", "2022-07-05", "2024-01-09")]
+    mandats += [_mg("PM15" + m["uid"][2:], m["acteur"], g, m["date_debut"], m["date_fin"]) for m in mandats]
+    dec = tmp_path / "decisions" / "rattachement_portefeuille"
+    dec.mkdir(parents=True)
+    (dec / "lot.yaml").write_text(yaml.safe_dump(
+        {"type": "rattachement_portefeuille", "date": "2026-11-14",
+         "decisions": [{"objet": "PO22", "decision": "rattache_a PO12 PO13", "motif": "libellé"}]}))
+    ctx, _ = _relier(_ecrire_z2(tmp_path / "z2", organes, mandats), tmp_path / "z3",
+                     decisions=tmp_path / "decisions")
+    t = {r["ministere"]: r for r in _lignes(ctx, "SELECT * FROM membre_gouvernement")}
+    assert (t["PO20"]["tutelle_statut"], t["PO20"]["ministeres_tutelle"]) == ("co_tutelle", ["PO13", "PO12"])
+    assert (t["PO21"]["tutelle_statut"], t["PO21"]["ministeres_tutelle"]) == ("co_tutelle", ["PO10", "PO12"])
+    assert (t["PO22"]["tutelle_statut"], t["PO22"]["ministeres_tutelle"]) == ("decision", ["PO12", "PO13"])
+    assert t["PO22"]["ministere_tutelle"] is None and t["PO22"]["raison_tutelle"] is None
+    assert (t["PO23"]["tutelle_statut"], t["PO23"]["ministeres_tutelle"]) == ("non_etabli", None)
 
 
 def test_tutelle_a_la_date_du_portefeuille(tmp_path):
