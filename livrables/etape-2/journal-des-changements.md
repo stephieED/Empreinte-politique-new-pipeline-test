@@ -893,3 +893,16 @@ Branche `etape-2-dates-promulgation`, issue #128 (constat transmis par la sessio
 | --- | --- | --- |
 | R-LOIS (version 2) : date de promulgation = date de signature de la loi au JO quand il la connaît (`source_date_promulgation` : `journal_officiel` ou `assemblee`), date de l'acte de l'Assemblée gardée (`date_assemblee`) ; A7 nomme les désaccords ; couverture `date_de_promulgation_lue_au_jo` | #128 : sept lois mal datées par l'Assemblée (acte ou JO cité), dont 2021-191 datée du 0021-02-24 ; la date de signature du JO est juste dans les sept cas (vérifié sur la g13) | 1 (1.6 R-LOIS) |
 | `perimetre.py` : docstring alignée (mandats locaux et volet européen hors de ce module, budgets hors périmètre) | elle disait encore « sans mandats locaux » après la PR #91 ; aucune constante ne les excluait | — |
+
+## Regroupements pour l'affichage : forme commune, et la légende des commissions (14–15/11/2026)
+
+Branche `etape-2-regroupements`, issue #88 ; forme commune décidée le 14/11/2026 (cadrage), légende Q42.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Type de décision `regroupement` : une entrée par code de la source (`champ` = `valeur`) et sa case (`groupe`, `libelle`), dans l'ordre de la légende ; un code est rangé par la première entrée qui lui correspond | neuf issues demandent un regroupement pour l'affichage (#75 à #89) : une seule forme, fixée sur le premier | 1 (1.3.3) |
+| Composeur `regroupements` : sert `regroupements.json.gz`, avec les cases de chaque regroupement et chaque code présent dans le corpus (périmètre XIVe–XVIIe), sa case et l'entrée qui l'y a mis. Les fiches ne changent pas | changer un regroupement ne doit demander ni recollecte ni réécriture des fiches ; chaque valeur affichée se rattache à son code d'origine | 1 (1.7.2) |
+| A7 : un code sans case (ou un regroupement sans source) est nommé ; jamais rangé par défaut | une case par défaut cacherait un code nouveau | 2 (2.8) |
+| Page de méthodologie (« Le traitement, étape par étape ») : section 6, chaque regroupement avec ses cases et les codes qui y vont | le regroupement appliqué est déclaré dans la méthodologie (contrainte commune des issues) | — |
+| Première table : `decisions/regroupement/commission_saisie.yaml` (#88), 11 cases : les 8 commissions permanentes (ordre de l'article 36 du Règlement), les commissions spéciales (type `CNPS`), « Saisi au Sénat seulement », « Matière non établie » | Q42 | — |
+

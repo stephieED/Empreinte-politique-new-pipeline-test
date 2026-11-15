@@ -346,6 +346,7 @@ Types prévus et ce qu'ils alimentent :
 | `continuite_groupe` | un groupe qui change d'organe en cours de législature | 3.1.1 |
 | `rattachement_portefeuille` | ministère de tutelle d'un ministre délégué quand la source ne le donne pas | 4.4 |
 | `libelle_ministere` | table des 260 libellés libres du JO → ministère normalisé | 3.6 |
+| `regroupement` | table d'un regroupement pour l'affichage (une légende de commissions, des sorts…) : chaque entrée met un code de la source (`champ` = `valeur`) dans une case (`groupe`, `libelle`), dans l'ordre de la légende ; servie à part dans `regroupements.json.gz`, les fiches gardant les codes (décision du 14/11/2026, issue #88) | 4.2 à 4.5 |
 | `fin_legislature` | mode de fin (dissolution / terme) avec le décret (lien Légifrance) | 4.5 |
 | `absence_etablie` | « relu, aucun » : source lue en entier, date, ce qu'elle ne couvre pas | 4.7 |
 | `levee_controle` | autoriser une publication refusée, pour **une** anomalie | 6.2 |
@@ -993,6 +994,7 @@ mécanisme). Le contrat (`1.0`) est écrit dans le manifeste et dans chaque fich
   catalogue/articles.json.gz           articles datés : date, titre, période couverte, adresse
   accueil.json.gz                      frise législatures × gouvernements, hémicycle courant, articles
   sources.json.gz  methodologie.json.gz  fraicheur.json.gz
+  regroupements.json.gz                regroupements pour l'affichage : cases dans l'ordre, chaque code du corpus → sa case (#88)
   personnes/<adresse>/
     fiche.json.gz                      en-tête, en bref (frise + compteurs), couverture, licences
     fonctions.json.gz

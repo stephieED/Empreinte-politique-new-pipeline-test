@@ -32,6 +32,7 @@ import yaml
 
 RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG = os.path.join(RACINE, "config", "points_acces.yaml")
+DECISIONS = os.path.join(RACINE, "decisions")
 
 
 def _cellules(ligne: str) -> list[str]:
@@ -199,12 +200,32 @@ def perimetre() -> dict:
             "gouvernements": p.plage(p.LEGISLATURES_GOUVERNEMENTS)}
 
 
+def regroupements(dossier: str | None = DECISIONS) -> list[dict]:
+    """Rend les regroupements pour l'affichage décidés (`decisions/regroupement/*.yaml`) : `nom`,
+    `titre`, `description`, `fichier` et `cases` (libellé de chaque case, dans l'ordre, avec les
+    codes de la source qui y vont). Voir `empreinte_src.composeurs.regroupements`."""
+    out = []
+    d = os.path.join(dossier or "", "regroupement")
+    for n in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+        if not n.endswith(".yaml"):
+            continue
+        with open(os.path.join(d, n)) as f:
+            y = yaml.safe_load(f) or {}
+        cases: dict[str, dict] = {}
+        for e in y.get("decisions") or []:
+            c = cases.setdefault(e.get("groupe"), {"libelle": e.get("libelle"), "codes": []})
+            c["codes"].append(f"{e.get('champ')} = {e.get('valeur')}")
+        out.append({"nom": y.get("nom"), "titre": y.get("titre"), "description": y.get("description"),
+                    "fichier": f"decisions/regroupement/{n}", "cases": list(cases.values())})
+    return out
+
+
 def donnees(config: str | None = CONFIG) -> dict:
     """Rend tout ce que la page décrit : `etapes`, `zones`, `perimetre`, `lecteurs` (avec les
     points d'accès de `config`), `provenance`, `regles` et `controles`."""
     return {"etapes": etapes(), "zones": zones(), "perimetre": perimetre(),
             "lecteurs": lecteurs(config), "provenance": colonnes_provenance(),
-            "regles": regles(), "controles": controles()}
+            "regles": regles(), "controles": controles(), "regroupements": regroupements()}
 
 
 # -- la page ------------------------------------------------------------------------------------
@@ -235,7 +256,8 @@ def _titres(d: dict) -> dict[str, str]:
     """Les titres des sections et des sous-sections, d'où viennent les ancres des liens internes."""
     t = {"etapes": "1. Les étapes", "perimetre": "2. Le périmètre",
          "lecteurs": "3. Les sources et leurs lecteurs (étape E3)",
-         "regles": "4. Les règles de liaison (étape E4)", "controles": "5. Les contrôles (étape E6)"}
+         "regles": "4. Les règles de liaison (étape E4)", "controles": "5. Les contrôles (étape E6)",
+         "regroupements": "6. Les regroupements pour l'affichage"}
     for l in d["lecteurs"]:
         t["lecteur:" + l["nom"]] = f"`{l['nom']}`"
     for i, r in enumerate(d["regles"], 1):
@@ -394,4 +416,21 @@ def rendre(d: dict, commit: str | None = None, depot: str | None = None,
             w("*Méthode : " + ", ".join(
                 f"[`{m}`]({doc('empreinte_src.controles', 'Controles.' + m)})"
                 for m in c["methodes"]) + "*\n")
+
+    # Regroupements pour l'affichage (#88)
+    w(f"## {t['regroupements']}\n")
+    w("Pour l'affichage, certaines listes de codes de la source sont ramenées à quelques cases "
+      "(une légende de commissions, par exemple). Un regroupement est une décision de la "
+      "propriétaire ; il est servi à part (`regroupements.json.gz`) et les fiches gardent les codes "
+      "de la source : chaque valeur affichée se rattache à son code d'origine, et changer un "
+      "regroupement ne demande ni nouvelle collecte ni perte d'information. Un code qui n'entre "
+      "dans aucune case n'est jamais rangé par défaut : il est signalé (A7).\n")
+    for r in d.get("regroupements", []):
+        w(f"### {r['titre'] or r['nom']}\n")
+        w(f"*`{r['nom']}` · décision `{r['fichier']}`*\n")
+        if r["description"]:
+            w(" ".join(str(r["description"]).split()) + "\n")
+        w("| Case | Codes de la source |\n| --- | --- |")
+        w("\n".join(f"| {_cellule(str(c['libelle']))} | {', '.join(f'`{x}`' for x in c['codes'])} |"
+                     for c in r["cases"]) + "\n")
     return "\n".join(p).rstrip() + "\n"

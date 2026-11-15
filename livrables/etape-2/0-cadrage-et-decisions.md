@@ -46,6 +46,7 @@ de travail.
 | Nom du paquet | `empreinte_src` (« sinon on peut l'appeler empreinte_src »), après examen de `empreinte/`, `traitement/`, `src/empreinte/`, `empreinte-src/` ; la commande reste `empreinte` | 06/11/2026 |
 | Documentation du code | pdoc (« ajoute pdoc »), générée par le workflow des tests, artefact `documentation-code` | 06/11/2026 |
 | Export de tous les faits lus | « Dernière nuit, Parquet » : la release `export` ne garde que l'export de la dernière nuit publiée, sans CSV (≈ 1,2 Go au lieu de 2,4 Go qui s'ajoutaient chaque nuit sur le périmètre complet) ; les faits publiés de chaque nuit restent tous. Écartés : tout garder ; hebdomadaire ; abandonner cet export | 12/11/2026 |
+| Regroupements pour l'affichage (issues #75 à #89) | Forme commune, choisie avant le premier regroupement (#88) : la table est une décision (`decisions/regroupement/<nom>.yaml`), validée en fusionnant ; le traitement la sert à part, dans `regroupements.json.gz` (« Un fichier à part »), et les fiches gardent les codes de la source ; la page de méthodologie déclare chaque regroupement ; un code qui n'entre dans aucune case est signalé (A7), jamais rangé par défaut. Écartés : une colonne de plus dans les fiches (chaque changement réécrirait les fiches) ; la table dans le code. L'interface ne lit jamais `decisions/` : elle lit les fichiers servis | 14/11/2026 |
 
 ## Principes qu'elle a corrigés (à ne pas rouvrir)
 
