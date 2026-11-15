@@ -19,12 +19,12 @@ from empreinte_src.lecteurs import an_acteurs, an_dossiers, an_scrutins
 from empreinte_src.lecture import Lecture
 from empreinte_src.liaison import Contexte, ordonner, relier
 from empreinte_src.regles import (r_49_3, r_depot_gouvernement, r_derniere_lecture, r_etape,
-                              r_gouvernements, r_legislatures, r_lien_scrutin_dossier, r_lois,
-                              r_matiere, r_nature_scrutin, r_origine, r_sort_final)
+                              r_gouvernements, r_legislatures, r_lien_scrutin_dossier, r_loi_dossier,
+                              r_lois, r_matiere, r_nature_scrutin, r_origine, r_sort_final)
 
 EXTRAITS = os.path.join(os.path.dirname(__file__), "extraits")
 REGLES = [r_legislatures, r_gouvernements, r_nature_scrutin, r_lien_scrutin_dossier, r_origine,
-          r_derniere_lecture, r_matiere, r_etape, r_49_3, r_lois, r_sort_final,
+          r_derniere_lecture, r_matiere, r_etape, r_49_3, r_lois, r_loi_dossier, r_sort_final,
           r_depot_gouvernement]
 _PROV = [("prov_point", pa.string()), ("prov_uid", pa.string()), ("prov_version", pa.int32()),
          ("prov_etat", pa.string()), ("prov_url", pa.string())]
@@ -552,6 +552,50 @@ def test_suite_absente_des_archives(tmp_path):
          for x in _lignes(ctx, "SELECT DISTINCT dossier, sort, raison_sort, fin_archive_du_dossier FROM etat_dossier")}
     assert s == {"SA": ("non_connu", "suite_absente_des_archives", "2024-09-20"),
                  "SB": ("non_connu", "aucune_decision_finale", None)}
+
+
+def test_suite_absente_reliee_par_le_journal_officiel(tmp_path):
+    """Issue #35, décisions du 15/11/2026 : une loi du JO relie un dossier dont la suite manque aux
+    archives par ses travaux préparatoires. Un seul numéro suffit pour un tel dossier s'il est celui
+    du texte déposé sous la législature de la promulgation ; un numéro de la législature précédente
+    qui mène ailleurs ne le contredit pas (cas réel : loi 2018-581, rapport n° 994 de la XVe, qui
+    tombe sous la XIVe sur un autre dossier). Pour un dossier ordinaire, un seul numéro ne suffit
+    pas (loi 2018-1068, reliée à tort au secret des sources)."""
+    from empreinte_src.lecteurs import an_dossiers as lec_dossiers, jo_actes
+    pt = {"prov_point": "an-dossiers-l16"}
+    dossiers = [_dos("SA", "Texte poursuivi sous la XVIIe"), _dos("SB", "Texte ordinaire"),
+                _dos("SX", "Autre dossier de la XVIe")]
+    actes = [
+        {**_depot("SA", "PIONSNR5S459B0009", "SN1-DEPOT", "2024-03-01"), "uid": "L16-SA-DI", **pt},
+        {**_acte("SA", "L17-SA-DIN", "DepotInitiativeNavette_Type", "AN1-DEPOT", "2024-09-20"), **pt},
+        {**_depot("SB", "PIONANR5L17B0124", "AN1-DEPOT", "2024-10-01"), "uid": "L17-SB-DI",
+         "prov_point": "an-dossiers-l17"},
+    ]
+    z2 = _z2(tmp_path / "z2", actes=actes, dossiers=dossiers)
+    _ecrire(z2, lec_dossiers, "document", [
+        {"uid": "PIONANR5L17B0123", "dossier": "SA"}, {"uid": "RAPPANR5L16B0456", "dossier": "SX"},
+        {"uid": "PIONANR5L17B0124", "dossier": "SB"}])
+    _ecrire(z2, jo_actes, "acte_reglementaire", [
+        {"uid": "jorf:A", "nature": "LOI", "numero": "2025-100", "date_signature": "2025-03-01",
+         "prov_url": "https://www.legifrance.gouv.fr/jorf/id/A"},
+        {"uid": "jorf:A2", "nature": "LOI", "numero": "2025-100", "date_signature": "2025-03-01"},
+        {"uid": "jorf:B", "nature": "LOI", "numero": "2025-101", "date_signature": "2025-03-02"}])
+    tp = lambda acte, nature, numero: {"acte": acte, "chambre": "AN", "nature": nature, "numero": numero}
+    _ecrire(z2, jo_actes, "travaux_preparatoires", [
+        tp("jorf:A", "proposition_de_loi", "123"), tp("jorf:A", "rapport", "456"),
+        tp("jorf:B", "proposition_de_loi", "124")])
+    ctx, b = _relier(z2, tmp_path / "z3")
+    j = {x["numero_loi"]: x for x in _lignes(ctx, "SELECT * FROM loi_dossier_jo")}
+    assert set(j) == {"2025-100", "2025-101"}                  # une ligne par loi, pas par acte
+    assert (j["2025-100"]["dossier"], j["2025-100"]["preuve"], j["2025-100"]["acte"]) == (
+        "SA", "texte_depose_seul", "jorf:A")
+    assert (j["2025-101"]["dossier"], j["2025-101"]["raison"]) == (None, "un_seul_numero")
+    s = {x["dossier"]: x for x in _lignes(ctx, "SELECT DISTINCT dossier, sort, raison_sort, numero_loi, "
+                                               "date_promulgation, url_loi, lien_loi FROM etat_dossier")}
+    assert (s["SA"]["sort"], s["SA"]["raison_sort"], s["SA"]["numero_loi"], s["SA"]["date_promulgation"],
+            s["SA"]["lien_loi"]) == ("promulgue", None, "2025-100", "2025-03-01", "travaux_preparatoires_jo")
+    assert s["SA"]["url_loi"] == "https://www.legifrance.gouv.fr/jorf/id/A"
+    assert s["SB"]["sort"] == "non_connu"
 
 
 def test_date_de_promulgation_lue_au_journal_officiel(tmp_path):
