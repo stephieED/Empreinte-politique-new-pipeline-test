@@ -7,7 +7,7 @@ code), dans l'ordre :
 
 | sort | preuve |
 | --- | --- |
-| `promulgue` | acte de promulgation (R-LOIS : numéro et date) |
+| `promulgue` | acte de promulgation (R-LOIS : numéro et date) ; à défaut, loi du JO reliée au dossier par ses travaux préparatoires (R-LOI-DOSSIER, version 4) |
 | `adopte` | adoption définitive (R-ETAPE, `adoptions_definitives`), pas encore promulguée |
 | `retire` | acte de retrait de l'initiative |
 | `rejete` | rejet qui clôt le dossier : lecture définitive rejetée ; résolution rejetée ; proposition de loi rejetée en première lecture par la chambre où elle a été déposée |
@@ -15,8 +15,10 @@ code), dans l'ordre :
 
 Raison `suite_absente_des_archives` (version 3) : le dossier n'est publié que par l'archive d'une
 législature close, qui s'arrête (`fin_archive_du_dossier`) alors que le texte a continué sous la
-suivante, dont l'archive ne le publie pas : son issue n'est pas lue. R-LOI-DOSSIER (à venir) le
-reliera à sa loi par les travaux préparatoires publiés au Journal officiel.
+suivante, dont l'archive ne le publie pas : son issue n'est pas lue. Depuis la version 4,
+R-LOI-DOSSIER le relie à sa loi quand il le peut (travaux préparatoires publiés au Journal
+officiel) : il est alors `promulgue`, avec `lien_loi = 'travaux_preparatoires_jo'` (sinon
+`acte_de_promulgation`). Mesuré sur l'archive globale du JO (g14) : 6 des 17 dossiers de la XIVe.
 
 Le **49.3** est nommé à part (`par_49_3`) : le gouvernement a engagé sa responsabilité sur le
 texte (R-49-3) ; `adopte_par_49_3` quand, en plus, le texte a été adopté ou promulgué. Ce n'est
@@ -24,10 +26,11 @@ jamais une position de vote. Une ligne par (dossier, législature où il a avanc
 celle de la législature (R-ETAPE) et le sort celui du dossier."""
 
 from .r_etape import UNE_CHAMBRE, adoptions_definitives, decisions
+from .r_loi_dossier import suite_absente_sql
 
 NOM = "R-SORT-FINAL"
-VERSION = 3
-DEPEND = ("R-ETAPE", "R-49-3", "R-LOIS")
+VERSION = 4
+DEPEND = ("R-ETAPE", "R-49-3", "R-LOIS", "R-LOI-DOSSIER")
 SORTIES = ("etat_dossier", "conclusion_non_classee")
 DESCRIPTION = (
     "Le sort d'un texte est celui de son dossier, lu dans la conclusion des décisions des deux "
@@ -39,6 +42,9 @@ DESCRIPTION = (
 
 
 def appliquer(ctx):
+    jo = ("loi_dossier_jo" if ctx.existe("loi_dossier_jo") else
+          "(SELECT NULL::VARCHAR AS dossier, NULL::VARCHAR AS numero_loi, NULL::VARCHAR AS date_promulgation, "
+          "NULL::VARCHAR AS source_url WHERE false)")
     ctx.ecrire("etat_dossier", f"""
         WITH dec AS ({decisions(ctx)}),
         adopt AS (SELECT dossier, max(date) AS date, max_by(acte, date) AS acte,
@@ -48,16 +54,7 @@ def appliquer(ctx):
         -- par la seule archive d'une législature close, avec des actes d'une législature suivante ;
         -- l'archive de la législature suivante ne le publie pas (17 dossiers de la XIVe, archive
         -- arrêtée au 22/03/2018, g10). Son sort n'est pas « sans décision finale » : il n'est pas lu.
-        pts AS (SELECT prov_point, TRY_CAST(regexp_extract(prov_point, 'l(\d+)$', 1) AS INTEGER) AS leg,
-                       max(left(date, 10)) AS fin_archive
-                FROM an_dossiers__acte GROUP BY 1),
-        par_dossier AS (SELECT dossier, count(DISTINCT prov_point) AS n, any_value(prov_point) AS pt,
-                               max(TRY_CAST(regexp_extract(uid, '^L(\d+)-', 1) AS INTEGER)) AS leg_acte
-                        FROM an_dossiers__acte GROUP BY 1),
-        suite_absente AS (
-            SELECT x.dossier, pts.fin_archive FROM par_dossier x JOIN pts ON pts.prov_point = x.pt
-            JOIN legislature lg ON lg.numero = pts.leg
-            WHERE x.n = 1 AND lg.fin IS NOT NULL AND x.leg_acte > pts.leg),
+        suite_absente AS ({suite_absente_sql()}),
         depot AS (SELECT dossier, any_value(substr(texte_associe, 1, 4)) AS type_texte,
                          any_value(CASE WHEN code LIKE 'AN%' THEN 'AN' WHEN code LIKE 'SN%' THEN 'SN' END)
                              AS chambre_depot
@@ -78,9 +75,17 @@ def appliquer(ctx):
                    OR (p.type_texte = 'PION' AND r.lecture IN ('AN1', 'SN1')
                        AND r.chambre = p.chambre_depot))),
         e49 AS (SELECT dossier, count(DISTINCT acte) AS n, min(date) AS premier FROM engagement_49_3 GROUP BY 1),
-        loi1 AS (SELECT dossier, any_value(numero_loi) AS numero_loi,
-                        any_value(date_promulgation) AS date_promulgation, any_value(source_url) AS url_loi
-                 FROM loi GROUP BY 1),
+        -- La loi d'un dossier : par l'acte de promulgation de l'Assemblée (R-LOIS) ; à défaut, par
+        -- les travaux préparatoires publiés au JO (R-LOI-DOSSIER, version 4, issue #35).
+        loi_an AS (SELECT dossier, any_value(numero_loi) AS numero_loi,
+                          any_value(date_promulgation) AS date_promulgation, any_value(source_url) AS url_loi,
+                          'acte_de_promulgation' AS lien_loi
+                   FROM loi WHERE dossier IS NOT NULL GROUP BY 1),
+        loi_jo AS (SELECT dossier, min(numero_loi) AS numero_loi, min(date_promulgation) AS date_promulgation,
+                          min_by(source_url, numero_loi) AS url_loi, 'travaux_preparatoires_jo' AS lien_loi
+                   FROM {jo} WHERE dossier IS NOT NULL
+                     AND dossier NOT IN (SELECT dossier FROM loi_an) GROUP BY 1),
+        loi1 AS (SELECT * FROM loi_an UNION ALL SELECT * FROM loi_jo),
         s AS (
             SELECT d.uid AS dossier,
                    CASE WHEN l.dossier IS NOT NULL THEN 'promulgue'
@@ -104,7 +109,7 @@ def appliquer(ctx):
                    dr.conclusion AS derniere_conclusion, dr.date AS date_derniere_decision,
                    sa.fin_archive AS fin_archive_du_dossier,
                    e.dossier IS NOT NULL AS par_49_3, coalesce(e.n, 0) AS nb_engagements_49_3,
-                   l.date_promulgation, l.numero_loi, l.url_loi, p.type_texte,
+                   l.date_promulgation, l.numero_loi, l.url_loi, l.lien_loi, p.type_texte,
                    d.procedure_code, d.titre, TRY_CAST(d.legislature AS INTEGER) AS legislature_dossier,
                    d.prov_url AS source_url
             FROM an_dossiers__dossier d
@@ -121,7 +126,7 @@ def appliquer(ctx):
                s.date_promulgation, s.numero_loi,
                s.par_49_3 AND s.sort IN ('adopte', 'promulgue') AS adopte_par_49_3,
                s.nb_engagements_49_3, s.date_sort, s.raison_sort, s.motif_adoption, s.acte_decisif,
-               s.derniere_conclusion, s.date_derniere_decision, s.fin_archive_du_dossier, et.date_etape,
+               s.derniere_conclusion, s.date_derniere_decision, s.fin_archive_du_dossier, s.lien_loi, et.date_etape,
                CASE WHEN et.dossier IS NULL THEN 'aucun_acte_date' ELSE et.raison END AS raison_etape,
                s.type_texte, s.procedure_code, s.titre, s.url_loi, s.source_url
         FROM s LEFT JOIN etape_dossier et USING (dossier)""")
