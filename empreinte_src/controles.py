@@ -559,6 +559,69 @@ class Controles:
                 "SELECT numero_loi, date_promulgation FROM loi WHERE dossier IS NULL AND legislature = 17 ORDER BY 1")]
         self._avertir("A3", "Totaux différents d'une autre source", objets,
                       detail=getattr(self, "bilan_a3", None))
+        self.a3_lois_contre_le_jo()
+
+    def a3_lois_contre_le_jo(self):
+        """Lois servies (actes de promulgation de l'Assemblée, R-LOIS) contre les lois publiées au
+        Journal officiel, la seule source tenue hors de l'Assemblée (issue #63, décision du
+        15/11/2026). Par législature du périmètre (celles où l'Assemblée publie des lois) :
+
+        - une loi du JO absente de l'Assemblée et que R-LOI-DOSSIER relie à son dossier est
+          **expliquée** (`reliees_par_le_jo`) ;
+        - une loi du JO absente de l'Assemblée, sans travaux préparatoires et promulguée avant la
+          première loi du périmètre que le JO publie avec les siens, est **expliquée**
+          (`avant_les_travaux_au_jo` : le JO ne les publiait pas encore ; 49 lois de la XIVe,
+          avant le 08/12/2015, mesuré sur la g14) ;
+        - toute autre loi du JO absente de l'Assemblée est **nommée**, avec la raison de
+          R-LOI-DOSSIER (11 sur la g14 : 3 de la XIVe, 8 de la XVe) ;
+        - une loi de l'Assemblée absente du JO est nommée (aucune sur la g14), si le JO couvre sa
+          date.
+        Les décomptes par législature sont toujours dans le détail."""
+        if not self._a("loi", "legislature", "jo_actes__acte_reglementaire"):
+            return
+        lien = ("SELECT numero_loi, dossier, raison FROM loi_dossier_jo" if self._a("loi_dossier_jo") else
+                "SELECT NULL::VARCHAR AS numero_loi, NULL::VARCHAR AS dossier, NULL::VARCHAR AS raison WHERE false")
+        self._x(f"""
+            CREATE OR REPLACE TEMP TABLE _a3_lois AS
+            WITH jo AS (SELECT numero, min(date_signature) AS d FROM jo_actes__acte_reglementaire
+                        WHERE nature IN ('LOI', 'LOI_ORGANIQUE', 'LOI_CONSTIT') AND numero IS NOT NULL GROUP BY 1),
+            an AS (SELECT numero_loi, min(date_promulgation) AS d, any_value(legislature) AS l
+                   FROM loi WHERE numero_loi IS NOT NULL GROUP BY 1),
+            perimetre AS (SELECT DISTINCT legislature AS l FROM loi WHERE legislature IS NOT NULL),
+            lien AS ({lien}),
+            seuil AS (SELECT min(jo.d) AS d FROM lien JOIN jo ON jo.numero = lien.numero_loi
+                      WHERE lien.raison IS DISTINCT FROM 'pas_de_travaux_preparatoires'
+                        AND jo.d >= (SELECT min(g.debut) FROM legislature g JOIN perimetre p ON p.l = g.numero)),
+            jo_l AS (SELECT jo.*, (SELECT max(g.numero) FROM legislature g WHERE g.debut <= jo.d
+                                   AND coalesce(g.fin, '9999-12-31') >= jo.d) AS l FROM jo)
+            SELECT j.l AS legislature, j.numero AS numero_loi, j.d AS date, 'jo' AS cote,
+                   CASE WHEN an.numero_loi IS NOT NULL THEN 'present'
+                        WHEN lien.dossier IS NOT NULL THEN 'reliee_par_le_jo'
+                        WHEN lien.raison = 'pas_de_travaux_preparatoires' AND j.d < (SELECT d FROM seuil)
+                             THEN 'avant_les_travaux_au_jo'
+                        ELSE 'nommee' END AS etat, lien.raison
+            FROM jo_l j LEFT JOIN an ON an.numero_loi = j.numero LEFT JOIN lien ON lien.numero_loi = j.numero
+            WHERE j.l IN (SELECT l FROM perimetre)
+            UNION ALL
+            SELECT an.l, an.numero_loi, an.d, 'assemblee', 'absente_du_jo', NULL FROM an
+            WHERE an.numero_loi NOT IN (SELECT numero FROM jo) AND an.d >= (SELECT min(d) FROM jo)""")
+        detail = {}
+        for l, jo, an, reliees, avant, nommees, absentes in self._x("""
+                SELECT legislature, count(*) FILTER (cote = 'jo'), count(*) FILTER (etat = 'present'),
+                       count(*) FILTER (etat = 'reliee_par_le_jo'), count(*) FILTER (etat = 'avant_les_travaux_au_jo'),
+                       count(*) FILTER (etat = 'nommee'), count(*) FILTER (etat = 'absente_du_jo')
+                FROM _a3_lois GROUP BY 1 ORDER BY 1"""):
+            detail[str(l)] = {"lois_au_jo": jo, "presentes_a_l_assemblee": an, "reliees_par_le_jo": reliees,
+                              "expliquees_avant_les_travaux_au_jo": avant, "nommees": nommees,
+                              "assemblee_absentes_du_jo": absentes}
+        self.bilan_a3_lois = detail or None
+        objets = [f"loi {n} ({d}) publiée au JO, absente de l'Assemblée et non reliée à un dossier"
+                  + (f" ({r})" if r else "")
+                  for n, d, r in self._x("SELECT numero_loi, date, raison FROM _a3_lois WHERE etat = 'nommee' ORDER BY date, numero_loi")]
+        objets += [f"loi {n} ({d}) promulguée selon l'Assemblée, absente du JO"
+                   for n, d in self._x("SELECT numero_loi, date FROM _a3_lois WHERE etat = 'absente_du_jo' ORDER BY date, numero_loi")]
+        self._avertir("A3", "Lois du Journal officiel et de l'Assemblée qui ne se correspondent pas", objets,
+                      detail=self.bilan_a3_lois)
 
     def a4_double_affichage(self):
         objets = [f"{f} / {s} : {n} lignes identiques" for f, s, n in self._x("""
@@ -764,8 +827,9 @@ class Controles:
                 "avertissements": [a["empreinte"] for a in self.anomalies if a["controle"].startswith("A")],
                 "c3": getattr(self, "bilan_c3", None), "a2": getattr(self, "bilan_a2", None),
                 # Ce que A3, A5 et A6 ont compté comme expliqué : gardé même quand l'avertissement se
-                # tait, pour que le rapport de la nuit le dise (décisions du 13 et du 14/11/2026).
+                # tait, pour que le rapport de la nuit le dise (décisions du 13, du 14 et du 15/11/2026).
                 "expliques": {k: v for k, v in (("a3", getattr(self, "bilan_a3", None)),
+                                                ("a3_lois", getattr(self, "bilan_a3_lois", None)),
                                                 ("a5", getattr(self, "bilan_a5", None)),
                                                 ("a6", getattr(self, "bilan_a6", None))) if v}}
 

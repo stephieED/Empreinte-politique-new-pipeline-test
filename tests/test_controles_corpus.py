@@ -291,6 +291,55 @@ def test_a3_tous_expliques_pas_d_avertissement(tmp_path):
     assert _an(c, "A3") == [] and c.bilan_a3["expliques_transition"] == 1
 
 
+def test_a3_lois_contre_le_journal_officiel(tmp_path):
+    """Issue #63 (décision du 15/11/2026) : les lois servies (Assemblée) contre celles du JO. Une loi
+    du JO absente de l'Assemblée est expliquée si R-LOI-DOSSIER la relie, ou si elle est sans
+    travaux préparatoires et antérieure à la première loi que le JO publie avec les siens ; toute
+    autre est nommée, comme une loi de l'Assemblée absente du JO."""
+    loi = lambda n, d, l: {"numero_loi": n, "date_promulgation": d, "legislature": l, "dossier": "D" + n}
+    acte = lambda n, d, nature="LOI": {"uid": "jorf:" + n, "nature": nature, "numero": n, "date_signature": d}
+    lien = lambda n, dossier=None, raison=None: {"numero_loi": n, "dossier": dossier, "raison": raison}
+    t = dict(TABLES,
+             legislature=[{"numero": 14, "debut": "2012-06-20", "fin": "2017-06-20"},
+                          {"numero": 15, "debut": "2017-06-21", "fin": "2022-06-21"}],
+             loi=[loi("2016-1", "2016-03-01", 14), loi("2017-9", "2017-01-01", 14), loi("2018-9", "2018-02-01", 15)],
+             jo_actes__acte_reglementaire=[
+                 acte("2016-1", "2016-03-01"), acte("2018-9", "2018-02-01"),
+                 acte("2013-5", "2013-04-01"),                       # avant les travaux au JO : expliquée
+                 acte("2016-8", "2016-06-01"),                       # sans travaux, mais après : nommée
+                 acte("2016-7", "2016-05-01"),                       # aucun document : nommée
+                 acte("2018-3", "2018-03-01"),                       # reliée par le JO : expliquée
+                 acte("2018-4", "2018-04-01", "LOI_ORGANIQUE"),      # nommée
+                 acte("2018-5", "2018-05-01", "DECRET")],            # pas une loi
+             loi_dossier_jo=[lien("2016-1", "D2016-1"), lien("2018-9", "D2018-9"),
+                             lien("2013-5", raison="pas_de_travaux_preparatoires"),
+                             lien("2016-8", raison="pas_de_travaux_preparatoires"),
+                             lien("2016-7", raison="aucun_document"), lien("2018-3", "D3"),
+                             lien("2018-4", raison="aucun_document")])
+    c = _ctrl(tmp_path, tables=t)
+    c.a3_totaux()
+    lois = [a for a in _an(c, "A3") if a["titre"].startswith("Lois du Journal officiel")][0]
+    assert lois["exemples"] == sorted([
+        "loi 2016-7 (2016-05-01) publiée au JO, absente de l'Assemblée et non reliée à un dossier (aucun_document)",
+        "loi 2016-8 (2016-06-01) publiée au JO, absente de l'Assemblée et non reliée à un dossier "
+        "(pas_de_travaux_preparatoires)",
+        "loi 2018-4 (2018-04-01) publiée au JO, absente de l'Assemblée et non reliée à un dossier (aucun_document)",
+        "loi 2017-9 (2017-01-01) promulguée selon l'Assemblée, absente du JO"])
+    assert lois["detail"] == {
+        "14": {"lois_au_jo": 4, "presentes_a_l_assemblee": 1, "reliees_par_le_jo": 0,
+               "expliquees_avant_les_travaux_au_jo": 1, "nommees": 2, "assemblee_absentes_du_jo": 1},
+        "15": {"lois_au_jo": 3, "presentes_a_l_assemblee": 1, "reliees_par_le_jo": 1,
+               "expliquees_avant_les_travaux_au_jo": 0, "nommees": 1, "assemblee_absentes_du_jo": 0}}
+    assert c.bilan()["expliques"]["a3_lois"] == lois["detail"]
+
+
+def test_a3_lois_sans_le_jo_rien_a_comparer(tmp_path):
+    c = _ctrl(tmp_path, tables=dict(TABLES, loi=[{"numero_loi": "2016-1", "date_promulgation": "2016-03-01",
+                                                  "legislature": 14, "dossier": "D"}]))
+    c.a3_totaux()
+    assert not [a for a in _an(c, "A3") if a["titre"].startswith("Lois du Journal officiel")]
+
+
 PAGE = """<div>Nombre de votants : <b>3</b></span> Pour l'adoption : <b>2</b></span>
 Contre : <b>1</b></span> Abstention : <b>0</b></span>
 <li data-organe-id="PO17S"><span class="h6 _colored-travaux">Pour</span><span>: 2</span>
