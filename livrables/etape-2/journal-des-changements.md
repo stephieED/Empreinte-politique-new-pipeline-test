@@ -893,3 +893,13 @@ Branche `etape-2-dates-promulgation`, issue #128 (constat transmis par la sessio
 | --- | --- | --- |
 | R-LOIS (version 2) : date de promulgation = date de signature de la loi au JO quand il la connaît (`source_date_promulgation` : `journal_officiel` ou `assemblee`), date de l'acte de l'Assemblée gardée (`date_assemblee`) ; A7 nomme les désaccords ; couverture `date_de_promulgation_lue_au_jo` | #128 : sept lois mal datées par l'Assemblée (acte ou JO cité), dont 2021-191 datée du 0021-02-24 ; la date de signature du JO est juste dans les sept cas (vérifié sur la g13) | 1 (1.6 R-LOIS) |
 | `perimetre.py` : docstring alignée (mandats locaux et volet européen hors de ce module, budgets hors périmètre) | elle disait encore « sans mandats locaux » après la PR #91 ; aucune constante ne les excluait | — |
+
+## Adresses citées par des articles publiés (14/11/2026)
+
+Branche `etape-2-adresses-citees`, issue #86 (révisée le 14/11/2026 : douze adresses seulement).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Type de décision `adresse_citee` : une adresse de l'ancien site → sa fiche, désignée par un identifiant stable (lignée `lig:…`, gouvernement `PO…`) ; douze décisions (`decisions/adresse_citee/2026-11-14-articles.yaml`), validées par la propriétaire | des articles datés, qui ne seront plus modifiés, citent ces adresses ; la forme des adresses des fiches est libre (cadrage du 14/11/2026) | 1 (1.3.3) |
+| Composeur `adresses` : résout chaque décision (une lignée fusionnée mène à celle qui l'a reçue) ; le catalogue (`catalogue.json.gz`) sert la table `adresses_citees` (adresse, `lien`, raison, décision) ; une cible non publiée n'est jamais servie comme lien, A7 la nomme | besoin de l'interface (#86) ; un lien faux est pire qu'un lien absent (cahier 4.7) ; C2 vérifie la colonne `lien` | 1 (1.7.2) |
+
