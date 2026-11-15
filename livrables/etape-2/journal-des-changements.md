@@ -958,3 +958,11 @@ Branche `etape-2-regroupements`, issue #88 ; forme commune décidée le 14/11/20
 | Page de méthodologie (« Le traitement, étape par étape ») : section 6, chaque regroupement avec ses cases et les codes qui y vont | le regroupement appliqué est déclaré dans la méthodologie (contrainte commune des issues) | — |
 | Première table : `references/regroupement/commission_saisie.yaml` (#88), 11 cases : les 8 commissions permanentes (ordre de l'article 36 du Règlement), les commissions spéciales (type `CNPS`), « Saisi au Sénat seulement », « Matière non établie » | Q42 | — |
 
+
+## Qualité écrite dans les extraits de parole des candidats (15/11/2026)
+
+Branche `etape-2-qualite-ecrite-extraits`, issue #69.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Composeur candidat : les extraits de parole (`candidats/paroles-textes-*`) servent `qualite_ecrite`, la qualité telle que le compte rendu l'écrit (`qualite_orateur.qualite_ecrite_libelle`, R-QUALITE), vide quand il ne l'écrit pas ; même nom que dans les extraits des gouvernements ; schéma C4 mis à jour | l'interface écrit « prononcé comme {fonction} » sous un extrait (#69) ; une qualité déduite n'est jamais présentée comme écrite | 1 (1.7.3) |
