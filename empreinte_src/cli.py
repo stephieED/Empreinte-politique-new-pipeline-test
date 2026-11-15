@@ -261,6 +261,7 @@ def cmd_calculer(a):
                for b in l.bilan]
     lignes += ["", f"Export : {ex.get('total', 0):,} faits, {ex.get('cles_en_double', 0)} clés en double.",
                f"Fiches : {len(manifeste_site['fiches'])} ; faits publiés : {nb_publies:,}.",
+               _ligne_a2(controles),
                "Contrôles : " + ("publication autorisée" if controles["publication_autorisee"]
                                   else "**publication refusée** (" + ", ".join(controles["bloquantes"]) + ")"),
                mesures.pic()]
@@ -269,6 +270,18 @@ def cmd_calculer(a):
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
             f.write(texte + "\n")
+
+
+def _ligne_a2(controles: dict) -> str:
+    """Décomptes de la vérification croisée (A2) pour le résumé du calcul : ce qui a été relu sur
+    les pages publiques, vérifié, en écart, non vérifié."""
+    parts = []
+    for cle, nom in (("a2", "votes"), ("a2_amendements", "signataires d'amendement")):
+        b = controles.get(cle)
+        if b:
+            parts.append(f"{nom} : {b.get('faits', 0)} faits, {b.get('verifies', 0)} vérifiés, "
+                         f"{b.get('ecarts', 0)} en écart, {b.get('non_verifies', 0)} non vérifiés")
+    return "Vérification croisée (A2) : " + ("; ".join(parts) if parts else "rien de relu") + "."
 
 
 def cmd_superposer(a):
