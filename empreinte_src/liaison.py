@@ -65,6 +65,9 @@ ARCHIVES_SUCCESSIVES = {
     # l'archive globale et d'une livraison quotidienne : la livraison la plus récente fait foi.
     "jo_actes__acte_reglementaire": ("livraison", "uid"), "jo_actes__version_acte": ("livraison", "acte"),
     "jo_actes__lien_acte_loi": ("livraison", "acte"), "jo_actes__sommaire_jo": ("livraison", "conteneur"),
+    # Travaux préparatoires (lecteur `jo_actes` v2, #35) : oubliés le 15/11/2026, d'où 1 509 clés
+    # en double à l'export (même loi dans l'archive globale et dans une livraison quotidienne).
+    "jo_actes__travaux_preparatoires": ("livraison", "acte"),
 }
 _LEG = "TRY_CAST(regexp_extract(prov_point, '-l([0-9]+)$', 1) AS INTEGER)"
 

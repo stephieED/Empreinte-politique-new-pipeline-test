@@ -27,6 +27,7 @@ par changement, la plus récente en bas.
 | 14/11/2026 | Q39 (issue #46) : une catégorie socioprofessionnelle publiée comme profession perd son code INSEE et se dit catégorie (`nature`) | 1 (R-IDENTITE), 5 (Q39) |
 | 14/11/2026 | Q40 : la réponse de Wikidata est gardée sous sa forme canonique (exception à P2) ; la mesure « à mesurer » du 06/11 est faite (annexe `autres-sources.md`, § 10) | 0 (cadrage, P2), 2 (sources), 5 (Q40) |
 | 15/11/2026 | Q33 (suite, issue #35) : une loi du JO est reliée à son dossier par ses travaux préparatoires si au moins deux numéros de l'Assemblée mènent au même dossier ; pour un dossier dont la suite manque aux archives, le seul texte déposé sous la législature de la promulgation suffit (contradiction jugée dans cette législature) | 1 (R-LOI-DOSSIER, R-SORT-FINAL), 5 (Q33) |
+| 15/11/2026 | Q42 (issue #63) : A3 confronte chaque nuit les lois de l'Assemblée à celles du JO ; nommées : les lois du JO absentes de l'Assemblée, sauf celles que R-LOI-DOSSIER relie ou qui précèdent les travaux préparatoires au JO (comptées), et les lois de l'Assemblée absentes du JO | 2 (A3), 5 (Q42) |
 
 ## Corrections demandées par la commande de réalisation
 
@@ -946,6 +947,22 @@ et le dossier contient aussi des saisies (liste des candidats). Choix de la prop
 | --- | --- | --- |
 | `decisions/` → `references/` (`git mv`) ; chemins corrigés dans le code, le workflow (`--references references`), `config/points_acces.yaml` (clé `references`, l'ancienne `decisions` encore lue), les tests, `docs/exploitation.md` et les livrables décrivant l'état actuel (docs 1, 2, 5, cadrage, migration) ; `references/LISEZMOI.md` explique le nom. L'option `--decisions` reste un alias de `--references`. Les entrées datées de ce journal gardent l'ancien chemin | un nom qui dise ce que sont ces fichiers : ce que le traitement prend pour référence face aux sources | 1, 2 (faits) |
 
+## Travaux préparatoires du JO : clés en double à l'export (15/11/2026)
+
+Branche `etape-2-doublons-travaux`, signalé par la session Site (anomalie `export:doublons`, non bloquante).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| `jo_actes__travaux_preparatoires` ajoutée aux tables du JO publiées par plusieurs archives (`ARCHIVES_SUCCESSIVES`) : pour un même acte, la livraison la plus récente fait foi, comme pour les quatre autres tables du JO | depuis la PR #138, l'export comptait 1 509 clés de fait en double (essais 43734533139 et 43735150301 ; 0 le 14/11) : une même loi vient de l'archive globale et d'une livraison quotidienne, qui se recouvrent depuis le 06/10/2026. Mesuré en local sur la g14 : 0 clé en double après correction (9 250 faits). R-LOI-DOSSIER n'était pas faussé (numéros dédoublonnés) | — |
+## Lois servies confrontées au Journal officiel (15/11/2026)
+
+Branche `etape-2-lois-contre-le-jo`, issue #63 (première famille : les lois), décision du 15/11/2026 (doc. 5, Q42).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| A3 : avertissement « Lois du Journal officiel et de l'Assemblée qui ne se correspondent pas ». Par législature du périmètre : lois au JO, présentes à l'Assemblée, reliées par le JO, expliquées avant les travaux au JO, nommées, lois de l'Assemblée absentes du JO (`expliques.a3_lois` du rapport, gardé même quand l'avertissement se tait) | #63 : aucun fait servi sur les lois n'était confronté à une source tenue hors de l'Assemblée. Mesuré sur la g14 : XVIe et XVIIe identiques au JO ; XIVe 448 au JO pour 396, XVe 353 pour 334 ; 11 lois nommées (2015-1704, 2015-1705, 2016-113, 2018-1068, 2018-1214, 2019-127, 2019-282, 2019-284, 2019-983, 2020-43, 2020-839), aucune loi de l'Assemblée absente du JO | 2 (2.8, A3) |
+
+Reste de #63 : mandats de député, signataires d'amendement, stades et dates des textes, toujours sans confrontation à une autre source.
 ## Regroupements pour l'affichage : forme commune, et la légende des commissions (14–15/11/2026)
 
 Branche `etape-2-regroupements`, issue #88 ; forme commune décidée le 14/11/2026 (cadrage), légende Q42.
