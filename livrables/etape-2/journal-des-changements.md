@@ -945,3 +945,16 @@ et le dossier contient aussi des saisies (liste des candidats). Choix de la prop
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
 | `decisions/` → `references/` (`git mv`) ; chemins corrigés dans le code, le workflow (`--references references`), `config/points_acces.yaml` (clé `references`, l'ancienne `decisions` encore lue), les tests, `docs/exploitation.md` et les livrables décrivant l'état actuel (docs 1, 2, 5, cadrage, migration) ; `references/LISEZMOI.md` explique le nom. L'option `--decisions` reste un alias de `--references`. Les entrées datées de ce journal gardent l'ancien chemin | un nom qui dise ce que sont ces fichiers : ce que le traitement prend pour référence face aux sources | 1, 2 (faits) |
+
+## Regroupements pour l'affichage : forme commune, et la légende des commissions (14–15/11/2026)
+
+Branche `etape-2-regroupements`, issue #88 ; forme commune décidée le 14/11/2026 (cadrage), légende Q42.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Type de décision `regroupement` : une entrée par code de la source (`champ` = `valeur`) et sa case (`groupe`, `libelle`), dans l'ordre de la légende ; un code est rangé par la première entrée qui lui correspond | neuf issues demandent un regroupement pour l'affichage (#75 à #89) : une seule forme, fixée sur le premier | 1 (1.3.3) |
+| Composeur `regroupements` : sert `regroupements.json.gz`, avec les cases de chaque regroupement et chaque code présent dans le corpus (périmètre XIVe–XVIIe), sa case et l'entrée qui l'y a mis. Les fiches ne changent pas | changer un regroupement ne doit demander ni recollecte ni réécriture des fiches ; chaque valeur affichée se rattache à son code d'origine | 1 (1.7.2) |
+| A7 : un code sans case (ou un regroupement sans source) est nommé ; jamais rangé par défaut | une case par défaut cacherait un code nouveau | 2 (2.8) |
+| Page de méthodologie (« Le traitement, étape par étape ») : section 6, chaque regroupement avec ses cases et les codes qui y vont | le regroupement appliqué est déclaré dans la méthodologie (contrainte commune des issues) | — |
+| Première table : `references/regroupement/commission_saisie.yaml` (#88), 11 cases : les 8 commissions permanentes (ordre de l'article 36 du Règlement), les commissions spéciales (type `CNPS`), « Saisi au Sénat seulement », « Matière non établie » | Q42 | — |
+
