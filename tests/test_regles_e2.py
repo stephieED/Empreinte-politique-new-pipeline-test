@@ -27,7 +27,7 @@ from empreinte_src.lecteurs import (an_acteurs, an_agenda, an_amendements, an_co
 from empreinte_src.liaison import Contexte, ordonner, relier
 from empreinte_src.regles import (r_49_3, r_amendement, r_appartenance, r_depot_gouvernement,
                                   r_derniere_lecture, r_deputes, r_divergence, r_etape,
-                                  r_gouvernements, r_legislatures, r_lien_scrutin_dossier, r_lois,
+                                  r_gouvernements, r_legislatures, r_lien_scrutin_dossier, r_loi_dossier, r_lois,
                                   r_matiere, r_nature_scrutin, r_orateur, r_origine,
                                   r_parole_personne, r_periode, r_qualite, r_question_personne,
                                   r_sort_final, r_sujet, r_texte_porte, r_vote_personne)
@@ -48,7 +48,7 @@ SOURCES = [
 LECTEURS = [an_comptes_rendus, an_acteurs, an_agenda, an_scrutins, an_dossiers, an_amendements,
             an_questions]
 AMONT = [r_legislatures, r_gouvernements, r_appartenance, r_deputes, r_nature_scrutin,
-         r_lien_scrutin_dossier, r_origine, r_derniere_lecture, r_matiere, r_etape, r_49_3, r_lois,
+         r_lien_scrutin_dossier, r_origine, r_derniere_lecture, r_matiere, r_etape, r_49_3, r_lois, r_loi_dossier,
          r_sort_final, r_depot_gouvernement, r_orateur, r_sujet, r_qualite]
 GROUPE_E2 = [r_texte_porte, r_amendement, r_periode, r_vote_personne, r_divergence,
              r_parole_personne, r_question_personne]
