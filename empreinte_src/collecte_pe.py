@@ -129,7 +129,7 @@ def relever_eurodeputes(entrepot, transport, pa_cfg: dict, params: dict,
                 os.unlink(rep.chemin)
 
     try:
-        dossier = dossier_decisions or pa_cfg.get("decisions") or "decisions"
+        dossier = dossier_decisions or pa_cfg.get("references") or pa_cfg.get("decisions") or "references"
         elements = elements_de_la_liste(dossier)
         if not elements:
             raise RuntimeError(f"aucun élément Wikidata dans les décisions `candidature` de {dossier}")

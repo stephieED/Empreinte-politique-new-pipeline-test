@@ -5,7 +5,7 @@ pour douze adresses de l'ancien site citées par des articles datés, qui ne ser
 (`/groupes/AN-SOC`, `/gouvernements/LECORNU_II`…). Elles doivent continuer à mener à la bonne
 fiche, quelle que soit son adresse.
 
-La correspondance est une décision de la propriétaire (`decisions/adresse_citee/`) : chaque
+La correspondance est une décision de la propriétaire (`references/adresse_citee/`) : chaque
 adresse citée y désigne sa fiche par un **identifiant stable**, jamais par une adresse lisible,
 pour qu'un renommage ne la casse pas :
 

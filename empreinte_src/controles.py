@@ -747,7 +747,7 @@ class Controles:
         objets += [f"fiche {f} retirée cette nuit : {r}"
                    for f, r in sorted(getattr(self, "fiches_retirees_cette_nuit", {}).items())]
         self._avertir("A9", "Liste des candidats : écarts avec Wikipédia et fiches retirées", objets,
-                      detail="La liste des candidats est une décision (`decisions/candidature/`), "
+                      detail="La liste des candidats est une décision (`references/candidature/`), "
                              "recopiée de franceinfo ; Wikipédia ne sert qu'à signaler un écart. "
                              "Un écart se règle par une nouvelle décision, jamais d'office.")
 

@@ -218,7 +218,7 @@ def cmd_calculer(a):
                 "cle": f"controle:{an['controle']}",
                 "texte": (f"**Publication refusée** : {an['titre']} ({an['nb_objets']} objets).\n\n"
                           f"{anomalies_txt}\n\nPour l'autoriser quand même, une décision "
-                          f"`decisions/levee_controle/<nom>.yaml` avec `type: levee_controle`, "
+                          f"`references/levee_controle/<nom>.yaml` avec `type: levee_controle`, "
                           f"`empreinte: {an['empreinte']}` et un `motif`.")})
     # Avertissements : publication maintenue, une issue par avertissement (décomptes et
     # identifiants seulement).
@@ -425,7 +425,8 @@ def main(argv=None):
                    help="erreur de la recherche d'un acquis à rattraper (tâche preparer), mise au rapport")
     s = sp.add_parser("calculer", parents=[commun]); s.set_defaults(f=cmd_calculer)
     s.add_argument("--z2", default="z2"); s.add_argument("--sortie", default="sortie")
-    s.add_argument("--z3", default="z3"); s.add_argument("--decisions", default="decisions")
+    s.add_argument("--z3", default="z3"); s.add_argument("--references", "--decisions", dest="decisions", default="references",
+                   help="dossier des références (décisions de la propriétaire) ; --decisions : ancien nom")
     s.add_argument("--faits-precedents", default=None)
     s = sp.add_parser("superposer", parents=[commun]); s.set_defaults(f=cmd_superposer)
     s.add_argument("--depuis", required=True)

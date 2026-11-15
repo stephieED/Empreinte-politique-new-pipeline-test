@@ -47,7 +47,7 @@ def test_fusion_garde_le_plus_ancien(tmp_path):
 def test_separation_donne_un_numero_neuf(tmp_path):
     r = RegistreIdentites(str(tmp_path))
     r.attribuer([{("an", "PA1"), ("wd", "Q1")}], generation=1)
-    neuf = r.separer("wd", "Q1", generation=2, decision="decisions/identite/x.yaml")
+    neuf = r.separer("wd", "Q1", generation=2, decision="references/identite/x.yaml")
     assert neuf == "per:000002" and r.numero("an", "PA1") == "per:000001"
 
 

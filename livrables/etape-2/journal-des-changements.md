@@ -933,3 +933,15 @@ Branche `etape-2-loi-dossier`, issue #35 (seconde partie), décisions du 15/11/2
 | R-SORT-FINAL (version 4) : un dossier sans acte de promulgation mais relié par R-LOI-DOSSIER est `promulgue`, avec numéro, date et adresse de la loi au JO ; colonne `lien_loi` (`acte_de_promulgation` / `travaux_preparatoires_jo`) ; critère « suite absente » partagé avec R-LOI-DOSSIER (`suite_absente_sql`) | 11 dossiers reçoivent leur loi, dont 6 des 17 « suite absente » (loi 2018-287 comprise). Les 11 autres restent `suite_absente_des_archives` : 8 propositions du Sénat redéposées le 06/07/2017 sans suite visible ; 2018-1214 (proposition que le JO dit « projet ») ; 2020-839 (numéro de la XIVe cité) ; une convention sans loi retrouvée | 1 (1.6 R-SORT-FINAL) |
 
 Écart « lois de la XIVe : 396 » : le JO publie 448 lois sous la XIVe, l'Assemblée 396 actes de promulgation. Les 52 autres (2012 à 2016) ne peuvent pas être reliées par le JO : il ne publie les travaux préparatoires (balise `TP`) qu'à partir de 2015, vide avant.
+
+## Le dossier des décisions s'appelle `references/` (15/11/2026)
+
+Question de la propriétaire (14/11) : le nom `decisions/` est-il intuitif pour qui ne connaît ni le
+projet ni le dépôt ? Le mot prêtait à confusion : les données parlent elles-mêmes de « décisions »
+(décisions en séance de l'Assemblée, avertissement A7), la documentation a une rubrique « Décisions »,
+et le dossier contient aussi des saisies (liste des candidats). Choix de la propriétaire :
+« references », renommé tout de suite (cadrage).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| `decisions/` → `references/` (`git mv`) ; chemins corrigés dans le code, le workflow (`--references references`), `config/points_acces.yaml` (clé `references`, l'ancienne `decisions` encore lue), les tests, `docs/exploitation.md` et les livrables décrivant l'état actuel (docs 1, 2, 5, cadrage, migration) ; `references/LISEZMOI.md` explique le nom. L'option `--decisions` reste un alias de `--references`. Les entrées datées de ce journal gardent l'ancien chemin | un nom qui dise ce que sont ces fichiers : ce que le traitement prend pour référence face aux sources | 1, 2 (faits) |

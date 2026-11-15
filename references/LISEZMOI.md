@@ -1,4 +1,10 @@
-# Décisions de la propriétaire
+# Références : les décisions de la propriétaire
+
+Ce dossier rassemble ce que la propriétaire écrit à la main et que le traitement prend pour
+**référence** face aux sources : la liste des candidats, un mandat borné, une filiation
+tranchée, une levée de contrôle… Chaque fichier y est une **décision**, validée par la fusion de
+sa PR. Le dossier s'appelait `decisions/` jusqu'au 15/11/2026 (décision de la propriétaire :
+« references »).
 
 Les décisions sont des **entrées du traitement** (doc. 1, 1.3.3) : un fichier YAML par
 décision, rangé dans un dossier par type. Elles sont datées et attribuées par le commit qui
@@ -8,7 +14,7 @@ Exemple, pour autoriser une publication refusée par un contrôle (une seule ano
 dont l'empreinte est donnée dans l'alerte) :
 
 ```yaml
-# decisions/levee_controle/2026-11-12-pertes-scrutins.yaml
+# references/levee_controle/2026-11-12-pertes-scrutins.yaml
 type: levee_controle
 date: 2026-11-12
 empreinte: "C1:3f9a0c2b7d1e4a55"
@@ -32,7 +38,7 @@ Plusieurs décisions du même type peuvent tenir dans un seul fichier, sous la c
 `decisions:` (chaque élément hérite des champs communs du fichier) :
 
 ```yaml
-# decisions/libelle_ministere/table.yaml
+# references/libelle_ministere/table.yaml
 type: libelle_ministere
 date: 2026-11-06
 decisions:
