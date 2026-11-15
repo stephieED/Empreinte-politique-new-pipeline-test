@@ -294,7 +294,46 @@ class Controles:
             WITH a AS (SELECT *, {cle(faits_avant)} AS cle FROM read_parquet('{faits_avant}')
                        WHERE NOT ({sans_id(faits_avant)})),
                  b AS (SELECT DISTINCT {cle(faits_apres)} AS cle FROM read_parquet('{faits_apres}'))
-            SELECT a.fiche, a.section, a.type_fait, a.valeur FROM a ANTI JOIN b USING (cle)""").fetchall()
+            SELECT a.fiche, a.section, a.type_fait, a.valeur, {', '.join(ids(faits_avant))}
+            FROM a ANTI JOIN b USING (cle)""").fetchall()
+        # Identité enrichie (décision du 15/11/2026, alerte #148) : un fait qui garde tous ses
+        # identifiants et en gagne seulement (même fiche, même type) n'est pas perdu. Cas réel : les
+        # actes des lois 2010-837 et 2010-838, arrivés au JO, identifient la loi citée par des
+        # actes des gouvernements Attal, Castex et Philippe II (`id_acte` ajouté).
+        self.bilan_c1_identite_enrichie = 0
+        if perdus:
+            import pyarrow as pa
+            n = len(IDS)
+            # Les faits perdus (peu nombreux) sont cherchés dans les faits de la nuit de leurs seules
+            # fiches, par leur premier identifiant non vide (mémoire bornée) ; tous leurs
+            # identifiants doivent s'y retrouver, inchangés, et le fait trouvé doit être nouveau.
+            p = pa.Table.from_pylist([
+                {"n": j, "fiche": x[0], "type_fait": x[2],
+                 **{f"i{k}": x[4 + k] for k in range(n)},
+                 "k": next((k for k in range(n) if x[4 + k] is not None), None),
+                 "v": next((x[4 + k] for k in range(n) if x[4 + k] is not None), None)}
+                for j, x in enumerate(perdus)],
+                schema=pa.schema([("n", pa.int64()), ("fiche", pa.string()), ("type_fait", pa.string())]
+                                 + [(f"i{k}", pa.string()) for k in range(n)]
+                                 + [("k", pa.int64()), ("v", pa.string())]))
+            con.register("_c1_perdus", p)
+            ib = ids(faits_apres)
+            filtre = "fiche IN (SELECT DISTINCT fiche FROM _c1_perdus)"
+            con.execute(f"""CREATE OR REPLACE TEMP TABLE _c1_nuit AS
+                SELECT DISTINCT fiche, type_fait, {', '.join(f'{x} AS i{k}' for k, x in enumerate(ib))},
+                       {cle(faits_apres)} AS cle
+                FROM read_parquet('{faits_apres}') WHERE {filtre}""")
+            con.execute(f"""CREATE OR REPLACE TEMP TABLE _c1_avant AS
+                SELECT DISTINCT {cle(faits_avant)} AS cle FROM read_parquet('{faits_avant}') WHERE {filtre}""")
+            enrichis = {r[0] for r in con.execute(f"""
+                WITH b AS (SELECT * FROM _c1_nuit ANTI JOIN _c1_avant USING (cle)),
+                     bk AS ({' UNION ALL '.join(f"SELECT {k} AS k, i{k} AS v, * FROM b WHERE i{k} IS NOT NULL" for k in range(n))})
+                SELECT DISTINCT p.n FROM _c1_perdus p
+                JOIN bk b ON b.fiche = p.fiche AND b.type_fait = p.type_fait AND b.k = p.k AND b.v = p.v
+                WHERE {' AND '.join(f'(p.i{k} IS NULL OR p.i{k} = b.i{k})' for k in range(n))}""").fetchall()}
+            self.bilan_c1_identite_enrichie = len(enrichis)
+            perdus = [x for j, x in enumerate(perdus) if j not in enrichis]
+        perdus = [x[:4] for x in perdus]
         # Faits sans aucun identifiant (comptes par ministère et par nature, par exemple) : leur
         # identité est leur valeur sans ses comptes ni ses dates, qui changent légitimement.
         def descripteur(fiche, type_fait, valeur):
@@ -854,7 +893,8 @@ class Controles:
                 "a2_amendements": getattr(self, "bilan_a2_amendements", None),
                 # Ce que A3, A5 et A6 ont compté comme expliqué : gardé même quand l'avertissement se
                 # tait, pour que le rapport de la nuit le dise (décisions du 13, du 14 et du 15/11/2026).
-                "expliques": {k: v for k, v in (("a3", getattr(self, "bilan_a3", None)),
+                "expliques": {k: v for k, v in (("c1_identite_enrichie", getattr(self, "bilan_c1_identite_enrichie", None)),
+                                                ("a3", getattr(self, "bilan_a3", None)),
                                                 ("a3_lois", getattr(self, "bilan_a3_lois", None)),
                                                 ("a5", getattr(self, "bilan_a5", None)),
                                                 ("a6", getattr(self, "bilan_a6", None))) if v}}
