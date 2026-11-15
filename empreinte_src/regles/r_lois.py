@@ -13,7 +13,7 @@ Une loi promulguée sous la législature suivante n'est dans aucune archive de d
 la rattachera."""
 
 NOM = "R-LOIS"
-VERSION = 1
+VERSION = 2
 DEPEND = ("R-LEGISLATURES", "R-GOUVERNEMENTS")
 SORTIES = ("loi",)
 DESCRIPTION = (
@@ -43,13 +43,28 @@ def appliquer(ctx):
     dossiers, avec leur gouvernement et leur législature (voir la description du module). Rend la
     couverture, `{nom: (numérateur, dénominateur)}` : `numero_de_loi_lu`, `gouvernement_etabli`,
     `legislature_etablie`."""
+    # Date de promulgation : celle du Journal officiel (date de signature de la loi) quand il la
+    # connaît, sinon celle de l'acte de promulgation de l'Assemblée. Sept lois ont une date
+    # fausse à l'Assemblée (acte ou JO cité), par exemple 2021-191 : acte daté du 0021-02-24, loi du
+    # 22/02/2021 au JO (version 2, 14/11/2026). Les désaccords sont gardés et nommés (A7).
+    jo = ("""SELECT numero, min(date_signature) AS d FROM jo_actes__acte_reglementaire
+             WHERE nature IN ('LOI', 'LOI_ORGANIQUE', 'LOI_CONSTIT') AND numero IS NOT NULL
+               AND date_signature IS NOT NULL GROUP BY 1"""
+          if ctx.existe("jo_actes__acte_reglementaire")
+          else "SELECT NULL::VARCHAR AS numero, NULL::VARCHAR AS d WHERE false")
     ctx.ecrire("loi", f"""
-        WITH p AS (
-            SELECT code_loi AS numero_loi, dossier, uid AS acte, left(date, 10) AS date_promulgation,
+        WITH jo AS ({jo}),
+        p0 AS (
+            SELECT code_loi AS numero_loi, dossier, uid AS acte, left(date, 10) AS date_assemblee,
                    titre_loi, reference_nor AS nor, left(date_jo, 10) AS date_jo, num_jo,
                    url_legifrance, texte_loi, prov_url
-            FROM an_dossiers__acte WHERE type_acte = 'Promulgation_Type')
-        SELECT numero_loi, dossier, date_promulgation,
+            FROM an_dossiers__acte WHERE type_acte = 'Promulgation_Type'),
+        p AS (
+            SELECT p0.*, coalesce(jo.d, p0.date_assemblee) AS date_promulgation,
+                   CASE WHEN jo.d IS NOT NULL THEN 'journal_officiel'
+                        WHEN p0.date_assemblee IS NOT NULL THEN 'assemblee' END AS source_date_promulgation
+            FROM p0 LEFT JOIN jo ON jo.numero = p0.numero_loi)
+        SELECT numero_loi, dossier, date_promulgation, source_date_promulgation, date_assemblee,
                {legislature_a('p.date_promulgation')} AS legislature,
                {gouvernement_a('p.date_promulgation')} AS gouvernement,
                CASE WHEN date_promulgation IS NULL THEN 'date_absente'
@@ -64,5 +79,6 @@ def appliquer(ctx):
     numero = ctx.un("SELECT count(*) FROM loi WHERE numero_loi IS NOT NULL")
     gouv = ctx.un("SELECT count(*) FROM loi WHERE gouvernement IS NOT NULL")
     leg = ctx.un("SELECT count(*) FROM loi WHERE legislature IS NOT NULL")
+    par_jo = ctx.un("SELECT count(*) FROM loi WHERE source_date_promulgation = 'journal_officiel'")
     return {"numero_de_loi_lu": (numero, n), "gouvernement_etabli": (gouv, n),
-            "legislature_etablie": (leg, n)}
+            "legislature_etablie": (leg, n), "date_de_promulgation_lue_au_jo": (par_jo, n)}

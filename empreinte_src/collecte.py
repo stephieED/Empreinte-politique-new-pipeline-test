@@ -8,7 +8,7 @@ import os
 import re
 import traceback
 
-from .depaquetage import depaqueter, depaqueter_tar_flux, verifier_archive
+from .depaquetage import canoniser_json, depaqueter, depaqueter_tar_flux, verifier_archive
 from .entrepot import Entrepot, maintenant
 from .mesures import Mesures
 from .transport import Transport
@@ -63,6 +63,8 @@ def relever_archive(entrepot: Entrepot, transport: Transport, pa_cfg: dict, para
         fmt = pa_cfg["format"]
         # Plausibilité : une chute du nombre de membres rend le relevé suspect.
         membres = list(depaqueter(rep.chemin, fmt, pa_cfg.get("uid"))) if fmt != "zip" else None
+        if pa_cfg.get("canonique") == "json" and membres is not None:
+            membres = [canoniser_json(m) for m in membres]
         nb = len(membres) if membres is not None else _compter_zip(rep.chemin)
         base = entrepot.dernier_releve(pa_cfg["id"], complet_seulement=True)
         seuil = params.get("baisse_suspecte", 0.05)

@@ -645,6 +645,14 @@ class Controles:
                        for c, l, n, d, ex, k in self._x(
                            "SELECT conclusion_code, conclusion_libelle, decisions, dossiers, exemples, "
                            "dossiers_dont_c_est_la_derniere_decision FROM conclusion_non_classee ORDER BY 1")]
+        if self._a("loi"):
+            # Date de promulgation de l'Assemblée qui contredit le Journal officiel : la date du JO
+            # est publiée, l'écart est nommé (sources à signaler ; 7 lois le 14/11/2026).
+            objets += [f"loi {n} : promulguée le {d} au JO, le {a} selon l'acte de l'Assemblée"
+                       for n, d, a in self._x(
+                           "SELECT DISTINCT numero_loi, date_promulgation, date_assemblee FROM loi "
+                           "WHERE source_date_promulgation = 'journal_officiel' "
+                           "AND date_assemblee IS DISTINCT FROM date_promulgation ORDER BY 1")]
         self._avertir("A7", "Entrées non résolues", objets)
 
     def a9_liste_des_candidats(self):

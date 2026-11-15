@@ -25,6 +25,7 @@ par changement, la plus récente en bas.
 | 13/11/2026 | Q35 : un mandat municipal 2020-2026 (fichier des sortants) se termine au 15/03/2026, date déduite et signalée ; avant 2020, borne historique | 1 (R-CARRIERE), 5 (Q35) |
 | 13/11/2026 | Q38 : R-QAG relie une question au gouvernement ou orale sans débat à sa séance par l'auteur **et** l'intitulé, dans les 10 jours qui précèdent sa publication au JO ; pas de repli sur l'auteur seul ; les questions orales sans débat comprises | 1 (1.5.4, R-QAG), 5 (Q38) |
 | 14/11/2026 | Q39 (issue #46) : une catégorie socioprofessionnelle publiée comme profession perd son code INSEE et se dit catégorie (`nature`) | 1 (R-IDENTITE), 5 (Q39) |
+| 14/11/2026 | Q40 : la réponse de Wikidata est gardée sous sa forme canonique (exception à P2) ; la mesure « à mesurer » du 06/11 est faite (annexe `autres-sources.md`, § 10) | 0 (cadrage, P2), 2 (sources), 5 (Q40) |
 
 ## Corrections demandées par la commande de réalisation
 
@@ -875,6 +876,23 @@ Branche `etape-2-dates-questions-xv`, issue #125 (constat de la session candidat
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
 | Lecteur `an_questions` (version 2) : toutes les dates (question, réponse, signalement, renouvellements, clôture, attributions, errata) ramenées de `JJ/MM/AAAA` à `AAAA-MM-JJ` | l'archive de la XVe publie ses dates en `JJ/MM/AAAA` (52 232 questions attribuées, g10) : le tri chronologique des questions d'une fiche était faux, et les dates servies et exportées mélangeaient deux formats. Aucune question n'était perdue : la section des questions n'a pas de filtre de date (une première mesure, appliquant à tort le filtre des votes, annonçait l'inverse). Relecture des questions une fois (≈ 1 min 30 en local) | 1 (1.4, questions) |
+
+## Mode de fin des législatures closes (14/11/2026)
+
+Branche `etape-2-fin-legislatures` (constat transmis par la session d'analyse ; préparation acceptée par la propriétaire, validée par la fusion).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Décisions `fin_legislature` : XIVe (fin le 20/06/2017) et XVe (21/06/2022) « terme » ; XVIe (09/06/2024) « dissolution », décret du 9 juin 2024 (NOR PREX2415533D, JORF n°0134 du 10 juin 2024), lu dans le Journal officiel collecté | les trois fiches servaient `mode_fin: non_etabli` : l'Assemblée ne publie pas le mode de fin, il vient d'une décision sourcée (R-LEGISLATURES), et aucune n'était saisie. Couverture `mode_de_fin_etabli` : 1 sur 6 → 4 sur 6 (XIIe et XIIIe, non publiées, restent non établies) | 1 (1.3.3) |
+
+## Date de promulgation lue au Journal officiel (14/11/2026)
+
+Branche `etape-2-dates-promulgation`, issue #128 (constat transmis par la session d'analyse).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-LOIS (version 2) : date de promulgation = date de signature de la loi au JO quand il la connaît (`source_date_promulgation` : `journal_officiel` ou `assemblee`), date de l'acte de l'Assemblée gardée (`date_assemblee`) ; A7 nomme les désaccords ; couverture `date_de_promulgation_lue_au_jo` | #128 : sept lois mal datées par l'Assemblée (acte ou JO cité), dont 2021-191 datée du 0021-02-24 ; la date de signature du JO est juste dans les sept cas (vérifié sur la g13) | 1 (1.6 R-LOIS) |
+| `perimetre.py` : docstring alignée (mandats locaux et volet européen hors de ce module, budgets hors périmètre) | elle disait encore « sans mandats locaux » après la PR #91 ; aucune constante ne les excluait | — |
 
 ## Ministres délégués : co-tutelles et rattachements décidés (14/11/2026)
 

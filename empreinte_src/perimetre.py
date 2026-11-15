@@ -1,4 +1,8 @@
-"""Périmètre publié (cahier 4.1, sans budgets ni mandats locaux ; décision du 07/11/2026).
+"""Périmètre publié de l'activité parlementaire (cahier 4.1 ; décision du 07/11/2026).
+
+Les mandats locaux (Répertoire national des élus, PR #91 du 13/11/2026) et le volet européen ne
+passent pas par ce module : ils ont leurs propres points d'accès et règles. Les budgets restent
+hors périmètre.
 
 Un seul endroit dit quelles législatures ont une fiche et une activité servie, et de quels points
 d'accès viennent les faits de chacune. Les composeurs, les règles et les contrôles le lisent ici :

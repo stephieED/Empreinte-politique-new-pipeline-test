@@ -1,0 +1,22 @@
+# Mode de fin des législatures closes publiées (XIVe à XVIe). L'Assemblée ne le publie pas
+# (R-LEGISLATURES) ; décision de la propriétaire, validée par la fusion de cette PR (14/11/2026).
+# Dates de fin : celles de l'organe « Assemblée nationale » publiées par l'Assemblée.
+type: fin_legislature
+date: 2026-11-14
+decisions:
+  - legislature: 14
+    mode: terme
+    fin: "2017-06-20"
+    motif: "Fin des pouvoirs au terme du mandat de cinq ans ; aucun décret de dissolution."
+  - legislature: 15
+    mode: terme
+    fin: "2022-06-21"
+    motif: "Fin des pouvoirs au terme du mandat de cinq ans ; aucun décret de dissolution."
+  - legislature: 16
+    mode: dissolution
+    fin: "2024-06-09"
+    decret: "Décret du 9 juin 2024 portant dissolution de l'Assemblée nationale"
+    nor: PREX2415533D
+    jo: "JORF n°0134 du 10 juin 2024"
+    url: "https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000049689651"
+    motif: "Dissolution ; décret lu dans le Journal officiel collecté (acte jorf:JORFTEXT000049689651, archive globale du JO, g13)."
