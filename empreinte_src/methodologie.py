@@ -214,7 +214,8 @@ def regroupements(dossier: str | None = DECISIONS) -> list[dict]:
         cases: dict[str, dict] = {}
         for e in y.get("decisions") or []:
             c = cases.setdefault(e.get("groupe"), {"libelle": e.get("libelle"), "codes": []})
-            c["codes"].append(f"{e.get('champ')} = {e.get('valeur')}")
+            if e.get("champ"):
+                c["codes"].append(f"{e.get('champ')} = {e.get('valeur')}")
         out.append({"nom": y.get("nom"), "titre": y.get("titre"), "description": y.get("description"),
                     "fichier": f"references/regroupement/{n}", "cases": list(cases.values())})
     return out
@@ -431,6 +432,7 @@ def rendre(d: dict, commit: str | None = None, depot: str | None = None,
         if r["description"]:
             w(" ".join(str(r["description"]).split()) + "\n")
         w("| Case | Codes de la source |\n| --- | --- |")
-        w("\n".join(f"| {_cellule(str(c['libelle']))} | {', '.join(f'`{x}`' for x in c['codes'])} |"
+        w("\n".join(f"| {_cellule(str(c['libelle']))} | "
+                     f"{', '.join(f'`{x}`' for x in c['codes']) or '*aucun code de cette source*'} |"
                      for c in r["cases"]) + "\n")
     return "\n".join(p).rstrip() + "\n"

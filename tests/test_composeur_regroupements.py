@@ -81,3 +81,27 @@ def test_methodologie_declare_le_regroupement():
     page = methodologie.rendre(methodologie.donnees())
     assert "## 6. Les regroupements pour l'affichage" in page
     assert "| Commissions spéciales | `type_commission = CNPS` |" in page
+
+
+def test_qualites_d_orateur_en_trois_cases(tmp_path):
+    """#75 : trois cases ; « Député européen » n'a aucun code à l'Assemblée ; une qualité non
+    établie reste hors des cases (jamais rangée par défaut, jamais signalée comme code inconnu)."""
+    d = tmp_path / "references" / "regroupement"
+    d.mkdir(parents=True)
+    shutil.copy(os.path.join(RACINE, "references", "regroupement", "qualite_orateur.yaml"), d)
+    (tmp_path / "z2").mkdir()
+    ctx = Contexte(str(tmp_path / "z2"), str(tmp_path / "z3"), str(tmp_path / "references"))
+    ctx.con.execute("""CREATE VIEW qualite_orateur AS SELECT * FROM (VALUES
+        ('depute', NULL), ('rapporteur', 'rapporteur'), ('membre_du_gouvernement', 'ministre'),
+        ('president_de_seance', NULL), ('autre', 'président du groupe'), (NULL, NULL))
+        t(qualite, qualite_ecrite_libelle)""")
+    ecr = Ecrivain(str(tmp_path / "site"), "g000001")
+    regroupements.composer(ctx, ecr)
+    with gzip.open(os.path.join(ecr.racine, "regroupements.json.gz")) as f:
+        (t,) = json.load(f)["regroupements"]
+    assert [g[1] for g in t["groupes"]["lignes"]] == ["Député", "Membre du gouvernement", "Député européen"]
+    codes = {l[1]: l[3] for l in t["codes"]["lignes"]}
+    assert codes == {"autre": "depute", "depute": "depute", "membre_du_gouvernement": "membre_du_gouvernement",
+                     "president_de_seance": "depute", "rapporteur": "depute"}
+    page = methodologie.rendre(methodologie.donnees())
+    assert "| Député européen | *aucun code de cette source* |" in page

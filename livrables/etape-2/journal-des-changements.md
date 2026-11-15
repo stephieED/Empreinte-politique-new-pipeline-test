@@ -958,3 +958,12 @@ Branche `etape-2-regroupements`, issue #88 ; forme commune décidée le 14/11/20
 | Page de méthodologie (« Le traitement, étape par étape ») : section 6, chaque regroupement avec ses cases et les codes qui y vont | le regroupement appliqué est déclaré dans la méthodologie (contrainte commune des issues) | — |
 | Première table : `references/regroupement/commission_saisie.yaml` (#88), 11 cases : les 8 commissions permanentes (ordre de l'article 36 du Règlement), les commissions spéciales (type `CNPS`), « Saisi au Sénat seulement », « Matière non établie » | Q42 | — |
 
+
+## Qualités d'orateur en trois cases (15/11/2026)
+
+Branche `etape-2-qualites-orateur` (sur `etape-2-regroupements`), issue #75.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Regroupement `qualite_orateur` (`references/regroupement/qualite_orateur.yaml`) : « Député » (député, rapporteur, président de commission, président de séance, qualité écrite « autre »), « Membre du gouvernement », « Député européen » (aucun code à l'Assemblée : interventions au Parlement européen) ; une qualité non établie reste hors des cases | besoin de l'interface (#75) ; à l'Assemblée, qui parle sans être membre du gouvernement est député. Mesuré sur g13 : les paroles servies aux candidats ne portent que trois qualités (député 17 562, membre du gouvernement 6 281, rapporteur 413) | — |
+| Composeur `regroupements` : source `qualite_orateur` (R-QUALITE) ; page de méthodologie : une case sans code de la source le dit | forme commune (#88) | — |
