@@ -346,6 +346,7 @@ Types prévus et ce qu'ils alimentent :
 | `continuite_groupe` | un groupe qui change d'organe en cours de législature | 3.1.1 |
 | `rattachement_portefeuille` | ministère de tutelle d'un ministre délégué quand la source ne le donne pas | 4.4 |
 | `libelle_ministere` | table des 260 libellés libres du JO → ministère normalisé | 3.6 |
+| `adresse_citee` | adresse de fiche de l'ancien site citée par un article publié → sa fiche, désignée par un identifiant stable (`lig:…`, organe `PO…`) ; servie dans le catalogue (décision du 14/11/2026, issue #86) | 4.7 |
 | `fin_legislature` | mode de fin (dissolution / terme) avec le décret (lien Légifrance) | 4.5 |
 | `absence_etablie` | « relu, aucun » : source lue en entier, date, ce qu'elle ne couvre pas | 4.7 |
 | `levee_controle` | autoriser une publication refusée, pour **une** anomalie | 6.2 |
@@ -1018,6 +1019,13 @@ mécanisme). Le contrat (`1.0`) est écrit dans le manifeste et dans chaque fich
     fiche.json.gz  hemicycle.json.gz  ordre-du-jour-<annee>.json.gz  textes.json.gz  commissions.json.gz
   articles/<date>-<titre>/donnees.json.gz  copie figée, jamais régénérée
 ```
+
+**Adresses des fiches** (décision du 14/11/2026) : leur forme est libre, et une adresse publiée
+reste stable. Seules douze adresses de l'ancien site, citées par des articles publiés
+(`/groupes/AN-SOC`, `/gouvernements/LECORNU_II`…), doivent mener à leur fiche : le catalogue
+réalisé (`catalogue.json.gz`) les sert dans sa table `adresses_citees` (adresse citée, `lien`
+vers la fiche, raison quand il n'y en a pas, décision `adresse_citee`). Une cible qui n'est pas
+publiée n'est jamais servie comme lien ; A7 la signale.
 
 Le filtre par période (6 ou 12 derniers mois) s'applique côté navigateur sur les dates déjà
 chargées ; les textes de parole étant découpés par **semestre** (et les exposés par année), le

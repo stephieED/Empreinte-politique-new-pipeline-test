@@ -1,0 +1,30 @@
+# Issue #86 : adresses de fiches de l'ancien site citées par des articles publiés. Les articles
+# sont datés et ne seront plus modifiés : ces douze adresses doivent continuer à mener à la bonne
+# fiche, quelle que soit son adresse (décision de la propriétaire du 14/11/2026 : la forme des
+# adresses des fiches est libre, sauf ces douze).
+#
+# Liste relevée par la session « Comparaison dépôt » le 14/11/2026 ; correspondance validée par
+# la propriétaire le 14/11/2026 (« je valide »).
+#
+# adresse    : l'adresse telle que les articles la citent.
+# type_fiche : lignee ou gouvernement.
+# objet      : l'identifiant stable de la fiche (lignée : `lig:…`, registre des lignées ;
+#              gouvernement : organe `PO…` de l'Assemblée), jamais son adresse lisible.
+# nom        : pour la relecture seulement.
+type: adresse_citee
+date: 2026-11-14
+decisions:
+  - {adresse: /groupes/AN-DEM, type_fiche: lignee, objet: "lig:000010", nom: Les Démocrates}
+  # Les écologistes récents (ECOLO de la XVIe, ECOS de la XVIIe), comme sur l'ancien site ;
+  # l'Écologiste de la XIVe (lig:000005) avait sa propre adresse, AN-ECOLO-14, non citée.
+  - {adresse: /groupes/AN-ECOLO, type_fiche: lignee, objet: "lig:000016", nom: Écologiste et Social}
+  - {adresse: /groupes/AN-GDR, type_fiche: lignee, objet: "lig:000004", nom: Gauche Démocrate et Républicaine}
+  - {adresse: /groupes/AN-HOR, type_fiche: lignee, objet: "lig:000014", nom: Horizons & Indépendants}
+  - {adresse: /groupes/AN-LFI, type_fiche: lignee, objet: "lig:000008", nom: La France insoumise - Nouveau Front Populaire}
+  - {adresse: /groupes/AN-LIOT, type_fiche: lignee, objet: "lig:000017", nom: "Libertés, Indépendants, Outre-mer et Territoires"}
+  - {adresse: /groupes/AN-LR, type_fiche: lignee, objet: "lig:000001", nom: Droite Républicaine}
+  - {adresse: /groupes/AN-REN, type_fiche: lignee, objet: "lig:000009", nom: Ensemble pour la République}
+  - {adresse: /groupes/AN-RN, type_fiche: lignee, objet: "lig:000015", nom: Rassemblement National}
+  - {adresse: /groupes/AN-SOC, type_fiche: lignee, objet: "lig:000002", nom: Socialistes et apparentés}
+  - {adresse: /groupes/AN-UDR, type_fiche: lignee, objet: "lig:000018", nom: Union des droites pour la République}
+  - {adresse: /gouvernements/LECORNU_II, type_fiche: gouvernement, objet: PO873634, nom: Lecornu II}
