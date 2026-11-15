@@ -110,6 +110,14 @@ def _vue(ctx, nom) -> bool:
     return ctx.existe(nom)
 
 
+def _lu(ctx, nom) -> bool:
+    """Une source est lue si sa table a au moins une ligne : un lecteur dont le point n'a jamais
+    été relevé écrit quand même une table vide, qui ne prouve rien (essai du 14/11/2026 : les six
+    sections d'activité européenne disaient « relu, aucune activité » avant le premier relevé de
+    Parltrack)."""
+    return ctx.existe(nom) and bool(ctx.un(f"SELECT count(*) > 0 FROM {nom}"))
+
+
 def _couv(famille, statut, detail, numerateur=None, denominateur=None, points=(), au=None, **extra):
     c = {"famille": famille, "statut": statut, "numerateur": numerateur,
          "denominateur": denominateur, "detail": detail, "points_acces": sorted(set(points))}
@@ -1255,8 +1263,8 @@ def _europe(ctx, f, c, carriere, commun) -> dict | None:
     mandats = [l for l in carriere if l["institution"] == "parlement_europeen"]
     avant = any(l["debut"] and l["debut"] < DEBUT_VOTES_PE for l in mandats)
     apres = any(not l["fin"] or l["fin"] >= DEBUT_VOTES_PE for l in mandats)
-    lu_avant = _vue(ctx, "parltrack_votes__vote_pt")
-    lu_apres = _vue(ctx, "pe_votes__vote_pe")
+    lu_avant = _lu(ctx, "parltrack_votes__vote_pt")
+    lu_apres = _lu(ctx, "pe_votes__vote_pe")
     pts = ([PA_PARLTRACK] if avant else []) + ([PA_PE_VOTES] if apres else [])
     if not _vue(ctx, "vote_personne_pe"):
         f.section("europe", [], None, couverture=_absente("europe_votes", ["vote_personne_pe"], pts, au))
@@ -1326,8 +1334,8 @@ def _activite_europe(ctx, f, c, carriere, commun) -> dict | None:
     mandats = [l for l in carriere if l["institution"] == "parlement_europeen"]
     if not _vue(ctx, "activite_pe"):
         return {"statut": "non_relu", "detail": "Activité au Parlement européen : règle absente."}
-    lu_pt = _vue(ctx, "parltrack_activites__activite_pt")
-    lu_pe = _vue(ctx, "pe_eurodeputes__intervention_pe")
+    lu_pt = _lu(ctx, "parltrack_activites__activite_pt")
+    lu_pe = _lu(ctx, "pe_eurodeputes__intervention_pe")
     apres_gel = any(not l["fin"] or l["fin"] > FIN_PARLTRACK for l in mandats)
     rows = _lignes(ctx, "SELECT * FROM activite_pe WHERE per = ? ORDER BY famille, coalesce(date, annee), activite",
                    [c["per"]])
