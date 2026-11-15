@@ -1,0 +1,220 @@
+# Issue #80 : portefeuilles de ministres délégués, secrétaires d'État et hauts-commissaires dont
+# R-COMPOSITION ne lit pas la tutelle dans le libellé de l'Assemblée (gouvernements publiés,
+# d'Ayrault II à Lecornu II ; génération g13 et archive AMO30 du 14/11/2026).
+#
+# objet    : l'organe ministère du portefeuille (PO…).
+# decision : « rattache_a » suivi du ou des ministères de tutelle (PO…), dans l'ordre où la
+#            source les nomme. Plusieurs organes = co-tutelle, toutes servies (décision de la
+#            propriétaire du 14/11/2026 : « Tous les ministres »).
+# source   : le texte qui établit la tutelle (décret au Journal officiel, sinon le libellé publié
+#            par l'Assemblée).
+# Les champs `personne` et `portefeuille` ne servent qu'à la relecture.
+type: rattachement_portefeuille
+date: 2026-11-14
+decisions:
+
+  # --- Ayrault II : le libellé de l'Assemblée s'arrête à « Ministère chargé de… », sans
+  # « auprès ». La tutelle est dans le décret du 21 juin 2012 relatif à la composition du
+  # Gouvernement, article 2.
+  - objet: PO653268
+    decision: rattache_a PO653293
+    personne: Jérôme Cahuzac
+    portefeuille: Ministère chargé du budget
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000026050285
+    motif: "« ministre délégué auprès du ministre de l'économie et des finances »"
+  - objet: PO653347
+    decision: rattache_a PO653299
+    personne: George Pau-Langevin
+    portefeuille: Ministère chargé de la réussite éducative
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000026050285
+    motif: "« ministre déléguée auprès du ministre de l'éducation nationale »"
+  - objet: PO653344
+    decision: rattache_a PO653218
+    personne: Alain Vidalies
+    portefeuille: Ministère chargé des relations avec le Parlement
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000026050285
+    motif: "« ministre délégué auprès du Premier ministre »"
+  - objet: PO653359
+    decision: rattache_a PO653302
+    personne: François Lamy
+    portefeuille: Ministère chargé de la ville
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000026050285
+    motif: "« ministre délégué auprès de la ministre de l'égalité des territoires et du logement »"
+  - objet: PO653235
+    decision: rattache_a PO653230
+    personne: Bernard Cazeneuve
+    portefeuille: Ministère chargé des affaires européennes
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000026050285
+    motif: "« ministre délégué auprès du ministre des affaires étrangères »"
+  - objet: PO653329
+    decision: rattache_a PO653252
+    personne: Michèle Delaunay
+    portefeuille: Ministère chargé des personnes âgées et de l'autonomie
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000026050285
+    motif: "« ministre déléguée auprès de la ministre des affaires sociales et de la santé »"
+  - objet: PO653296
+    decision: rattache_a PO653293
+    personne: Benoît Hamon
+    portefeuille: Ministère chargé de l'économie sociale et solidaire et de la consommation
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000026050285
+    motif: "« ministre délégué auprès du ministre de l'économie et des finances »"
+  - objet: PO653308
+    decision: rattache_a PO653252
+    personne: Dominique Bertinotti
+    portefeuille: Ministère chargé de la famille
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000026050285
+    motif: "« ministre déléguée auprès de la ministre des affaires sociales et de la santé »"
+  - objet: PO653332
+    decision: rattache_a PO653252
+    personne: Marie-Arlette Carlotti
+    portefeuille: Ministère chargé des handicapés
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000026050285
+    motif: "« ministre déléguée auprès de la ministre des affaires sociales et de la santé »"
+  - objet: PO653283
+    decision: rattache_a PO653230
+    personne: Pascal Canfin
+    portefeuille: Ministère chargé du développement
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000026050285
+    motif: "« ministre délégué auprès du ministre des affaires étrangères »"
+  - objet: PO653311
+    decision: rattache_a PO653356
+    personne: Thierry Repentin
+    portefeuille: Ministère chargé de la formation professionnelle et de l'apprentissage
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000026050285
+    motif: "« ministre délégué auprès du ministre du travail, de l'emploi, de la formation professionnelle et du dialogue social »"
+  - objet: PO653317
+    decision: rattache_a PO653230
+    personne: Yamina Benguigui
+    portefeuille: Ministère chargé de la francophonie
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000026050285
+    motif: "« ministre déléguée auprès du ministre des affaires étrangères »"
+  - objet: PO653353
+    decision: rattache_a PO653290
+    personne: Frédéric Cuvillier
+    portefeuille: Ministère chargé des transports, de la mer et de la pêche (jusqu'au 02/07/2013)
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000026050285
+    motif: "« ministre délégué auprès de la ministre de l'écologie, du développement durable et de l'énergie »"
+  - objet: PO653335
+    decision: rattache_a PO653338
+    personne: Fleur Pellerin
+    portefeuille: Ministère chargé des PME, de l'innovation et de l'économie numérique
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000026050285
+    motif: "« ministre déléguée auprès du ministre du redressement productif »"
+  - objet: PO653262
+    decision: rattache_a PO653280
+    personne: Kader Arif
+    portefeuille: Ministère chargé des anciens combattants
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000026050285
+    motif: "« ministre délégué auprès du ministre de la défense »"
+  - objet: PO653277
+    decision: rattache_a PO653341
+    personne: Anne-Marie Escoffier
+    portefeuille: Ministère chargé de la décentralisation
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000026050285
+    motif: "« ministre déléguée auprès de la ministre de la réforme de l'Etat, de la décentralisation et de la fonction publique »"
+  - objet: PO653259
+    decision: rattache_a PO653256
+    personne: Guillaume Garot
+    portefeuille: Ministère chargé de l'agroalimentaire
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000026050285
+    motif: "« ministre délégué auprès du ministre de l'agriculture, de l'agroalimentaire et de la forêt »"
+  - objet: PO653314
+    decision: rattache_a PO653230
+    personne: Hélène Conway-Mouret
+    portefeuille: Ministère chargé des Français de l'étranger
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000026050285
+    motif: "« ministre déléguée auprès du ministre des affaires étrangères »"
+
+  # --- Ayrault II, remaniement du 19 mars 2013 : décret du 19 mars 2013 relatif à la
+  # composition du Gouvernement, articles 2 et 4.
+  - objet: PO692867
+    decision: rattache_a PO653293
+    personne: Bernard Cazeneuve
+    portefeuille: Ministère chargé du budget
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000027193988
+    motif: "« ministre délégué auprès du ministre de l'économie et des finances, chargé du budget »"
+  - objet: PO692864
+    decision: rattache_a PO653230
+    personne: Thierry Repentin
+    portefeuille: Ministère chargé des affaires européennes
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000027193988
+    motif: "« ministre délégué auprès du ministre des affaires étrangères, chargé des affaires européennes »"
+
+  # --- Ayrault II, 3 juillet 2013 : l'Assemblée ouvre un nouvel organe pour le portefeuille de
+  # Frédéric Cuvillier quand Philippe Martin succède à Delphine Batho (décret du 2 juillet 2013,
+  # https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000027650341). Frédéric Cuvillier n'est pas
+  # renommé : sa tutelle reste celle du décret du 21 juin 2012, le ministère de l'écologie,
+  # désormais tenu par Philippe Martin (PO695768).
+  - objet: PO695771
+    decision: rattache_a PO695768
+    personne: Frédéric Cuvillier
+    portefeuille: Ministère chargé des transports, de la mer et de la pêche (depuis le 03/07/2013)
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000026050285
+    motif: "« ministre délégué auprès de la ministre de l'écologie, du développement durable et de l'énergie », ministère repris par Philippe Martin le 02/07/2013"
+
+  # --- Philippe II : libellé sans « auprès ». Décret du 3 septembre 2019 relatif à la
+  # composition du Gouvernement, article 1.
+  - objet: PO766969
+    decision: rattache_a PO729979
+    personne: Jean-Paul Delevoye
+    portefeuille: Ministère des solidarités et de la santé – Retraites
+    source: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000039025448
+    motif: "« haut-commissaire aux retraites. Il est délégué auprès de la ministre des solidarités et de la santé »"
+
+  # --- Castex : le libellé nomme bien deux ministres, mais sous une forme que la règle ne sait
+  # pas compter (« auprès des ministres de… et de… ») ou avec une coquille de la source
+  # (« affaires étrangère »). Co-tutelles, dans l'ordre du libellé.
+  - objet: PO774113
+    decision: rattache_a PO773380 PO773390
+    personne: Cédric O
+    portefeuille: "Secrétariat d'État auprès des ministres de l'économie, des finances et de la relance, et de la cohésion des territoires et des relations avec les collectivités territoriales, chargé de la transition numérique et des communications électroniques"
+    source: libellé publié par l'Assemblée nationale (archive AMO30)
+    motif: "« auprès des ministres de l'économie, des finances et de la relance, et de la cohésion des territoires… » : deux ministres"
+  - objet: PO789979
+    decision: rattache_a PO773380 PO789983
+    personne: Cédric O
+    portefeuille: même libellé, nouvel organe le 06/03/2022, quand le ministère de la cohésion des territoires change de titulaire (PO789983)
+    source: libellé publié par l'Assemblée nationale (archive AMO30)
+    motif: "« auprès des ministres de l'économie, des finances et de la relance, et de la cohésion des territoires… » : deux ministres"
+  - objet: PO788112
+    decision: rattache_a PO773374 PO773380
+    personne: Jean-Baptiste Lemoyne
+    portefeuille: "Ministère auprès du ministre de l’Europe et des affaires étrangère et du ministre de l’économie, des finances et de la relance - Tourisme, Français de l’étranger, francophonie, petites et moyennes entreprises"
+    source: libellé publié par l'Assemblée nationale (archive AMO30)
+    motif: "« auprès du ministre de l'Europe et des affaires étrangère [sic] et du ministre de l'économie, des finances et de la relance » : deux ministres"
+
+  # --- Sabrina Roubache : le libellé cite deux fois le ministre de l'intérieur (ville
+  # et citoyenneté) ; deux ministres en tout.
+  - objet: PO830002
+    decision: rattache_a PO801854 PO791599
+    personne: Sabrina Roubache
+    portefeuille: Secrétariat d’État (Borne), citoyenneté et ville
+    source: libellé publié par l'Assemblée nationale (archive AMO30)
+    motif: "« auprès du ministre de l'intérieur et des outre-mer, chargée de la citoyenneté, et auprès du ministre de l'intérieur et des outre-mer et du ministre de la transition écologique et de la cohésion des territoires, chargée de la ville »"
+  - objet: PO834754
+    decision: rattache_a PO833676 PO833684
+    personne: Sabrina Roubache
+    portefeuille: Secrétariat d’État (Attal), ville et citoyenneté
+    source: libellé publié par l'Assemblée nationale (archive AMO30)
+    motif: "« auprès du ministre de l'intérieur et des outre-mer et du ministre de la transition écologique et de la cohésion des territoires, chargé de la ville, et auprès du ministre de l'intérieur et des outre-mer, chargé de la citoyenneté »"
+
+  # --- Bayrou : le libellé écrit « de la solidarité », le ministère s'appelle « des
+  # solidarités » ; un seul ministre désigné, Catherine Vautrin (PO855081).
+  - objet: PO855059
+    decision: rattache_a PO855081
+    personne: Astrid Panosyan-Bouvet
+    portefeuille: Ministère auprès de la ministre du travail, de la santé, de la solidarité et des familles, chargé du travail et de l’emploi
+    source: libellé publié par l'Assemblée nationale (archive AMO30)
+    motif: "« auprès de la ministre du travail, de la santé, de la solidarité et des familles » : Ministère du travail, de la santé, des solidarités et des familles"
+  - objet: PO855064
+    decision: rattache_a PO855081
+    personne: Yannick Neuder
+    portefeuille: Ministère auprès de la ministre du travail, de la santé, de la solidarité et des familles, chargé de la santé et de l’accès aux soins
+    source: libellé publié par l'Assemblée nationale (archive AMO30)
+    motif: "« auprès de la ministre du travail, de la santé, de la solidarité et des familles » : Ministère du travail, de la santé, des solidarités et des familles"
+  - objet: PO855067
+    decision: rattache_a PO855081
+    personne: Charlotte Parmentier-Lecocq
+    portefeuille: Ministère délégué auprès de la ministre du travail, de la santé, de la solidarité et des familles, chargé de l'autonomie et du handicap
+    source: libellé publié par l'Assemblée nationale (archive AMO30)
+    motif: "« auprès de la ministre du travail, de la santé, de la solidarité et des familles » : Ministère du travail, de la santé, des solidarités et des familles"

@@ -255,7 +255,7 @@ Ce qui se passe quand une tâche tourne en fenêtre interdite :
 - **La candidate n'est pas reprise.** La mise à jour suivante la recalcule : E3 à E5 ne
   coûtent que quelques minutes.
 - **Les décisions ne touchent jamais le dépôt public en journée.** La propriétaire les écrit
-  quand elle veut dans `decisions/` du dépôt **privé** ; la tâche d'import du soir les
+  quand elle veut dans `references/` du dépôt **privé** ; la tâche d'import du soir les
   recopie sur le dépôt public.
 
 ## 2.2 E1 — Relever
@@ -507,7 +507,7 @@ sequenceDiagram
     T->>PR: issue controle:C1 - faits nommés, empreinte de l'anomalie
     Note over T: rien publié, le site garde son état complet précédent
     P->>PR: lit l'alerte, vérifie à la source
-    P->>PR: écrit decisions/levee_controle/... avec portee = empreinte exacte
+    P->>PR: écrit references/levee_controle/... avec portee = empreinte exacte
     Note over PU: le soir
     PR->>PU: la tâche d'import recopie la décision, publique et datée
     Note over T: mise à jour du soir
@@ -679,7 +679,7 @@ Z1 vues à cette date (`vu_du` ≤ date < `vu_jusqu_au`), relues et reliées par
 au registre pour cette date. La
 copie n'est plus jamais recomposée (2.7).
 
-**Décisions** : la propriétaire les écrit à tout moment dans le dossier `decisions/` du dépôt
+**Décisions** : la propriétaire les écrit à tout moment dans le dossier `references/` du dépôt
 **privé** ; la tâche d'import du soir (ci-dessous) les recopie sur le dépôt public, où elles
 deviennent publiques et datées. Une levée de contrôle urgente suit le même chemin : elle prend
 effet à la mise à jour du soir.
@@ -865,13 +865,13 @@ flowchart LR
     subgraph PRIV["Dépôt privé"]
         P1["Développement<br/>branches, revues"]
         P2["Étiquette publiable"]
-        P4["decisions/<br/>écrites à tout moment"]
+        P4["references/<br/>écrites à tout moment"]
         P3["Issues d'alerte<br/>une par sujet"]
     end
 
     subgraph PUB["Dépôt public"]
         R1["Code publié<br/>étiquette code-publie"]
-        R2["decisions/<br/>copie publique"]
+        R2["references/<br/>copie publique"]
         R3["registre/adresses.csv"]
         R4["registre/publications.jsonl"]
     end

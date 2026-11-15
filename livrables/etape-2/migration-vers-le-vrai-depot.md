@@ -32,5 +32,5 @@ remaniement. L'entrepôt reste public (décision du 04/11/2026).
 | Documentation du code | artefact du workflow des tests | servie par Pages à côté du site |
 | Réglages du dépôt | règle `protection-main`, approbation des contributions externes, actions vérifiées | à refaire à l'identique dans les deux dépôts |
 | Alertes | issues du dépôt d'essai | issues de `np` (privé : les textes d'alerte ne sont plus publics) ; jeton à granularité fine limité à ce dépôt pour que la nuit du dépôt public y écrive (Q5) |
-| Décisions et journal | `decisions/` dans le dépôt ; journal, cadrage et questions dans `livrables/`, hors dépôt | les verser dans `np` |
+| Décisions et journal | `references/` dans le dépôt ; journal, cadrage et questions dans `livrables/`, hors dépôt | les verser dans `np` |
 | Jeu téléchargeable | release `export` | data.gouv.fr (clé d'API, Q5) |

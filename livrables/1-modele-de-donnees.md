@@ -45,7 +45,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | **Z0 Relevés** | le journal des accès aux sources | entrepôt (*releases* du dépôt public) | perte irréparable |
 | **Z1 Entrepôt brut** | chaque objet source, chaque version, filtré des données interdites et gardé sous forme canonique (re-sérialisé), en segments de 90 Mo au plus | entrepôt | perte irréparable |
-| **ZD Décisions** | identité validée, filiation tranchée, levée de contrôle… | écrites dans `decisions/` du dépôt privé, recopiées chaque soir dans `decisions/` du dépôt public | perte irréparable (mais git en garde l'historique) |
+| **ZD Décisions** | identité validée, filiation tranchée, levée de contrôle… | écrites dans `references/` du dépôt privé, recopiées chaque soir dans `references/` du dépôt public | perte irréparable (mais git en garde l'historique) |
 | **Z2 Faits lus** | des tables normalisées, avec provenance | cache de GitHub Actions (accélérateur) | on relit Z1 |
 | **Z3 Graphe relié** | tout ce que les règles calculent | temporaire, pendant la mise à jour | on recalcule |
 | **Z4 Publication** | ce que le navigateur télécharge | GitHub Pages ; copies gardées pour la traçabilité | on rejoue |
@@ -103,7 +103,7 @@ Trois idées tiennent l'ensemble :
 | --- | --- | --- | --- | --- |
 | **Z0 Relevés** | le journal de chaque accès à une source : quoi, quand, réponse, empreinte, complétude | acquis | Parquet, un fichier par mois | entrepôt (actifs de *releases* du dépôt public) |
 | **Z1 Entrepôt brut** | chaque fichier membre des archives reçues (un acteur, un scrutin, un amendement, une séance, un texte du JO…), **à l'octet près, version par version** | acquis | segments Parquet (octets exacts compressés zstd, 90 Mo au plus par segment) + index des versions | entrepôt |
-| **ZD Décisions** | les décisions de la propriétaire (identité validée, filiation tranchée, levée de contrôle…) | acquis | fichiers YAML, un par décision | écrites dans `decisions/` du dépôt **privé**, importées chaque soir dans `decisions/` du dépôt public, où elles deviennent publiques et datées (versionné par git) |
+| **ZD Décisions** | les décisions de la propriétaire (identité validée, filiation tranchée, levée de contrôle…) | acquis | fichiers YAML, un par décision | écrites dans `references/` du dépôt **privé**, importées chaque soir dans `references/` du dépôt public, où elles deviennent publiques et datées (versionné par git) |
 | **ZI Registres d'identité** | l'attribution de chaque identifiant interne (`per:…`) et de chaque adresse publique, en ajout seul (étape 2, correction P1) | acquis | Parquet | entrepôt |
 | **Z2 Faits lus** | tables normalisées, une ligne par fait, avec provenance | recalculé (mis en cache) | Parquet partitionné par famille et législature | cache de GitHub Actions (accélérateur seulement : s'il est évincé, Z2 se reconstruit depuis Z1, voir doc. 4) |
 | **Z3 Graphe relié** | identités résolues, liens entre objets, classifications, périodes, positions, comptes, couverture | recalculé | Parquet / DuckDB | temporaire, pendant la mise à jour |
@@ -320,7 +320,7 @@ R-ARBITRAGE-ARCHIVES (1.6) dit laquelle fait foi pour quel champ.
 
 ### 1.3.3 Décision (ZD)
 
-Une décision est un fichier YAML dans `decisions/<type>/`, écrit par la propriétaire sur le
+Une décision est un fichier YAML dans `references/<type>/`, écrit par la propriétaire sur le
 dépôt privé à tout moment, puis importé par la tâche du soir sur le dépôt public (doc. 2,
 2.12) ; c'est ce commit d'import qui la rend publique et datée, avec son auteur :
 
@@ -344,8 +344,9 @@ Types prévus et ce qu'ils alimentent :
 | `perimetre` | sortie d'une personne avec sa raison | candidature retirée |
 | `filiation` | cas que la règle de filiation ne tranche pas | 4.3 |
 | `continuite_groupe` | un groupe qui change d'organe en cours de législature | 3.1.1 |
-| `rattachement_portefeuille` | ministère de tutelle d'un ministre délégué quand la source ne le donne pas | 4.4 |
+| `rattachement_portefeuille` | ministère de tutelle d'un ministre délégué quand la source ne le donne pas : `rattache_a` suivi d'un ou de plusieurs `PO…` (co-tutelle, dans l'ordre de la source), avec le texte qui l'établit (décret de composition au JO, sinon le libellé de l'Assemblée) | 4.4 |
 | `libelle_ministere` | table des 260 libellés libres du JO → ministère normalisé | 3.6 |
+| `adresse_citee` | adresse de fiche de l'ancien site citée par un article publié → sa fiche, désignée par un identifiant stable (`lig:…`, organe `PO…`) ; servie dans le catalogue (décision du 14/11/2026, issue #86) | 4.7 |
 | `regroupement` | table d'un regroupement pour l'affichage (une légende de commissions, des sorts…) : chaque entrée met un code de la source (`champ` = `valeur`) dans une case (`groupe`, `libelle`), dans l'ordre de la légende ; servie à part dans `regroupements.json.gz`, les fiches gardant les codes (décision du 14/11/2026, issue #88) | 4.2 à 4.5 |
 | `fin_legislature` | mode de fin (dissolution / terme) avec le décret (lien Légifrance) | 4.5 |
 | `absence_etablie` | « relu, aucun » : source lue en entier, date, ce qu'elle ne couvre pas | 4.7 |
@@ -623,7 +624,7 @@ Tout ce schéma est dérivé (Z3), sauf `organe`, lu dans l'archive de l'Assembl
 | `derniere_lecture` | (dossier, scrutin retenu) : le scrutin `ensemble` le plus récent **sur tout le corpus** | R-DERNIERE-LECTURE |
 | `matiere` | (dossier, commission saisie au fond à l'Assemblée, ou `senat_seulement`, ou `non_etablie`) | R-MATIERE |
 | `sort_dossier` | (dossier, sort final, `par_49_3`, date) : sort lu dans la conclusion des actes, 49.3 lu dans l'acte qui l'engage | R-SORT-FINAL |
-| `lien_loi_dossier` | (loi, dossier, route : `promulgation` / `titre` / `decision`) | R-LOI-DOSSIER |
+| `loi_dossier_jo` | (loi, acte du JO, dossier, `preuve` : `plusieurs_numeros` / `texte_depose_seul`, raison, documents trouvés, dossier selon l'Assemblée) ; `etat_dossier.lien_loi` dit d'où vient la loi d'un dossier promulgué (`acte_de_promulgation` / `travaux_preparatoires_jo`) | R-LOI-DOSSIER, R-SORT-FINAL |
 | `etape_dossier` | étape atteinte (dépôt, examen en commission, séance, adopté, promulgué) par législature | R-ETAPE |
 | `texte_porte` | (personne, dossier, rôle : `auteur`, `cosignataire`, `rapporteur`, `initiative_gouvernementale` ; publiable seulement à partir de l'examen en commission) | R-TEXTE-PORTE |
 | `amendement_canonique` | une ligne par amendement (copies dédoublonnées), auteur principal, sort normalisé, commission du dossier visé, banc de l'auteur au dépôt | R-AMENDEMENT, R-SORT-AMENDEMENT |
@@ -806,7 +807,10 @@ Dérivés (Z3) : `membre_gouvernement`, `acte_rattache`, `exercice_rattache`.
 - Le **numéro de loi** est le lien sûr entre un dossier de l'Assemblée et le Journal officiel
   (le NOR manque souvent).
 - Un ministre délégué est rattaché à son ministère de tutelle par son libellé (« auprès
-  du ministre… »), confirmé par une table décidée (`rattachement_portefeuille`).
+  du ministre… »), confirmé par une table décidée (`rattachement_portefeuille`). Une
+  co-tutelle (« auprès du ministre A et du ministre B ») garde toutes ses tutelles, dans
+  l'ordre du libellé (`ministeres_tutelle`, décision du 14/11/2026, Q41) : aucune n'est choisie
+  à la place de l'interface.
 
 ### 1.5.5 Couverture
 
@@ -911,7 +915,7 @@ positions »). La version de chaque règle est inscrite dans le manifeste de pub
 | R-DERNIERE-LECTURE | scrutin `ensemble` le plus récent du dossier, sur tout le corpus ; égalité de date → numéro le plus grand. Version 2 (13/11/2026, Q32) : un vote sur l'ensemble plus récent, relié à aucun dossier mais dont ce dossier est candidat, est nommé (`votes_posterieurs_non_relies`) ; le vote retenu reste | position non retenue |
 | R-MATIERE | commission saisie au fond à l'Assemblée, lue dans le dossier ; un dossier saisi au fond au seul Sénat reçoit la matière « saisi au Sénat seulement » (521 dossiers XVIIe, archive du 03/11/2026 ; décision du 04/11/2026, doc. 5, Q19) | « matière non établie » |
 | R-SORT-FINAL / R-ETAPE | conclusion des actes, pas leur code ; « COM » ne prouve pas l'examen. Le **49.3** se lit dans l'acte `DeclarationGouvernement_Type` dont `fam_code = "Art.49.3"` (XVIIe : 16 engagements sur 11 dossiers, archive du 04/11/2026), jamais dans la conclusion, qui ne le dit que 5 fois. Un texte européen est « sorti de la phase préparatoire » d'après le stade atteint publié par Parltrack. Codes de conclusion classés d'après leur libellé ; un code non classé (`TSORTMOT01` « Motion adoptée », `TSORTFnull`) n'est jamais deviné : raison `conclusion_non_classee`, nommé par A7 (13/11/2026, issue #45) | « sort non connu » |
-| R-LOI-DOSSIER | loi ↔ dossier par le numéro de loi de l'acte de promulgation ; à défaut (loi promulguée sous la législature suivante : 71 des 1 085 lois publiées depuis 2012, cahier 3.1.4), départage par le titre **parmi les seuls** dossiers de la législature close adoptés définitivement sans promulgation | « loi non rattachée » + A3 ; décision `rattachement_loi` |
+| R-LOI-DOSSIER | loi ↔ dossier par le numéro de loi de l'acte de promulgation (R-LOIS) ; à défaut (loi promulguée sous la législature suivante, que nulle archive de l'Assemblée ne publie), par les **travaux préparatoires** publiés au JO avec la loi : numéros des documents de l'Assemblée (proposition ou projet, rapport, texte adopté), du type que nomme la ligne, cherchés dans la législature de la promulgation et dans la précédente, chacune jugée à part ; lien retenu si au moins deux numéros mènent au même dossier et aucun ailleurs. Exception (15/11/2026, doc. 5, Q33) : pour un dossier dont la suite manque aux archives, le seul texte déposé sous la législature de la promulgation suffit. Une ligne par loi (rectificatifs réunis). Mesuré sur l'archive globale du JO (g14) : 644 lois reliées sur 1 212, 633 sur 633 en accord avec l'Assemblée ; 11 dossiers reçoivent ainsi leur loi, dont 6 des 17 « suite absente ». Le JO ne publie les travaux préparatoires qu'à partir de 2015 : les 52 lois de 2012 à 2016 absentes des actes de l'Assemblée restent sans dossier | pas de lien, avec sa raison (`pas_de_travaux_preparatoires`, `aucun_document`, `un_seul_numero`, `dossiers_differents`, `deux_legislatures_possibles`) ; le sort reste `suite_absente_des_archives` |
 | R-TEXTE-PORTE | rôle ; projet de loi = initiative gouvernementale, pas acte personnel | — |
 | R-DEPOT-GOUVERNEMENT | un projet de loi est rattaché au gouvernement en fonction à la date de son **premier dépôt** (dans l'une ou l'autre chambre) ; ministère porteur = ministère du mandat MINISTERE cité comme auteur du document de dépôt (cahier 3.1.1), via `fonction_gouvernementale` | « ministère porteur non établi » |
 | R-AMENDEMENT | copies dédoublonnées par la clé (`examenRef`, `numeroLong`) : 346 paires `B`/`BTC` dans l'archive XVIIe du 03/11/2026 (143 766 amendements pour 144 112 uid). La copie retenue est celle dont le texte égale celui de l'examen (la `BTC`, aussi la plus récente par `chronotag`) ; l'autre uid reste un **alias** (il a une adresse publique). Un amendement compte une fois ; si deux copies divergeaient, la liste de signatures retenue est celle de la copie retenue, et A4 le signale | — |
@@ -1020,6 +1024,13 @@ mécanisme). Le contrat (`1.0`) est écrit dans le manifeste et dans chaque fich
     fiche.json.gz  hemicycle.json.gz  ordre-du-jour-<annee>.json.gz  textes.json.gz  commissions.json.gz
   articles/<date>-<titre>/donnees.json.gz  copie figée, jamais régénérée
 ```
+
+**Adresses des fiches** (décision du 14/11/2026) : leur forme est libre, et une adresse publiée
+reste stable. Seules douze adresses de l'ancien site, citées par des articles publiés
+(`/groupes/AN-SOC`, `/gouvernements/LECORNU_II`…), doivent mener à leur fiche : le catalogue
+réalisé (`catalogue.json.gz`) les sert dans sa table `adresses_citees` (adresse citée, `lien`
+vers la fiche, raison quand il n'y en a pas, décision `adresse_citee`). Une cible qui n'est pas
+publiée n'est jamais servie comme lien ; A7 la signale.
 
 Le filtre par période (6 ou 12 derniers mois) s'applique côté navigateur sur les dates déjà
 chargées ; les textes de parole étant découpés par **semestre** (et les exposés par année), le

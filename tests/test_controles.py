@@ -29,10 +29,10 @@ def test_c1_perte_non_expliquee_puis_levee(tmp_path):
     assert c.bilan()["publication_autorisee"]
     # Levée par décision, pour cette anomalie précise.
     e = b["anomalies"][0]["empreinte"]
-    c = Controles(str(tmp_path), levees=[{"empreinte": e, "fichier": "decisions/levee/x.yaml"}])
+    c = Controles(str(tmp_path), levees=[{"empreinte": e, "fichier": "references/levee/x.yaml"}])
     c.c1_c6_comparer(avant, apres)
     assert c.bilan()["publication_autorisee"]
-    assert c.bilan()["anomalies"][0]["levee_par"] == "decisions/levee/x.yaml"
+    assert c.bilan()["anomalies"][0]["levee_par"] == "references/levee/x.yaml"
 
 
 def test_c1_c6_fiche_de_candidat_retiree_expliquee_et_nommee(tmp_path):

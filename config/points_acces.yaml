@@ -335,7 +335,7 @@ points_acces:
 
   # --- Parlement européen : les candidats anciens ou actuels députés européens (décision Q3 du
   # 13/11/2026 ; portail du PE pour les mandats). Identifiant européen déclaré par Wikidata (P1186)
-  # pour les éléments de la liste des candidats (decisions/candidature), puis la fiche de chaque
+  # pour les éléments de la liste des candidats (references/candidature), puis la fiche de chaque
   # député européen et le nom de ses groupes. Plusieurs requêtes, une toutes les 2,1 s : voir
   # empreinte_src/collecte_pe.py. Pas d'ETag : relu chaque nuit, versionné si les octets changent.
   - id: pe-eurodeputes
@@ -343,7 +343,7 @@ points_acces:
     type: eurodeputes_pe
     url: https://data.europarl.europa.eu/api/v2/
     format: pe_eurodeputes
-    decisions: decisions
+    references: references
     licence: cc-by-4.0
 
   # --- Parlement européen : décisions de chaque séance plénière depuis la législature ouverte le
@@ -496,6 +496,6 @@ points_acces:
     type: fiches_sycomore
     url: https://www2.assemblee-nationale.fr/sycomore/fiche
     format: sycomore_fiches
-    decisions: decisions
+    references: references
     licence: null                 # tous droits réservés : des faits seulement, hors licence des données (cahier 2.2)
     faits_seulement: true

@@ -108,7 +108,7 @@ def relever_sycomore(entrepot, transport, pa_cfg: dict, params: dict, dossier_de
         return octets
 
     try:
-        dossier = dossier_decisions or pa_cfg.get("decisions") or "decisions"
+        dossier = dossier_decisions or pa_cfg.get("references") or pa_cfg.get("decisions") or "references"
         elements = elements_de_la_liste(dossier)
         if not elements:
             raise RuntimeError(f"aucun élément Wikidata dans les décisions `candidature` de {dossier}")

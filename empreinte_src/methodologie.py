@@ -32,7 +32,7 @@ import yaml
 
 RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG = os.path.join(RACINE, "config", "points_acces.yaml")
-DECISIONS = os.path.join(RACINE, "decisions")
+DECISIONS = os.path.join(RACINE, "references")
 
 
 def _cellules(ligne: str) -> list[str]:
@@ -201,7 +201,7 @@ def perimetre() -> dict:
 
 
 def regroupements(dossier: str | None = DECISIONS) -> list[dict]:
-    """Rend les regroupements pour l'affichage décidés (`decisions/regroupement/*.yaml`) : `nom`,
+    """Rend les regroupements pour l'affichage décidés (`references/regroupement/*.yaml`) : `nom`,
     `titre`, `description`, `fichier` et `cases` (libellé de chaque case, dans l'ordre, avec les
     codes de la source qui y vont). Voir `empreinte_src.composeurs.regroupements`."""
     out = []
@@ -216,7 +216,7 @@ def regroupements(dossier: str | None = DECISIONS) -> list[dict]:
             c = cases.setdefault(e.get("groupe"), {"libelle": e.get("libelle"), "codes": []})
             c["codes"].append(f"{e.get('champ')} = {e.get('valeur')}")
         out.append({"nom": y.get("nom"), "titre": y.get("titre"), "description": y.get("description"),
-                    "fichier": f"decisions/regroupement/{n}", "cases": list(cases.values())})
+                    "fichier": f"references/regroupement/{n}", "cases": list(cases.values())})
     return out
 
 

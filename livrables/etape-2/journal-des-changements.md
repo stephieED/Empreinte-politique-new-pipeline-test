@@ -26,6 +26,7 @@ par changement, la plus récente en bas.
 | 13/11/2026 | Q38 : R-QAG relie une question au gouvernement ou orale sans débat à sa séance par l'auteur **et** l'intitulé, dans les 10 jours qui précèdent sa publication au JO ; pas de repli sur l'auteur seul ; les questions orales sans débat comprises | 1 (1.5.4, R-QAG), 5 (Q38) |
 | 14/11/2026 | Q39 (issue #46) : une catégorie socioprofessionnelle publiée comme profession perd son code INSEE et se dit catégorie (`nature`) | 1 (R-IDENTITE), 5 (Q39) |
 | 14/11/2026 | Q40 : la réponse de Wikidata est gardée sous sa forme canonique (exception à P2) ; la mesure « à mesurer » du 06/11 est faite (annexe `autres-sources.md`, § 10) | 0 (cadrage, P2), 2 (sources), 5 (Q40) |
+| 15/11/2026 | Q33 (suite, issue #35) : une loi du JO est reliée à son dossier par ses travaux préparatoires si au moins deux numéros de l'Assemblée mènent au même dossier ; pour un dossier dont la suite manque aux archives, le seul texte déposé sous la législature de la promulgation suffit (contradiction jugée dans cette législature) | 1 (R-LOI-DOSSIER, R-SORT-FINAL), 5 (Q33) |
 
 ## Corrections demandées par la commande de réalisation
 
@@ -894,6 +895,57 @@ Branche `etape-2-dates-promulgation`, issue #128 (constat transmis par la sessio
 | R-LOIS (version 2) : date de promulgation = date de signature de la loi au JO quand il la connaît (`source_date_promulgation` : `journal_officiel` ou `assemblee`), date de l'acte de l'Assemblée gardée (`date_assemblee`) ; A7 nomme les désaccords ; couverture `date_de_promulgation_lue_au_jo` | #128 : sept lois mal datées par l'Assemblée (acte ou JO cité), dont 2021-191 datée du 0021-02-24 ; la date de signature du JO est juste dans les sept cas (vérifié sur la g13) | 1 (1.6 R-LOIS) |
 | `perimetre.py` : docstring alignée (mandats locaux et volet européen hors de ce module, budgets hors périmètre) | elle disait encore « sans mandats locaux » après la PR #91 ; aucune constante ne les excluait | — |
 
+## Volet européen : une source jamais relevée n'est plus « relue, rien trouvé » (14/11/2026)
+
+Branche `etape-2-europe-activite-couverture`, défaut signalé par la session « New pipeline » (essai 43614040736).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Composeur candidat : une source européenne (Parltrack, portail du PE) est lue si sa table a au moins une ligne (`_lu`), plus seulement si elle existe ; votes et six sections d'activité | un lecteur dont le point n'a jamais été relevé écrit une table vide : avant le premier relevé de Parltrack, les six sections d'activité de Mélenchon, Le Pen, Philippot et Glucksmann disaient « relu, aucune activité » (`relu_aucun`) au lieu de « non collecté » | — |
+
+## Ministres délégués : co-tutelles et rattachements décidés (14/11/2026)
+
+Branche `etape-2-tutelles-portefeuilles`, issue #80, décision Q41 (« Tous les ministres »).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-COMPOSITION version 2 : un libellé qui désigne plusieurs ministres, tous reconnus, donne une co-tutelle (`tutelle_statut = 'co_tutelle'`) ; nouvelle colonne `ministeres_tutelle`, toutes les tutelles dans l'ordre du libellé ; `ministere_tutelle` ne porte une valeur que s'il n'y en a qu'une. Une co-tutelle dont un ministre n'est pas reconnu reste « non établie » | 20 des 45 portefeuilles non établis de g13 étaient des co-tutelles ; la règle en établit 15 seule | 1 (1.5.4, 1.6 R-COMPOSITION) |
+| Décision `rattachement_portefeuille` : `rattache_a` accepte plusieurs `PO…` (co-tutelle) | 5 co-tutelles que la règle ne sait pas lire (« auprès des ministres de… et de… », coquille de la source, ministre cité deux fois) | 1 (1.3.3) |
+| 30 décisions (`decisions/rattachement_portefeuille/2026-11-14-tutelles-non-etablies.yaml`) : 21 portefeuilles d'Ayrault II et celui de Delevoye d'après les décrets de composition du JO, 3 de Bayrou et 5 co-tutelles d'après le libellé | les 45 portefeuilles non établis des gouvernements publiés sont tous rattachés (mesure locale sur l'archive AMO30 du 14/11/2026) | — |
+| Section `composition` des gouvernements : colonnes `ministeres_tutelle` et `ministeres_tutelle_libelles` ; `rattachement = 'co_tutelle'`, sans groupe de ministère imposé (l'interface choisit) ; schéma C4 mis à jour | besoin de l'interface (#80) | 1 (1.7) |
+## Adresses citées par des articles publiés (14/11/2026)
+
+Branche `etape-2-adresses-citees`, issue #86 (révisée le 14/11/2026 : douze adresses seulement).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Type de décision `adresse_citee` : une adresse de l'ancien site → sa fiche, désignée par un identifiant stable (lignée `lig:…`, gouvernement `PO…`) ; douze décisions (`decisions/adresse_citee/2026-11-14-articles.yaml`), validées par la propriétaire | des articles datés, qui ne seront plus modifiés, citent ces adresses ; la forme des adresses des fiches est libre (cadrage du 14/11/2026) | 1 (1.3.3) |
+| Composeur `adresses` : résout chaque décision (une lignée fusionnée mène à celle qui l'a reçue) ; le catalogue (`catalogue.json.gz`) sert la table `adresses_citees` (adresse, `lien`, raison, décision) ; une cible non publiée n'est jamais servie comme lien, A7 la nomme | besoin de l'interface (#86) ; un lien faux est pire qu'un lien absent (cahier 4.7) ; C2 vérifie la colonne `lien` | 1 (1.7.2) |
+
+## Lois reliées à leur dossier par le Journal officiel (15/11/2026)
+
+Branche `etape-2-loi-dossier`, issue #35 (seconde partie), décisions du 15/11/2026.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Lecteur `jo_actes` (version 2) : table `travaux_preparatoires`, une ligne par ligne des travaux publiés avec un texte (chambre, nature du document, numéro, numéro de texte adopté, session) | l'Assemblée ne publie pas de NOR dans ses documents ; le JO publie avec chaque loi les numéros des documents des deux chambres | 1 (1.4) |
+| Règle R-LOI-DOSSIER (`loi_dossier_jo`) : une loi du JO → son dossier, par au moins deux numéros de l'Assemblée menant au même dossier (législature de la promulgation et précédente, jugées à part) ; exception « texte déposé seul » pour un dossier dont la suite manque aux archives ; une ligne par loi (490 actes pour 448 lois sous la XIVe : rectificatifs, republications) | #35 : mesuré sur l'archive globale du JO relue (g14) : 644 lois reliées sur 1 212, 633 sur 633 en accord avec le lien de l'Assemblée, aucun désaccord. Un seul numéro partout serait faux (loi 2018-1068 → dossier du secret des sources, même numéro sous la XIVe) | 1 (1.6 R-LOI-DOSSIER) |
+| R-SORT-FINAL (version 4) : un dossier sans acte de promulgation mais relié par R-LOI-DOSSIER est `promulgue`, avec numéro, date et adresse de la loi au JO ; colonne `lien_loi` (`acte_de_promulgation` / `travaux_preparatoires_jo`) ; critère « suite absente » partagé avec R-LOI-DOSSIER (`suite_absente_sql`) | 11 dossiers reçoivent leur loi, dont 6 des 17 « suite absente » (loi 2018-287 comprise). Les 11 autres restent `suite_absente_des_archives` : 8 propositions du Sénat redéposées le 06/07/2017 sans suite visible ; 2018-1214 (proposition que le JO dit « projet ») ; 2020-839 (numéro de la XIVe cité) ; une convention sans loi retrouvée | 1 (1.6 R-SORT-FINAL) |
+
+Écart « lois de la XIVe : 396 » : le JO publie 448 lois sous la XIVe, l'Assemblée 396 actes de promulgation. Les 52 autres (2012 à 2016) ne peuvent pas être reliées par le JO : il ne publie les travaux préparatoires (balise `TP`) qu'à partir de 2015, vide avant.
+
+## Le dossier des décisions s'appelle `references/` (15/11/2026)
+
+Question de la propriétaire (14/11) : le nom `decisions/` est-il intuitif pour qui ne connaît ni le
+projet ni le dépôt ? Le mot prêtait à confusion : les données parlent elles-mêmes de « décisions »
+(décisions en séance de l'Assemblée, avertissement A7), la documentation a une rubrique « Décisions »,
+et le dossier contient aussi des saisies (liste des candidats). Choix de la propriétaire :
+« references », renommé tout de suite (cadrage).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| `decisions/` → `references/` (`git mv`) ; chemins corrigés dans le code, le workflow (`--references references`), `config/points_acces.yaml` (clé `references`, l'ancienne `decisions` encore lue), les tests, `docs/exploitation.md` et les livrables décrivant l'état actuel (docs 1, 2, 5, cadrage, migration) ; `references/LISEZMOI.md` explique le nom. L'option `--decisions` reste un alias de `--references`. Les entrées datées de ce journal gardent l'ancien chemin | un nom qui dise ce que sont ces fichiers : ce que le traitement prend pour référence face aux sources | 1, 2 (faits) |
+
 ## Regroupements pour l'affichage : forme commune, et la légende des commissions (14–15/11/2026)
 
 Branche `etape-2-regroupements`, issue #88 ; forme commune décidée le 14/11/2026 (cadrage), légende Q42.
@@ -904,5 +956,5 @@ Branche `etape-2-regroupements`, issue #88 ; forme commune décidée le 14/11/20
 | Composeur `regroupements` : sert `regroupements.json.gz`, avec les cases de chaque regroupement et chaque code présent dans le corpus (périmètre XIVe–XVIIe), sa case et l'entrée qui l'y a mis. Les fiches ne changent pas | changer un regroupement ne doit demander ni recollecte ni réécriture des fiches ; chaque valeur affichée se rattache à son code d'origine | 1 (1.7.2) |
 | A7 : un code sans case (ou un regroupement sans source) est nommé ; jamais rangé par défaut | une case par défaut cacherait un code nouveau | 2 (2.8) |
 | Page de méthodologie (« Le traitement, étape par étape ») : section 6, chaque regroupement avec ses cases et les codes qui y vont | le regroupement appliqué est déclaré dans la méthodologie (contrainte commune des issues) | — |
-| Première table : `decisions/regroupement/commission_saisie.yaml` (#88), 11 cases : les 8 commissions permanentes (ordre de l'article 36 du Règlement), les commissions spéciales (type `CNPS`), « Saisi au Sénat seulement », « Matière non établie » | Q42 | — |
+| Première table : `references/regroupement/commission_saisie.yaml` (#88), 11 cases : les 8 commissions permanentes (ordre de l'article 36 du Règlement), les commissions spéciales (type `CNPS`), « Saisi au Sénat seulement », « Matière non établie » | Q42 | — |
 

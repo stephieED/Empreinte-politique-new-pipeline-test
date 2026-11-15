@@ -9,8 +9,9 @@ titre « loi n° … du … »), NOR, publication au JO et adresse Légifrance. 
 - au gouvernement en fonction à cette date (R-GOUVERNEMENTS).
 
 Une loi promulguée sous la législature suivante n'est dans aucune archive de dossiers (71 des
-1 085 lois depuis 2012, cahier 3.1.4) : elle manque ici, et R-LOI-DOSSIER (tranche suivante)
-la rattachera."""
+1 085 lois depuis 2012, cahier 3.1.4) : elle manque ici ; R-LOI-DOSSIER la relie à son dossier
+par les travaux préparatoires publiés au JO, et R-SORT-FINAL lui donne alors le sort « promulgué »
+(issue #35)."""
 
 NOM = "R-LOIS"
 VERSION = 2

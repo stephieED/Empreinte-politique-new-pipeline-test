@@ -209,7 +209,7 @@ jobs:
           EMPREINTE_DUCKDB_FILS: "4"
         run: |
           /usr/bin/time -v -o sortie/time-calculer.txt \
-            empreinte calculer --entrepot entrepot --z2 z2 --z3 z3 --decisions decisions \
+            empreinte calculer --entrepot entrepot --z2 z2 --z3 z3 --references references \
               --sortie sortie --rapport sortie/rapport.json \
               --faits-precedents "$(find precedent -maxdepth 1 -name 'faits-publies-g*.parquet' 2>/dev/null | head -1)"
           # Durée seulement : le pic de `time -v` ne vaut que pour la dernière étape (le traitement

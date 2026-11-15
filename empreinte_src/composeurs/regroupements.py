@@ -5,7 +5,7 @@ commissions pour 37 commissions saisies au fond (#88), neuf sorts d'un texte (#8
 regroupement est une lecture propre à l'affichage d'aujourd'hui, et il peut changer. Forme
 commune, fixée avec la propriétaire le 14/11/2026 :
 
-- **la table est une décision** (`decisions/regroupement/<nom>.yaml`), validée en fusionnant :
+- **la table est une décision** (`references/regroupement/<nom>.yaml`), validée en fusionnant :
   chaque entrée met un code de la source (`champ` = `valeur`) dans une case (`groupe`,
   `libelle`) ; l'ordre des cases est celui de leur première apparition ; un code est rangé par
   la première entrée qui lui correspond ;

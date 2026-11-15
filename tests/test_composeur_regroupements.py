@@ -12,15 +12,15 @@ from empreinte_src.controles import Controles
 from empreinte_src.liaison import Contexte
 
 RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DECISION = os.path.join(RACINE, "decisions", "regroupement", "commission_saisie.yaml")
+DECISION = os.path.join(RACINE, "references", "regroupement", "commission_saisie.yaml")
 
 
 def _contexte(tmp_path):
-    d = tmp_path / "decisions" / "regroupement"
+    d = tmp_path / "references" / "regroupement"
     d.mkdir(parents=True)
     shutil.copy(DECISION, d / "commission_saisie.yaml")       # la vraie décision
     (tmp_path / "z2").mkdir()
-    ctx = Contexte(str(tmp_path / "z2"), str(tmp_path / "z3"), str(tmp_path / "decisions"))
+    ctx = Contexte(str(tmp_path / "z2"), str(tmp_path / "z3"), str(tmp_path / "references"))
     x = ctx.con.execute
     x("""CREATE VIEW matiere AS SELECT * FROM (VALUES
            ('D1', 'PO59051', 'assemblee', 'Commission des lois…', '17'),

@@ -20,7 +20,7 @@ Dans le SQL d'une règle :
 - `<lecteur>__<table>__archives` donne l'état courant de toutes les archives, sans ce choix ;
 - `<lecteur>__<table>__hist` donne toutes les versions conservées ;
 - chaque sortie d'une règle déjà appliquée est une vue du même nom ;
-- `decision_<type>` donne les décisions de la propriétaire de ce type (dossier `decisions/`).
+- `decision_<type>` donne les décisions de la propriétaire de ce type (dossier `references/`).
 
 Tout est recalculé à chaque mise à jour (doc. 3, J6). Chaque ligne de sortie porte la colonne
 `regle` (`R-COMPOSITION@1`). Une règle qui ne conclut pas écrit « non établi » et sa raison,

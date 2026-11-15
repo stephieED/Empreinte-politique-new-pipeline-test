@@ -9,7 +9,7 @@
 # request.
 type: elu_local
 date: 2026-11-13
-candidat: "Gilles Platret"        # nom tel qu'écrit dans la liste des candidats (decisions/candidature)
+candidat: "Gilles Platret"        # nom tel qu'écrit dans la liste des candidats (references/candidature)
 nom_elu: "PLATRET"
 prenom_elu: "Gilles"
 naissance: "1973-04-19"
