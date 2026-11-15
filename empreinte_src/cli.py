@@ -196,6 +196,14 @@ def cmd_calculer(a):
             ctrl.a2_verification_croisee(gen, recuperateur(cfg["parametres"]["user_agent"]), nb_a2)
             if getattr(ctrl, "bilan_a2", None):
                 ctrl.bilan_a2["duree_s"] = round(_t.monotonic() - t0, 1)
+        nb_am = int(cfg.get("parametres", {}).get("verification_amendements", 0) or 0)
+        if nb_am:
+            from .verification import recuperateur
+            import time as _t
+            t0 = _t.monotonic()
+            ctrl.a2_signataires(gen, recuperateur(cfg["parametres"]["user_agent"]), nb_am)
+            if getattr(ctrl, "bilan_a2_amendements", None):
+                ctrl.bilan_a2_amendements["duree_s"] = round(_t.monotonic() - t0, 1)
         ctrl.a3_totaux()
         ctrl.a4_double_affichage()
         ctrl.a5_famille_a_zero()

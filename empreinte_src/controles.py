@@ -501,6 +501,22 @@ class Controles:
                           detail=self.bilan_a2)
         return r
 
+    def a2_signataires(self, generation: int, recuperer, nb_amendements=20):
+        """Signataires d'amendements servis, tirés au sort, contre leur page publique (issue #63,
+        `verification.verifier_signataires`). Un écart est nommé ; une page illisible ou
+        injoignable est comptée « non vérifiée »."""
+        from .verification import verifier_signataires
+        if not self._a("amendement_auteur", "amendement_canonique"):
+            return None
+        r = verifier_signataires(self.con, generation, recuperer, nb_amendements)
+        self.bilan_a2_amendements = {k: (v if not isinstance(v, list) else len(v)) for k, v in r.items()}
+        self._avertir("A2", "Signataires d'amendement différents de la page publique de l'Assemblée",
+                      r["ecarts"], detail=self.bilan_a2_amendements)
+        if r["faits"] and len(r["non_verifies"]) == r["faits"]:
+            self._avertir("A2", "Vérification des signataires impossible : aucune page lue",
+                          r["non_verifies"][:5], detail=self.bilan_a2_amendements)
+        return r
+
     # Fenêtre d'une transition (A3) : entrées et sorties du groupe à moins de tant de jours du scrutin.
     A3_FENETRE_TRANSITION = 7
 
@@ -835,6 +851,7 @@ class Controles:
                 "bloquantes": [a["empreinte"] for a in bloquantes],
                 "avertissements": [a["empreinte"] for a in self.anomalies if a["controle"].startswith("A")],
                 "c3": getattr(self, "bilan_c3", None), "a2": getattr(self, "bilan_a2", None),
+                "a2_amendements": getattr(self, "bilan_a2_amendements", None),
                 # Ce que A3, A5 et A6 ont compté comme expliqué : gardé même quand l'avertissement se
                 # tait, pour que le rapport de la nuit le dise (décisions du 13, du 14 et du 15/11/2026).
                 "expliques": {k: v for k, v in (("a3", getattr(self, "bilan_a3", None)),

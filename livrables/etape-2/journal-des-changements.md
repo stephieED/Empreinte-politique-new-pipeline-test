@@ -984,3 +984,14 @@ Branche `etape-2-qualites-orateur` (sur `etape-2-regroupements`), issue #75.
 | --- | --- | --- |
 | Regroupement `qualite_orateur` (`references/regroupement/qualite_orateur.yaml`) : « Député » (député, rapporteur, président de commission, président de séance, qualité écrite « autre »), « Membre du gouvernement », « Député européen » (aucun code à l'Assemblée : interventions au Parlement européen) ; une qualité non établie reste hors des cases | besoin de l'interface (#75) ; à l'Assemblée, qui parle sans être membre du gouvernement est député. Mesuré sur g13 : les paroles servies aux candidats ne portent que trois qualités (député 17 562, membre du gouvernement 6 281, rapporteur 413) | — |
 | Composeur `regroupements` : source `qualite_orateur` (R-QUALITE) ; page de méthodologie : une case sans code de la source le dit | forme commune (#88) | — |
+
+## Signataires d'amendement relus sur les pages publiques (15/11/2026)
+
+Branche `etape-2-signataires-a2`, issue #63 (deuxième famille : les signataires d'amendement).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| A2 : chaque nuit, 20 amendements servis signés par un député (paramètre `verification_amendements`) sont tirés au sort ; leur page publique est relue. L'auteur et l'ensemble des cosignataires sont comparés à `amendement_auteur`. Un écart est nommé avec l'adresse ; une page illisible ou injoignable est comptée « non vérifiée ». Bilan `a2_amendements` dans le rapport | #63 : les signataires n'étaient confrontés à rien. Pages relevées le 15/11/2026 : XVe à XVIIe sur `/dyn/<lég.>/amendements/<uid>` (bloc « Déposé par », fiches `PA…` dans l'ordre) ; XIVe sur l'ancien site (`document_uri`, `.pdf` → `.asp`, métadonnées `AUTEUR_ID`, `COSIGNATAIRES_ID`). Mesuré sur 80 amendements servis (XIVe et XVIIe) : 76 vérifiés, 0 écart, 4 non vérifiés (2 retirés, que l'ancien site ne publie pas ; 2 de commission sans cosignataire, dont l'auteur n'a pas d'identifiant sur la page) | 2 (2.8, A2), 8 |
+| Documents 2 et 8 : A2 décrit tel qu'il est | ils annonçaient des sorts d'amendement, des mandats et des dates relus, que rien ne relisait | 2, 8 |
+
+Constat en route, hors de cette branche : la page `/dyn/14/amendements/<uid>`, servie comme source des 151 293 amendements de la XIVe (g14), répond 404 ; l'adresse de l'ancien site répond.

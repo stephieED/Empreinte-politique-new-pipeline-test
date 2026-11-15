@@ -12,6 +12,7 @@ parametres:
   budget_telechargement_s: 1800   # 30 min par fichier, reprises comprises ; au-delà, nouvel essai la nuit suivante
   duree_collecte_max_s: 16200     # 270 min : la collecte se termine avant la limite de la tâche (330 min) et dépose son acquis (#38)
   verification_croisee: 20        # Q14 : scrutins relus sur les pages publiques (2 faits chacun, A2) ; 0 pour ne pas relire
+  verification_amendements: 20    # #63 : signataires d'amendements servis relus sur leur page publique (1 fait chacun, A2) ; 0 pour ne pas relire
 
 points_acces:
 
