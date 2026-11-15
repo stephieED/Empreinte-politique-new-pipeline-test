@@ -947,6 +947,13 @@ et le dossier contient aussi des saisies (liste des candidats). Choix de la prop
 | --- | --- | --- |
 | `decisions/` → `references/` (`git mv`) ; chemins corrigés dans le code, le workflow (`--references references`), `config/points_acces.yaml` (clé `references`, l'ancienne `decisions` encore lue), les tests, `docs/exploitation.md` et les livrables décrivant l'état actuel (docs 1, 2, 5, cadrage, migration) ; `references/LISEZMOI.md` explique le nom. L'option `--decisions` reste un alias de `--references`. Les entrées datées de ce journal gardent l'ancien chemin | un nom qui dise ce que sont ces fichiers : ce que le traitement prend pour référence face aux sources | 1, 2 (faits) |
 
+## Travaux préparatoires du JO : clés en double à l'export (15/11/2026)
+
+Branche `etape-2-doublons-travaux`, signalé par la session Site (anomalie `export:doublons`, non bloquante).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| `jo_actes__travaux_preparatoires` ajoutée aux tables du JO publiées par plusieurs archives (`ARCHIVES_SUCCESSIVES`) : pour un même acte, la livraison la plus récente fait foi, comme pour les quatre autres tables du JO | depuis la PR #138, l'export comptait 1 509 clés de fait en double (essais 43734533139 et 43735150301 ; 0 le 14/11) : une même loi vient de l'archive globale et d'une livraison quotidienne, qui se recouvrent depuis le 06/10/2026. Mesuré en local sur la g14 : 0 clé en double après correction (9 250 faits). R-LOI-DOSSIER n'était pas faussé (numéros dédoublonnés) | — |
 ## Lois servies confrontées au Journal officiel (15/11/2026)
 
 Branche `etape-2-lois-contre-le-jo`, issue #63 (première famille : les lois), décision du 15/11/2026 (doc. 5, Q42).
