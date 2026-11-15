@@ -999,3 +999,11 @@ Branche `etape-2-signataires-a2`, issue #63 (deuxième famille : les signataires
 Essai 43751052071 (avant la restriction du tirage des votes) : signataires 20 faits, 19 vérifiés, 1 écart : `AMANR5L15PO717460BTC2587P0D1N000231`, Valérie Petit (PA720500) cosignataire selon l'archive, absente des 299 signataires de la page (membres du groupe LaREM) ; à instruire (archive ou page).
 
 Constat en route, hors de cette branche : la page `/dyn/14/amendements/<uid>`, servie comme source des 151 293 amendements de la XIVe (g14), répond 404 ; l'adresse de l'ancien site répond.
+
+## Qualité écrite dans les extraits de parole des candidats (15/11/2026)
+
+Branche `etape-2-qualite-ecrite-extraits`, issue #69.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Composeur candidat : les extraits de parole (`candidats/paroles-textes-*`) servent `qualite_ecrite`, la qualité telle que le compte rendu l'écrit (`qualite_orateur.qualite_ecrite_libelle`, R-QUALITE), vide quand il ne l'écrit pas ; même nom que dans les extraits des gouvernements ; schéma C4 mis à jour | l'interface écrit « prononcé comme {fonction} » sous un extrait (#69) ; une qualité déduite n'est jamais présentée comme écrite | 1 (1.7.3) |

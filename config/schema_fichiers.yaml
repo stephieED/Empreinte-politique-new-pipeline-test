@@ -352,6 +352,7 @@ colonnes:
   - extrait_tronque
   - longueur
   - qualite
+  - qualite_ecrite
   - preside
   - interruption
   - sujet_id
@@ -368,6 +369,7 @@ colonnes:
   - extrait_tronque
   - longueur
   - qualite
+  - qualite_ecrite
   - preside
   - interruption
   - sujet_id
