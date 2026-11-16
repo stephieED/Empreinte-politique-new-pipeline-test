@@ -1016,3 +1016,13 @@ Branche `etape-2-c1-identite-enrichie`, alerte #148, décision du 15/11/2026 (do
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
 | C1 : un fait absent de la nuit n'est pas perdu si la même fiche porte un fait nouveau, de même type, qui garde tous ses identifiants inchangés et en ajoute (appariement sur son premier identifiant, dans les seules fiches touchées : mémoire bornée) ; compté dans `expliques.c1_identite_enrichie` | nuit du 15/11/2026 (run 43758857473) refusée à tort : les actes des lois 2010-837 et 2010-838, arrivés au JO cette nuit-là (absents de la g14), identifient la loi citée par des actes des gouvernements Attal, Castex et Philippe II ; les 4 faits gagnent `id_acte`, `loi_jorf` et un lien Légifrance, les fiches gardent leur nombre de faits (59, 108, 124). Rejoué en local sur les faits de la g14 et de la nuit : 4 identités enrichies, plus de refus (8 s ; pic 3,9 Go, contre 3,2 Go sans le correctif) | 2 (C1) |
+
+## Terme légal d'une législature (16/11/2026)
+
+Branche `etape-2-terme-legal`, issue #81.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-LEGISLATURES version 2 : `terme_legal`, le troisième mardi de juin de la cinquième année qui suit l'élection (code électoral, article L.O. 121, loi organique n° 2001-419 du 15 mai 2001 ; lien Légifrance servi), calculé depuis l'Assemblée élue en 1997, sinon vide avec sa raison ; couverture `terme_legal_etabli` | la source ne publie pas ce terme ; l'interface écrit, pour une législature dissoute, « Le mandat devait courir jusqu'en… » (#81). Vérifié sur l'archive AMO30 du 14/11/2026 : pour les XIIe, XIIIe, XIVe et XVe, closes au terme, le terme calculé est la date de fin publiée ; XVIe (dissoute le 09/06/2024) → 15/06/2027 ; XVIIe → 19/06/2029 | 1 (1.6 R-LEGISLATURES) |
+| Fiche législature : `terme_legal`, `raison_terme_legal`, `source_terme_legal` dans l'en-tête ; la limite « terme légal non collecté » est retirée | idem | 1 (1.7.2) |
+
