@@ -1025,4 +1025,6 @@ Branche `etape-2-liens-amendements-xiv`, constat fait en route sur #63 (relectur
 | --- | --- | --- |
 | R-AMENDEMENT (version 4) : adresse publique d'un amendement de la XIVe = page de l'ancien site (`https://www.assemblee-nationale.fr` + `document_uri`, `.asp` au lieu de `.pdf`) ; sans lien, avec `raison_source_url = page_non_publiee_par_l_assemblee`, pour un amendement sans date de publication qui n'est pas irrecevable ; `adresse_sql` et `raison_adresse_sql` | les 151 293 amendements de la XIVe servis (g14) avaient pour source `/dyn/14/amendements/<uid>`, qui répond 404. Mesuré sur 108 pages de l'ancien site : discutés et à discuter 46 sur 46, irrecevables 34 sur 38 (3 introuvables, 1 délai dépassé), retirés 16 sur 38 ; un retiré avec date de publication a sa page (10 sur 10), sans date non (9 sur 10). En local (g10) : 161 869 amendements de la XIVe avec lien, 5 551 sans (raison donnée) ; XVIIe inchangée. Reste : ≈ 8 % de liens morts parmi les irrecevables, qu'aucun champ ne distingue | 1 (R-AMENDEMENT) |
 
-A9 nommera les liens vidés la première nuit (5 551 au plus parmi les amendements servis) : attendu.
+| Fiches de groupe (lignées), sections `amendements-N` : colonne `raison_source_url` servie, schéma mis à jour | l'essai 43843521371 servait 5 512 amendements de la XIVe sans lien et sans raison sur les fiches de groupe (seules les fiches de candidat portaient la colonne) | 1 (1.7) |
+
+A9 nommera les liens vidés la première nuit (essai 43843521371 : 5 276 faits `amendement_lignee` sur 741 934) : attendu.
