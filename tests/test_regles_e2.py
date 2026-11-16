@@ -617,3 +617,26 @@ def test_divergence_conditions_une_par_une(tmp_path):
     assert c["dont_position_publiee_contredite_par_le_decompte"] == [1, 10]
     assert c["exclues_groupe_sans_fiche"] == [1, 10]
     assert c["exclues_sans_groupe_a_la_date"] == [1, 10]
+
+
+def test_adresse_publique_des_amendements_de_la_xive():
+    """#63 (16/11/2026) : la page /dyn/14/amendements/<uid> répond 404 ; celle de l'ancien site
+    existe, sauf pour un amendement sans date de publication qui n'est pas irrecevable."""
+    import duckdb
+    from empreinte_src.regles.r_amendement import adresse_sql, raison_adresse_sql
+    lignes_ = [("AMANR5L17PO838901B3211P0D1N000811", None, None, "Discuté"),
+               ("AMANR5L14SEA644420BTC2553P0D1N317", "/14/amendements/2553/AN/317.pdf", "2014-12-01", "Discuté"),
+               ("AMANR5L14SEA644420B2353P0D1N67", "/14/amendements/2353/AN/67.pdf", None, "Retiré"),
+               ("AMANR5L14PO59048B3217P0D1N262", "/14/amendements/3217/CION_FIN/CF262.pdf", None, "Irrecevable"),
+               ("AMANR5L14SEA644420B1P0D1N1", None, "2014-01-01", "Discuté")]
+    con = duckdb.connect()
+    con.execute("CREATE TABLE x (uid VARCHAR, document_uri VARCHAR, date_publication VARCHAR, etat VARCHAR)")
+    con.executemany("INSERT INTO x VALUES (?, ?, ?, ?)", lignes_)
+    r = con.execute(f"SELECT uid, {adresse_sql('x')}, {raison_adresse_sql('x')} FROM x").fetchall()
+    assert r == [
+        ("AMANR5L17PO838901B3211P0D1N000811",
+         "https://www.assemblee-nationale.fr/dyn/17/amendements/AMANR5L17PO838901B3211P0D1N000811", None),
+        ("AMANR5L14SEA644420BTC2553P0D1N317", "https://www.assemblee-nationale.fr/14/amendements/2553/AN/317.asp", None),
+        ("AMANR5L14SEA644420B2353P0D1N67", None, "page_non_publiee_par_l_assemblee"),
+        ("AMANR5L14PO59048B3217P0D1N262", "https://www.assemblee-nationale.fr/14/amendements/3217/CION_FIN/CF262.asp", None),
+        ("AMANR5L14SEA644420B1P0D1N1", None, "adresse_de_l_ancien_site_inconnue")]

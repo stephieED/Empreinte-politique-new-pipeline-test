@@ -1016,3 +1016,13 @@ Branche `etape-2-c1-identite-enrichie`, alerte #148, décision du 15/11/2026 (do
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
 | C1 : un fait absent de la nuit n'est pas perdu si la même fiche porte un fait nouveau, de même type, qui garde tous ses identifiants inchangés et en ajoute (appariement sur son premier identifiant, dans les seules fiches touchées : mémoire bornée) ; compté dans `expliques.c1_identite_enrichie` | nuit du 15/11/2026 (run 43758857473) refusée à tort : les actes des lois 2010-837 et 2010-838, arrivés au JO cette nuit-là (absents de la g14), identifient la loi citée par des actes des gouvernements Attal, Castex et Philippe II ; les 4 faits gagnent `id_acte`, `loi_jorf` et un lien Légifrance, les fiches gardent leur nombre de faits (59, 108, 124). Rejoué en local sur les faits de la g14 et de la nuit : 4 identités enrichies, plus de refus (8 s ; pic 3,9 Go, contre 3,2 Go sans le correctif) | 2 (C1) |
+
+## Liens des amendements de la XIVe (16/11/2026)
+
+Branche `etape-2-liens-amendements-xiv`, constat fait en route sur #63 (relecture des signataires), correction demandée par la propriétaire le 15/11/2026.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-AMENDEMENT (version 4) : adresse publique d'un amendement de la XIVe = page de l'ancien site (`https://www.assemblee-nationale.fr` + `document_uri`, `.asp` au lieu de `.pdf`) ; sans lien, avec `raison_source_url = page_non_publiee_par_l_assemblee`, pour un amendement sans date de publication qui n'est pas irrecevable ; `adresse_sql` et `raison_adresse_sql` | les 151 293 amendements de la XIVe servis (g14) avaient pour source `/dyn/14/amendements/<uid>`, qui répond 404. Mesuré sur 108 pages de l'ancien site : discutés et à discuter 46 sur 46, irrecevables 34 sur 38 (3 introuvables, 1 délai dépassé), retirés 16 sur 38 ; un retiré avec date de publication a sa page (10 sur 10), sans date non (9 sur 10). En local (g10) : 161 869 amendements de la XIVe avec lien, 5 551 sans (raison donnée) ; XVIIe inchangée. Reste : ≈ 8 % de liens morts parmi les irrecevables, qu'aucun champ ne distingue | 1 (R-AMENDEMENT) |
+
+A9 nommera les liens vidés la première nuit (5 551 au plus parmi les amendements servis) : attendu.
