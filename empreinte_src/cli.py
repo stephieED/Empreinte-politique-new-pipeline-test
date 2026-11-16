@@ -196,6 +196,14 @@ def cmd_calculer(a):
             ctrl.a2_verification_croisee(gen, recuperateur(cfg["parametres"]["user_agent"]), nb_a2)
             if getattr(ctrl, "bilan_a2", None):
                 ctrl.bilan_a2["duree_s"] = round(_t.monotonic() - t0, 1)
+        nb_am = int(cfg.get("parametres", {}).get("verification_amendements", 0) or 0)
+        if nb_am:
+            from .verification import recuperateur
+            import time as _t
+            t0 = _t.monotonic()
+            ctrl.a2_signataires(gen, recuperateur(cfg["parametres"]["user_agent"]), nb_am)
+            if getattr(ctrl, "bilan_a2_amendements", None):
+                ctrl.bilan_a2_amendements["duree_s"] = round(_t.monotonic() - t0, 1)
         ctrl.a3_totaux()
         ctrl.a4_double_affichage()
         ctrl.a5_famille_a_zero()
@@ -253,6 +261,7 @@ def cmd_calculer(a):
                for b in l.bilan]
     lignes += ["", f"Export : {ex.get('total', 0):,} faits, {ex.get('cles_en_double', 0)} clés en double.",
                f"Fiches : {len(manifeste_site['fiches'])} ; faits publiés : {nb_publies:,}.",
+               _ligne_a2(controles),
                "Contrôles : " + ("publication autorisée" if controles["publication_autorisee"]
                                   else "**publication refusée** (" + ", ".join(controles["bloquantes"]) + ")"),
                mesures.pic()]
@@ -261,6 +270,18 @@ def cmd_calculer(a):
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
             f.write(texte + "\n")
+
+
+def _ligne_a2(controles: dict) -> str:
+    """Décomptes de la vérification croisée (A2) pour le résumé du calcul : ce qui a été relu sur
+    les pages publiques, vérifié, en écart, non vérifié."""
+    parts = []
+    for cle, nom in (("a2", "votes"), ("a2_amendements", "signataires d'amendement")):
+        b = controles.get(cle)
+        if b:
+            parts.append(f"{nom} : {b.get('faits', 0)} faits, {b.get('verifies', 0)} vérifiés, "
+                         f"{b.get('ecarts', 0)} en écart, {b.get('non_verifies', 0)} non vérifiés")
+    return "Vérification croisée (A2) : " + ("; ".join(parts) if parts else "rien de relu") + "."
 
 
 def cmd_superposer(a):

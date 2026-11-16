@@ -234,7 +234,7 @@ Z2 = faits lus (doc. 1, 1.4) ; Z3 = graphe relié (doc. 1, 1.5) ; règles : doc.
 | P48 | 3.1.7 | Séances du Sénat, du Congrès et commissions mêlées | E3 | `reunion.type` | doc. 1, 1.4 D | couvert |
 | P49 | 3.1.7 | Points sans dossier ; un titre → deux dossiers | E3, E4 | `point_odj.dossiers` (liste) ; « non lié » en couverture | doc. 1, 1.4 D | couvert |
 | P50 | 3.1.8 | Texte des articles : 404 sur la XIVe ; autre gabarit pour les lois de finances | — | source non retenue (aucun besoin de la partie 4), déclarée sur la page des sources | doc. 1, 1.4 G | couvert (T36) |
-| P51 | 3.1.9 | Pages publiques = seconde route | E1, E6 | A2 (40 faits) ; `prov_url` | doc. 2, 2.2, 2.8.2 | couvert |
+| P51 | 3.1.9 | Pages publiques = seconde route | E1, E6 | A2 (40 faits de vote, 20 signataires d'amendement) ; `prov_url` | doc. 2, 2.2, 2.8.2 | couvert |
 | P52 | 3.1.10 | Fichier des places XIVe : sans `PA`, état déduit, usage commercial interdit | E2, E3 | faits seulement ; `PA` rétabli ; `siege.origine` | doc. 1, 1.2.1, 1.3.2, 1.4 B | couvert |
 | P53 | 3.2 | Export du Sénat servi vide (444 o, HTTP 200) | E1 | plancher de taille, nombre de tables | doc. 2, 2.2 | couvert |
 | P54 | 3.2 | Les extraits CSV ne donnent que le groupe courant | E1 | export complet | doc. 2, 2.2 | couvert |
@@ -453,7 +453,7 @@ privée** par sujet (notification GitHub, rien quand rien ne change), le **compt
 | **Bloquant** : objets tombés à zéro d'un coup | C6 : une famille à zéro pour tout un type de fiche, ou en baisse de plus de 20 % sans retrait constaté | E6 | issue `controle:C6` | idem |
 | **Bloquant** : personne attendue écartée en silence (6.1) | C7 : chaque personne attendue (R-PERIMETRE) est servie ou sortie avec une raison | E6 | issue `controle:C7` avec les personnes nommées | idem |
 | **Avertissement** : fiche hors modèle (par décision) | A1 | E6 | issue par sujet ; rapport | — (décision `fiche_hors_modele`, doc. 1, 1.3.3 ; T41) |
-| **Avertissement** : faits tirés au sort ≠ autre route | A2 : 40 faits (votes, sorts, mandats, dates) relus sur les pages publiques de l'AN | tirage en E1, comparaison en E6 | issue avec le fait et l'adresse | — |
+| **Avertissement** : faits tirés au sort ≠ autre route | A2 : 40 faits de vote et 20 listes de signataires d'amendement relus sur les pages publiques de l'AN (sorts, mandats, dates : pas encore, #63) | tirage en E1, comparaison en E6 | issue avec le fait et l'adresse | — |
 | **Avertissement** : un total diffère d'une autre source | A3 : effectif de chaque groupe à chaque scrutin ; lois promulguées comparées au JO | E6 | issue par sujet | — (scrutins XIVe à dissidents seuls et lignes `PO0` exclus : T09) |
 | **Avertissement** : un objet risque de s'afficher deux fois | A4 : copies d'amendement, dossiers XIVe réapparus, CR XVe dans la XVIe, loi et son rectificatif | E6 | issue par sujet | — (doublons RNE compris : T22) |
 | **Avertissement** : famille à zéro pour tout le monde | A5 (famille nouvelle ou optionnelle) | E6 | issue par sujet | — |

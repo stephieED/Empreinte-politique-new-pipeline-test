@@ -237,6 +237,11 @@ TABLES = {
         _parole("101", "2025-01-30", "Le logement des étudiants est une urgence nationale."),
         _parole("102", "2025-01-30", "La parole est à Mme la ministre.", preside=True),
         _parole("103", "2026-03-04", "Nous voterons ce texte sur la présence médicale.", sujet=None)],
+    # R-QUALITE : seule la qualité écrite par le compte rendu nous sert ici (#69)
+    "qualite_orateur": [
+        {"compte_rendu": "CR1", "id_syceron": "101", "qualite_ecrite_libelle": None},
+        {"compte_rendu": "CR1", "id_syceron": "103",
+         "qualite_ecrite_libelle": "rapporteure de la commission des affaires sociales"}],
     "question_personne": [
         {"acteur": "PA1", "question": "QANR5L17QE1", "type": "ecrite", "type_code": "QE", "date": "2025-02-04",
          "date_nature": "question_publiee_au_jo", "ministere": "PO9", "ministere_libelle": "Logement",
@@ -434,6 +439,10 @@ def test_paroles_index_presidence_et_extraits_par_semestre(sortie):
     r = rows[2]
     ex = _rows(_lire(racine, "candidats/alice-martin/" + r["fichier"]))[r["ligne"]]
     assert r["fichier"] == "paroles-textes-2026-s1.json.gz" and ex["source_url"].endswith("#103")
+    # #69 : « prononcé comme… » ; vide quand le compte rendu n'écrit rien
+    assert ex["qualite_ecrite"] == "rapporteure de la commission des affaires sociales"
+    ex1 = _rows(_lire(racine, "candidats/alice-martin/" + rows[0]["fichier"]))[rows[0]["ligne"]]
+    assert ex1["qualite_ecrite"] is None
     suj = {s[0]: s for s in d["sujets"]["lignes"]}
     assert suj[r["sujet_id"]][2] == "Intitulé non publié"
     f = _lire(racine, "candidats/alice-martin/fiche.json.gz")

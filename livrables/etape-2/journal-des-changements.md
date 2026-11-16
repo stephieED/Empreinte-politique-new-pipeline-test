@@ -27,7 +27,8 @@ par changement, la plus récente en bas.
 | 14/11/2026 | Q39 (issue #46) : une catégorie socioprofessionnelle publiée comme profession perd son code INSEE et se dit catégorie (`nature`) | 1 (R-IDENTITE), 5 (Q39) |
 | 14/11/2026 | Q40 : la réponse de Wikidata est gardée sous sa forme canonique (exception à P2) ; la mesure « à mesurer » du 06/11 est faite (annexe `autres-sources.md`, § 10) | 0 (cadrage, P2), 2 (sources), 5 (Q40) |
 | 15/11/2026 | Q33 (suite, issue #35) : une loi du JO est reliée à son dossier par ses travaux préparatoires si au moins deux numéros de l'Assemblée mènent au même dossier ; pour un dossier dont la suite manque aux archives, le seul texte déposé sous la législature de la promulgation suffit (contradiction jugée dans cette législature) | 1 (R-LOI-DOSSIER, R-SORT-FINAL), 5 (Q33) |
-| 15/11/2026 | Q42 (issue #63) : A3 confronte chaque nuit les lois de l'Assemblée à celles du JO ; nommées : les lois du JO absentes de l'Assemblée, sauf celles que R-LOI-DOSSIER relie ou qui précèdent les travaux préparatoires au JO (comptées), et les lois de l'Assemblée absentes du JO | 2 (A3), 5 (Q42) |
+| 15/11/2026 | Q43 (issue #63) : A3 confronte chaque nuit les lois de l'Assemblée à celles du JO ; nommées : les lois du JO absentes de l'Assemblée, sauf celles que R-LOI-DOSSIER relie ou qui précèdent les travaux préparatoires au JO (comptées), et les lois de l'Assemblée absentes du JO | 2 (A3), 5 (Q43) |
+| 15/11/2026 | Q44 (alerte #148) : C1 tient pour « identité enrichie », et non pour perdu, un fait qui garde tous ses identifiants et en gagne seulement | 2 (C1), 5 (Q44) |
 
 ## Corrections demandées par la commande de réalisation
 
@@ -956,7 +957,7 @@ Branche `etape-2-doublons-travaux`, signalé par la session Site (anomalie `expo
 | `jo_actes__travaux_preparatoires` ajoutée aux tables du JO publiées par plusieurs archives (`ARCHIVES_SUCCESSIVES`) : pour un même acte, la livraison la plus récente fait foi, comme pour les quatre autres tables du JO | depuis la PR #138, l'export comptait 1 509 clés de fait en double (essais 43734533139 et 43735150301 ; 0 le 14/11) : une même loi vient de l'archive globale et d'une livraison quotidienne, qui se recouvrent depuis le 06/10/2026. Mesuré en local sur la g14 : 0 clé en double après correction (9 250 faits). R-LOI-DOSSIER n'était pas faussé (numéros dédoublonnés) | — |
 ## Lois servies confrontées au Journal officiel (15/11/2026)
 
-Branche `etape-2-lois-contre-le-jo`, issue #63 (première famille : les lois), décision du 15/11/2026 (doc. 5, Q42).
+Branche `etape-2-lois-contre-le-jo`, issue #63 (première famille : les lois), décision du 15/11/2026 (doc. 5, Q43).
 
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
@@ -984,6 +985,37 @@ Branche `etape-2-qualites-orateur` (sur `etape-2-regroupements`), issue #75.
 | --- | --- | --- |
 | Regroupement `qualite_orateur` (`references/regroupement/qualite_orateur.yaml`) : « Député » (député, rapporteur, président de commission, président de séance, qualité écrite « autre »), « Membre du gouvernement », « Député européen » (aucun code à l'Assemblée : interventions au Parlement européen) ; une qualité non établie reste hors des cases | besoin de l'interface (#75) ; à l'Assemblée, qui parle sans être membre du gouvernement est député. Mesuré sur g13 : les paroles servies aux candidats ne portent que trois qualités (député 17 562, membre du gouvernement 6 281, rapporteur 413) | — |
 | Composeur `regroupements` : source `qualite_orateur` (R-QUALITE) ; page de méthodologie : une case sans code de la source le dit | forme commune (#88) | — |
+
+## Signataires d'amendement relus sur les pages publiques (15/11/2026)
+
+Branche `etape-2-signataires-a2`, issue #63 (deuxième famille : les signataires d'amendement).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| A2 : chaque nuit, 20 amendements servis signés par un député (paramètre `verification_amendements`) sont tirés au sort ; leur page publique est relue. L'auteur et l'ensemble des cosignataires sont comparés à `amendement_auteur`. Un écart est nommé avec l'adresse ; une page illisible ou injoignable est comptée « non vérifiée ». Bilan `a2_amendements` dans le rapport | #63 : les signataires n'étaient confrontés à rien. Pages relevées le 15/11/2026 : XVe à XVIIe sur `/dyn/<lég.>/amendements/<uid>` (bloc « Déposé par », fiches `PA…` dans l'ordre) ; XIVe sur l'ancien site (`document_uri`, `.pdf` → `.asp`, métadonnées `AUTEUR_ID`, `COSIGNATAIRES_ID`). Mesuré sur 80 amendements servis (XIVe et XVIIe) : 76 vérifiés, 0 écart, 4 non vérifiés (2 retirés, que l'ancien site ne publie pas ; 2 de commission sans cosignataire, dont l'auteur n'a pas d'identifiant sur la page) | 2 (2.8, A2), 8 |
+| Résumé du calcul : une ligne « Vérification croisée (A2) » (faits relus, vérifiés, en écart, non vérifiés, pour les votes et les signataires) | le résumé ne disait rien d'A2 : un essai ne permettait pas de voir que la relecture avait tourné | — |
+| A2, votes : le tirage ne retient que les scrutins de l'Assemblée (présents dans `an_scrutins__scrutin`) | les votes du Parlement européen servis (`MTG-PL…`, `pt-…` : environ 27 000 sur 47 000 scrutins servis en g14) étaient tirés eux aussi, puis comptés « non vérifiés » faute de page à l'Assemblée : à l'essai du 15/11/2026, 10 des 20 scrutins tirés ; A2 ne relisait qu'une dizaine de scrutins par nuit | 2 (A2) |
+| Documents 2 et 8 : A2 décrit tel qu'il est | ils annonçaient des sorts d'amendement, des mandats et des dates relus, que rien ne relisait | 2, 8 |
+
+Essai 43751052071 (avant la restriction du tirage des votes) : signataires 20 faits, 19 vérifiés, 1 écart : `AMANR5L15PO717460BTC2587P0D1N000231`, Valérie Petit (PA720500) cosignataire selon l'archive, absente des 299 signataires de la page (membres du groupe LaREM) ; à instruire (archive ou page).
+
+Constat en route, hors de cette branche : la page `/dyn/14/amendements/<uid>`, servie comme source des 151 293 amendements de la XIVe (g14), répond 404 ; l'adresse de l'ancien site répond.
+
+## Qualité écrite dans les extraits de parole des candidats (15/11/2026)
+
+Branche `etape-2-qualite-ecrite-extraits`, issue #69.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Composeur candidat : les extraits de parole (`candidats/paroles-textes-*`) servent `qualite_ecrite`, la qualité telle que le compte rendu l'écrit (`qualite_orateur.qualite_ecrite_libelle`, R-QUALITE), vide quand il ne l'écrit pas ; même nom que dans les extraits des gouvernements ; schéma C4 mis à jour | l'interface écrit « prononcé comme {fonction} » sous un extrait (#69) ; une qualité déduite n'est jamais présentée comme écrite | 1 (1.7.3) |
+
+## C1 : identité enrichie (15/11/2026)
+
+Branche `etape-2-c1-identite-enrichie`, alerte #148, décision du 15/11/2026 (doc. 5, Q44).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| C1 : un fait absent de la nuit n'est pas perdu si la même fiche porte un fait nouveau, de même type, qui garde tous ses identifiants inchangés et en ajoute (appariement sur son premier identifiant, dans les seules fiches touchées : mémoire bornée) ; compté dans `expliques.c1_identite_enrichie` | nuit du 15/11/2026 (run 43758857473) refusée à tort : les actes des lois 2010-837 et 2010-838, arrivés au JO cette nuit-là (absents de la g14), identifient la loi citée par des actes des gouvernements Attal, Castex et Philippe II ; les 4 faits gagnent `id_acte`, `loi_jorf` et un lien Légifrance, les fiches gardent leur nombre de faits (59, 108, 124). Rejoué en local sur les faits de la g14 et de la nuit : 4 identités enrichies, plus de refus (8 s ; pic 3,9 Go, contre 3,2 Go sans le correctif) | 2 (C1) |
 
 ## Natures de prise de parole (15/11/2026)
 

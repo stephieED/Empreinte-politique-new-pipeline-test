@@ -1101,8 +1101,11 @@ def _divergences(ctx, f, acteur, perim, commun) -> dict:
 COLS_PAROLES = ["n", "date", "qualite", "qualite_source", "preside", "interruption", "sujet_id", "genre_point",
                 "periode", "fichier", "ligne", "compte_rendu", "id_syceron", "acteur", "source_url",
                 "licence"]
+# `qualite_ecrite` : la qualité telle que le compte rendu l'écrit (« ministre de l'intérieur »,
+# « rapporteur de la commission des lois »), vide quand il ne l'écrit pas (#69) ; même nom que
+# dans les extraits des gouvernements.
 COLS_EXTRAITS = ["n", "date", "compte_rendu", "id_syceron", "extrait", "extrait_tronque", "longueur",
-                 "qualite", "preside", "interruption", "sujet_id", "dossier", "acteur", "source_url",
+                 "qualite", "qualite_ecrite", "preside", "interruption", "sujet_id", "dossier", "acteur", "source_url",
                  "licence"]
 COLS_SUJETS = ["sujet_id", "sujet", "sujet_libelle", "type_sujet", "creneau", "code_creneau", "statut_sujet",
                "dossier", "titre_dossier", "premiere_date", "derniere_date"]
@@ -1115,8 +1118,11 @@ def _paroles(ctx, f, acteur, perim, commun, idx) -> dict:
     if not _vue(ctx, "parole_personne"):
         f.section("paroles", [], "parole_index", couverture=_absente("paroles", ["parole_personne"], pts, au))
         return {"paroles": None, "presidences": None, "statut": "non_relu"}
-    rows = _lignes(ctx, """SELECT * FROM parole_personne WHERE acteur = ? AND date >= ?
-                           ORDER BY date, compte_rendu, ordre_absolu_seance, id_syceron""",
+    ecrite = ("(SELECT q.qualite_ecrite_libelle FROM qualite_orateur q WHERE q.compte_rendu = p.compte_rendu "
+              "AND q.id_syceron = p.id_syceron LIMIT 1)" if _vue(ctx, "qualite_orateur") else "NULL::VARCHAR")
+    rows = _lignes(ctx, f"""SELECT p.*, {ecrite} AS qualite_ecrite FROM parole_personne p
+                            WHERE p.acteur = ? AND p.date >= ?
+                            ORDER BY p.date, p.compte_rendu, p.ordre_absolu_seance, p.id_syceron""",
                    [acteur, commun["debut_paroles"] or ""]) if acteur else []
     sujets: dict[tuple, dict] = {}
     for r in rows:
