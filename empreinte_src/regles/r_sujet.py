@@ -24,12 +24,27 @@ Plusieurs dossiers à égalité : `ambigu`, pas de lien. En dernier recours, qua
 ne discute qu'un texte et que la séance ne cite qu'un dossier, ce dossier est retenu. Aucun :
 `non_lie`.
 Une question au gouvernement n'a pas de dossier : `sans_objet`.
+
+Version 2 (issue #87, natures de prise de parole) : deux faits de la source, gardés pour le
+regroupement de l'affichage, sans rien changer à ce qui précède (R-QAG lit `type_sujet`,
+`point`, `sujet_publie`) :
+
+- `code_creneau` : le créneau d'une question, `QG` (questions au gouvernement), `QOSD`
+  (questions orales sans débat) ou `QPM` (questions au Premier ministre), lu dans le code du
+  point de la question (`QG_1_1`…), sinon dans l'intitulé du créneau qui l'a fait reconnaître ;
+- `genre_point` : `motion_de_censure` pour un paragraphe sous un point de niveau 1 dont
+  l'intitulé nomme une motion de censure (aucun code propre à la source : « Motion de censure »,
+  « Motions de censure », « Dépôt d'une motion de censure » ; 48 points en XVIe, 33 en XVIIe) ;
+  `explications_de_vote` pour un paragraphe sous un sous-point « Explications de vote » (code
+  `DISC_ARTICLES_1_2` ou `EXPL_VOTE_PERSO_1_10`, ou cet intitulé : 150 en XVIe, 166 en XVIIe) ;
+  sinon vide. Une question posée dans un créneau n'a pas de genre (sept questions au
+  gouvernement de la XVIIe s'intitulent « Motions de censure »).
 """
 
 from .r_orateur import norm
 
 NOM = "R-SUJET"
-VERSION = 1
+VERSION = 2
 DEPEND = ()
 SORTIES = ("sujet_intervention",)
 DESCRIPTION = (
@@ -42,6 +57,7 @@ DESCRIPTION = (
 
 CODES_QUESTION = ("QG_1_1", "QOSD_1_1", "QPM_1_1")
 CODES_PROCEDURE = ("FIN_SEAN_1_2",)
+CODES_EXPLICATIONS = ("DISC_ARTICLES_1_2", "EXPL_VOTE_PERSO_1_10")
 # Mots trop généraux pour départager deux titres.
 MOTS_VIDES = ("proposition", "projet", "visant", "relative", "relatif", "portant", "pour", "dans",
               "avec", "suite", "discussion", "lecture", "nouvelle", "adopte", "adoptee", "senat",
@@ -64,6 +80,7 @@ def appliquer(ctx):
     `{nom: (numérateur, dénominateur)}` : `sujet_etabli`, `texte_relie_a_son_dossier`."""
     q = ", ".join(f"'{c}'" for c in CODES_QUESTION)
     proc = ", ".join(f"'{c}'" for c in CODES_PROCEDURE)
+    expl = ", ".join(f"'{c}'" for c in CODES_EXPLICATIONS)
     creneau_titre = f"regexp_matches({norm('ch[1].titre')}, '^questions (au gouvernement|orales sans debat|au premier ministre)')"
     ctx.x(f"""CREATE OR REPLACE TEMP TABLE _c_sujet AS
         WITH p AS (
@@ -84,6 +101,20 @@ def appliquer(ctx):
                          THEN 'loi_de_finances'
                     ELSE 'texte' END AS type_sujet,
                CASE WHEN cr.pid IS NOT NULL THEN p.ch[1].titre END AS creneau,
+               CASE WHEN cr.pid IS NULL THEN NULL
+                    WHEN len(p.ch) >= 2 AND p.ch[2].code_grammaire = 'QG_1_1' THEN 'QG'
+                    WHEN len(p.ch) >= 2 AND p.ch[2].code_grammaire = 'QOSD_1_1' THEN 'QOSD'
+                    WHEN len(p.ch) >= 2 AND p.ch[2].code_grammaire = 'QPM_1_1' THEN 'QPM'
+                    WHEN regexp_matches({norm('p.ch[1].titre')}, '^questions au gouvernement') THEN 'QG'
+                    WHEN regexp_matches({norm('p.ch[1].titre')}, '^questions orales sans debat') THEN 'QOSD'
+                    WHEN regexp_matches({norm('p.ch[1].titre')}, '^questions au premier ministre') THEN 'QPM'
+               END AS code_creneau,
+               CASE WHEN cr.pid IS NOT NULL OR len(p.ch) = 0 OR p.ch[1].niv IS DISTINCT FROM 1 THEN NULL
+                    WHEN regexp_matches({norm('p.ch[1].titre')}, 'motions? de censure') THEN 'motion_de_censure'
+                    WHEN len(list_filter(p.ch[2:], lambda x: x.code_grammaire IN ({expl})
+                             OR regexp_matches({norm('x.titre')}, '^explications? de vote'))) > 0
+                         THEN 'explications_de_vote'
+               END AS genre_point,
                CASE WHEN cr.pid IS NOT NULL THEN (CASE WHEN len(p.ch) >= 2 AND p.ch[2].niv = 2 THEN p.ch[2] END)
                     WHEN len(p.ch) >= 1 AND p.ch[1].niv = 1 THEN p.ch[1] END AS point
         FROM p LEFT JOIN cr ON cr.compte_rendu = p.compte_rendu AND cr.pid = p.ch[1].id_syceron""")
@@ -153,7 +184,7 @@ def appliquer(ctx):
                     WHEN s.type_sujet = 'creneau' THEN 'creneau_seul'
                     WHEN s.point.titre IS NULL THEN 'intitule_non_publie'
                     ELSE 'etabli' END AS statut,
-               s.type_sujet, s.creneau, s.point.titre AS sujet_publie, s.point.id_syceron AS point,
+               s.type_sujet, s.creneau, s.code_creneau, s.genre_point, s.point.titre AS sujet_publie, s.point.id_syceron AS point,
                s.point.code_grammaire AS code_point, coalesce(l.dossiers, []) AS dossiers,
                CASE WHEN s.type_sujet NOT IN ('texte', 'loi_de_finances') OR s.point.titre IS NULL THEN 'sans_objet'
                     WHEN len(l.dossiers) = 1 THEN 'lie'

@@ -404,11 +404,12 @@ def _garder(rows, cols):
     return [{c: r.get(c) for c in cols} for r in rows]
 
 
-COLS_PAROLES = ["n", "date", "acteur", "preside", "sujet_id", "fichier", "ligne", "compte_rendu",
+# `genre_point` et `code_creneau` (R-SUJET v2) : pour le regroupement des natures de parole (#87).
+COLS_PAROLES = ["n", "date", "acteur", "preside", "sujet_id", "genre_point", "fichier", "ligne", "compte_rendu",
                 "id_syceron", "source_url", "licence"]
 COLS_EXTRAITS = ["n", "date", "acteur", "nom", "compte_rendu", "id_syceron", "extrait", "extrait_tronque",
                  "qualite", "preside", "sujet_id", "dossier", "source_url", "licence"]
-COLS_SUJETS = ["sujet_id", "sujet", "sujet_libelle", "type_sujet", "dossier", "titre_dossier",
+COLS_SUJETS = ["sujet_id", "sujet", "sujet_libelle", "type_sujet", "code_creneau", "dossier", "titre_dossier",
                "prises_de_parole", "orateurs_distincts", "premiere_date", "derniere_date"]
 
 
@@ -428,7 +429,7 @@ def _paroles(ctx, f, l, ms, anciens, commun, idx):
         if k not in sujets:
             sujets[k] = {"sujet_id": len(sujets) + 1, "sujet": r["sujet"],
                          "sujet_libelle": r["sujet"] or "Intitulé non publié", "type_sujet": r["type_sujet"],
-                         "dossier": r["dossier"], "titre_dossier": commun["titres"].get(r["dossier"]),
+                         "code_creneau": r.get("code_creneau"), "dossier": r["dossier"], "titre_dossier": commun["titres"].get(r["dossier"]),
                          "prises_de_parole": 0, "premiere_date": r["date"], "derniere_date": r["date"]}
         s = sujets[k]
         s["derniere_date"] = max(s["derniere_date"], r["date"])

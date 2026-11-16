@@ -1016,3 +1016,15 @@ Branche `etape-2-c1-identite-enrichie`, alerte #148, décision du 15/11/2026 (do
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
 | C1 : un fait absent de la nuit n'est pas perdu si la même fiche porte un fait nouveau, de même type, qui garde tous ses identifiants inchangés et en ajoute (appariement sur son premier identifiant, dans les seules fiches touchées : mémoire bornée) ; compté dans `expliques.c1_identite_enrichie` | nuit du 15/11/2026 (run 43758857473) refusée à tort : les actes des lois 2010-837 et 2010-838, arrivés au JO cette nuit-là (absents de la g14), identifient la loi citée par des actes des gouvernements Attal, Castex et Philippe II ; les 4 faits gagnent `id_acte`, `loi_jorf` et un lien Légifrance, les fiches gardent leur nombre de faits (59, 108, 124). Rejoué en local sur les faits de la g14 et de la nuit : 4 identités enrichies, plus de refus (8 s ; pic 3,9 Go, contre 3,2 Go sans le correctif) | 2 (C1) |
+
+## Natures de prise de parole (15/11/2026)
+
+Branche `etape-2-natures-parole`, issue #87.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-SUJET version 2 : `code_creneau` (`QG`, `QOSD`, `QPM`, lu dans le code du point de la question, sinon dans l'intitulé du créneau) et `genre_point` (`explications_de_vote` : sous-point codé `DISC_ARTICLES_1_2` ou `EXPL_VOTE_PERSO_1_10`, ou intitulé ; `motion_de_censure` : point de niveau 1 qui nomme une motion de censure, hors créneau). Rien ne change de ce que lit R-QAG (`type_sujet`, `point`, `sujet_publie`) | la nature d'une parole ne se lisait que dans des intitulés écrits de plusieurs façons, et les explications de vote (sous-point) étaient perdues ; mesuré sur les comptes rendus XVIe–XVIIe | 1 (1.6 R-SUJET) |
+| R-PAROLE-PERSONNE version 2 : fait suivre `code_creneau` et `genre_point` ; paroles des candidats et des lignées : `genre_point` dans l'index, `code_creneau` dans les sujets ; schéma C4 mis à jour | besoin de l'interface (#87) : filtrer les paroles par nature | 1 (1.7.2) |
+| Regroupement `nature_parole` (`references/regroupement/nature_parole.yaml`), 7 cases : questions au gouvernement (QG, QPM), questions orales (QOSD), textes, motion de censure, explications de vote, commission (aucun code : comptes rendus de commission non relevés), autres | issue #87 | — |
+| Forme commune : `ordre` facultatif d'une case (l'ordre de la légende peut différer de l'ordre de rangement) ; le fichier servi donne `champs`, l'ordre dans lequel le code d'une valeur est cherché | une motion de censure doit être rangée avant « Textes » mais vient après dans la légende | 1 (1.3.3) |
+
