@@ -27,7 +27,8 @@ par changement, la plus récente en bas.
 | 14/11/2026 | Q39 (issue #46) : une catégorie socioprofessionnelle publiée comme profession perd son code INSEE et se dit catégorie (`nature`) | 1 (R-IDENTITE), 5 (Q39) |
 | 14/11/2026 | Q40 : la réponse de Wikidata est gardée sous sa forme canonique (exception à P2) ; la mesure « à mesurer » du 06/11 est faite (annexe `autres-sources.md`, § 10) | 0 (cadrage, P2), 2 (sources), 5 (Q40) |
 | 15/11/2026 | Q33 (suite, issue #35) : une loi du JO est reliée à son dossier par ses travaux préparatoires si au moins deux numéros de l'Assemblée mènent au même dossier ; pour un dossier dont la suite manque aux archives, le seul texte déposé sous la législature de la promulgation suffit (contradiction jugée dans cette législature) | 1 (R-LOI-DOSSIER, R-SORT-FINAL), 5 (Q33) |
-| 15/11/2026 | Q42 (issue #63) : A3 confronte chaque nuit les lois de l'Assemblée à celles du JO ; nommées : les lois du JO absentes de l'Assemblée, sauf celles que R-LOI-DOSSIER relie ou qui précèdent les travaux préparatoires au JO (comptées), et les lois de l'Assemblée absentes du JO | 2 (A3), 5 (Q42) |
+| 15/11/2026 | Q43 (issue #63) : A3 confronte chaque nuit les lois de l'Assemblée à celles du JO ; nommées : les lois du JO absentes de l'Assemblée, sauf celles que R-LOI-DOSSIER relie ou qui précèdent les travaux préparatoires au JO (comptées), et les lois de l'Assemblée absentes du JO | 2 (A3), 5 (Q43) |
+| 15/11/2026 | Q44 (alerte #148) : C1 tient pour « identité enrichie », et non pour perdu, un fait qui garde tous ses identifiants et en gagne seulement | 2 (C1), 5 (Q44) |
 
 ## Corrections demandées par la commande de réalisation
 
@@ -956,7 +957,7 @@ Branche `etape-2-doublons-travaux`, signalé par la session Site (anomalie `expo
 | `jo_actes__travaux_preparatoires` ajoutée aux tables du JO publiées par plusieurs archives (`ARCHIVES_SUCCESSIVES`) : pour un même acte, la livraison la plus récente fait foi, comme pour les quatre autres tables du JO | depuis la PR #138, l'export comptait 1 509 clés de fait en double (essais 43734533139 et 43735150301 ; 0 le 14/11) : une même loi vient de l'archive globale et d'une livraison quotidienne, qui se recouvrent depuis le 06/10/2026. Mesuré en local sur la g14 : 0 clé en double après correction (9 250 faits). R-LOI-DOSSIER n'était pas faussé (numéros dédoublonnés) | — |
 ## Lois servies confrontées au Journal officiel (15/11/2026)
 
-Branche `etape-2-lois-contre-le-jo`, issue #63 (première famille : les lois), décision du 15/11/2026 (doc. 5, Q42).
+Branche `etape-2-lois-contre-le-jo`, issue #63 (première famille : les lois), décision du 15/11/2026 (doc. 5, Q43).
 
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
@@ -1007,3 +1008,11 @@ Branche `etape-2-qualite-ecrite-extraits`, issue #69.
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
 | Composeur candidat : les extraits de parole (`candidats/paroles-textes-*`) servent `qualite_ecrite`, la qualité telle que le compte rendu l'écrit (`qualite_orateur.qualite_ecrite_libelle`, R-QUALITE), vide quand il ne l'écrit pas ; même nom que dans les extraits des gouvernements ; schéma C4 mis à jour | l'interface écrit « prononcé comme {fonction} » sous un extrait (#69) ; une qualité déduite n'est jamais présentée comme écrite | 1 (1.7.3) |
+
+## C1 : identité enrichie (15/11/2026)
+
+Branche `etape-2-c1-identite-enrichie`, alerte #148, décision du 15/11/2026 (doc. 5, Q44).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| C1 : un fait absent de la nuit n'est pas perdu si la même fiche porte un fait nouveau, de même type, qui garde tous ses identifiants inchangés et en ajoute (appariement sur son premier identifiant, dans les seules fiches touchées : mémoire bornée) ; compté dans `expliques.c1_identite_enrichie` | nuit du 15/11/2026 (run 43758857473) refusée à tort : les actes des lois 2010-837 et 2010-838, arrivés au JO cette nuit-là (absents de la g14), identifient la loi citée par des actes des gouvernements Attal, Castex et Philippe II ; les 4 faits gagnent `id_acte`, `loi_jorf` et un lien Légifrance, les fiches gardent leur nombre de faits (59, 108, 124). Rejoué en local sur les faits de la g14 et de la nuit : 4 identités enrichies, plus de refus (8 s ; pic 3,9 Go, contre 3,2 Go sans le correctif) | 2 (C1) |

@@ -262,3 +262,39 @@ def test_c6_une_section_decoupee_en_paquets_ne_s_effondre_pas(tmp_path):
     c.c1_c6_comparer(str(tmp_path / "a.parquet"), str(tmp_path / "b.parquet"),
                      uids_changes_a_la_source={"Aamendements-2013"})
     assert [a["controle"] for a in c.bilan()["anomalies"] if a["controle"] == "C6"] == []
+
+
+def test_c1_identite_enrichie_n_est_pas_une_perte(tmp_path):
+    """Alerte #148 (nuit du 15/11/2026) : les actes des lois 2010-837 et 2010-838 arrivent au JO ;
+    la loi citée par des actes de gouvernement est identifiée et le fait gagne `id_acte`. Un fait
+    qui garde tous ses identifiants et en gagne seulement n'est pas perdu. Un fait dont un
+    identifiant change, ou qui se fond dans un fait déjà publié, l'est toujours."""
+    def fait(valeur, **ids):
+        r = {"fiche": "gouvernement/attal", "section": "actes-lois", "type_fait": "loi_citee_titre",
+             "valeur": valeur}
+        r.update({f"id_{k}": v for k, v in ids.items()})
+        return r
+    schema = pa.schema([(c, pa.string()) for c in ("fiche", "section", "type_fait", "valeur", "id_acte", "id_autre")])
+    pa_, pb = str(tmp_path / "a.parquet"), str(tmp_path / "b.parquet")
+
+    def comparer(avant, apres):
+        pq.write_table(pa.Table.from_pylist(avant, schema=schema), pa_)
+        pq.write_table(pa.Table.from_pylist(apres, schema=schema), pb)
+        c = Controles(str(tmp_path))
+        c.c1_c6_comparer(pa_, pb)
+        return c
+    c = comparer([fait('{"numero_loi":"2010-837","loi_jorf":null}', autre="2010-837"),
+                  fait('{"numero_loi":"2021-1"}', autre="2021-1", acte="J1")],
+                 [fait('{"numero_loi":"2010-837","loi_jorf":"J0"}', autre="2010-837", acte="J0"),
+                  fait('{"numero_loi":"2021-1"}', autre="2021-1", acte="J1")])
+    assert c.bilan()["publication_autorisee"] and c.bilan_c1_identite_enrichie == 1
+    assert c.bilan()["expliques"]["c1_identite_enrichie"] == 1
+    # Un identifiant qui change (J1 → J2) : perte.
+    c = comparer([fait('{"numero_loi":"2021-1"}', autre="2021-1", acte="J1")],
+                 [fait('{"numero_loi":"2021-1"}', autre="2021-1", acte="J2")])
+    assert [a["controle"] for a in c.anomalies] == ["C1"]
+    # Un fait qui se fond dans un fait déjà publié la veille : perte.
+    c = comparer([fait('{"numero_loi":"2010-837"}', autre="2010-837"),
+                  fait('{"numero_loi":"2010-837"}', autre="2010-837", acte="J0")],
+                 [fait('{"numero_loi":"2010-837"}', autre="2010-837", acte="J0")])
+    assert [a["controle"] for a in c.anomalies] == ["C1"]
