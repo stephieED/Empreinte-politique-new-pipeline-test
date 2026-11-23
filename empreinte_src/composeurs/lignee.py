@@ -18,7 +18,7 @@ Fichiers de `lignees/<adresse>/` :
 | `paroles-textes-<aaaa>-s<n>[-<k>].json.gz` | extraits (300 caractères) et lien au paragraphe | au clic, ou pour un filtre |
 | `proposes.json.gz` | XIVe à XVIIe : textes portés par les membres pendant leur appartenance (rôle, étape, matière) | à la demande |
 | `amendements.json.gz` | XIVe à XVIIe : amendements distincts déposés par les membres pendant leur appartenance, par commission et par année, dont ceux déposés comme député et comme rapporteur (type de déposant publié par l'Assemblée) ; irrecevables et signatures à part | à la demande |
-| `amendements-<annee>[-<k>].json.gz` | liste de l'année, avec le type de déposant de chaque amendement (`type_auteur`) | au clic |
+| `amendements-<annee>[-<k>].json.gz` | liste de l'année, avec le type de déposant de chaque amendement (`type_auteur` : `depute` ou `rapporteur`) | au clic |
 | `votes-<législature>.json.gz` | un fichier par législature du groupe : décompte publié de chaque scrutin pour le groupe (pour, contre, abstention, non-votants, membres), position majoritaire publiée et si elle est établie (Q30), partage du groupe | à la demande |
 | `avec-qui-<législature>.json.gz` | les autres groupes de la législature, dans l'ordre de l'hémicycle (législature en cours, ou close avec une archive figée : XVe, XVIe) ou des sigles (XIVe) : scrutins où les deux positions sont établies et ceux où elles coïncident, par nature de scrutin | à la demande |
 | `mots/<xx>.json.gz` | index de mots | au filtre par mot |
@@ -546,8 +546,10 @@ COLS_AGREGATS = ["commission", "commission_libelle", "annee", "nb_amendements", 
                  "nb_irrecevables_40", "nb_irrecevables_45", "nb_signatures_cosignataire", "au"]
 
 
-# Type de déposant publié par l'Assemblée (`typeAuteur`, lu tel quel par `an_amendements`) → compteur
-# de l'agrégat ; « Gouvernement » n'a pas d'auteur personne et n'entre jamais dans une lignée.
+# Type de déposant publié par l'Assemblée (`typeAuteur`, lu tel quel par `an_amendements`), servi
+# en code (`type_auteur` des listes) → compteur de l'agrégat. La source l'écrit « Député » depuis la
+# XVe et « Depute », sans accent, pour la XIVe (essai du 23/11/2026 : 147 164 amendements des
+# lignées) ; « Gouvernement » n'a pas d'auteur personne et n'entre jamais dans une lignée.
 TYPES_DEPOSANT = {"depute": "nb_amendements_depute", "rapporteur": "nb_amendements_rapporteur"}
 
 
@@ -582,6 +584,7 @@ def _amendements(ctx, f, l, ms, anciens, commun):
         r["titre_dossier"] = commun["titres"].get(r["dossier"])
         r["nom"] = (ident.get(r["acteur"]) or {}).get("nom")
         r["licence"] = lic
+        r["type_auteur"] = _type_deposant(r.get("type_auteur"))
         r["annee"] = (r["date_depot"] or "")[:4] or None
         lib[r["commission"]] = r["commission_libelle"]
     listes = {}
@@ -617,9 +620,8 @@ def _amendements(ctx, f, l, ms, anciens, commun):
             x["nb_irrecevables_45"] += 1
         else:
             x["nb_amendements"] += 1
-            t = _type_deposant(r.get("type_auteur"))
-            if t:
-                x[TYPES_DEPOSANT[t]] += 1
+            if r["type_auteur"]:
+                x[TYPES_DEPOSANT[r["type_auteur"]]] += 1
             if r["dossier"]:
                 x["_d"].add(r["dossier"])
     for s in sig:
@@ -632,7 +634,7 @@ def _amendements(ctx, f, l, ms, anciens, commun):
     hors = sum(1 for r in rows if r["famille_sort"] not in ("irrecevable_40", "irrecevable_45"))
     com = sum(1 for r in rows if r["commission"])
     sans_type = sum(1 for r in rows if r["famille_sort"] not in ("irrecevable_40", "irrecevable_45")
-                    and not _type_deposant(r.get("type_auteur")))
+                    and not r["type_auteur"])
     autre_type = f" ; autre ou absent pour {sans_type}" if sans_type else ""
     cv = _couv("amendements", "complet" if ms else "non_collecte",
                f"Amendements distincts dont un membre est l'auteur principal, déposés pendant son "

@@ -94,6 +94,9 @@ vocabulaires:
   - cosignataire
   - rapporteur
   - initiative_gouvernementale
+  type_auteur:
+  - depute
+  - rapporteur
   type_sujet:
   - texte
   - loi_de_finances

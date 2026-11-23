@@ -132,7 +132,7 @@ TABLES = {
          "document": "PIONANR5L17B0001", "article_designation": "Article 1", "source_url": None,
          "type_auteur": t}
         for a, u, d, fs, t in (("PA1", "AM1", "2025-01-20", "discute", "Député"),
-                               ("PA3", "AM2", "2025-01-21", "irrecevable_40", "Député"),
+                               ("PA3", "AM2", "2025-01-21", "irrecevable_40", "Depute"),   # graphie de la XIVe
                                ("PA1", "AM4", "2025-02-10", "discute", "Rapporteur"),
                                ("PA3", "AM3", "2025-05-02", "discute", "Député"),   # après son départ : pas au groupe
                                ("PA9", "AM9", "2025-03-03", "discute", "Député"))],
@@ -268,7 +268,7 @@ def test_textes_et_amendements_pendant_l_appartenance(sortie):
     assert (a[0]["nb_amendements_depute"], a[0]["nb_amendements_rapporteur"]) == (1, 1)
     liste = _rows(_lire(racine, "lignees/socialistes/amendements-2025.json.gz"))
     assert [(x["amendement"], x["type_auteur"]) for x in liste] == \
-        [("AM1", "Député"), ("AM2", "Député"), ("AM4", "Rapporteur")]
+        [("AM1", "depute"), ("AM2", "depute"), ("AM4", "rapporteur")]
 
 
 def test_type_de_deposant():
