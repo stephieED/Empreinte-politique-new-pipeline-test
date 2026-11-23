@@ -506,6 +506,37 @@ def test_sort_final_lu_dans_les_conclusions(tmp_path):
     assert cm["par_49_3"] is False and cm["numero_loi"] is None    # pas de 0, pas de loi inventée
 
 
+
+def test_sort_renvoi_en_commission_et_decision_sans_conclusion(tmp_path):
+    """Alerte #118 (décidé le 23/11/2026 : doc. 5, Q45 et Q46). Une motion de renvoi en commission
+    adoptée (TSORTMOT01, motion TMP03) n'est ni une adoption ni un rejet : raison
+    `renvoye_en_commission`, plus nommée par A7. Une décision sans conclusion (TSORTFnull) n'est
+    nommée que là où elle est la dernière décision."""
+    dossiers = [_dos("RC", "PPL renvoyée en commission"), _dos("SC", "Nouvelle lecture au Sénat, puis AN"),
+                _dos("SD", "Nouvelle lecture au Sénat, rien ensuite")]
+    actes = [
+        _depot("RC", "PIONANR5L17B0001"),
+        _acte("RC", "L17-RC-M", "MotionProcedure_Type", "AN1-DEBATS-MOTION", "2025-03-01",
+              type_motion_code="TMP03", type_motion_libelle="Motions de renvoi en commission"),
+        _decision("RC", "L17-RC-MDEC", "AN1-DEBATS-MOTION-VOTE", "TSORTMOT01", "2025-03-01", "Motion adoptée"),
+        _depot("SC", "PRJLANR5L17B0002"),
+        _decision("SC", "L17-SC-1", "SNNLEC-DEBATS-DEC", "TSORTFnull", "2025-03-01"),
+        _decision("SC", "L17-SC-2", "ANLDEF-DEBATS-DEC", "TSORTF01", "2025-03-05", "adopté"),
+        _depot("SD", "PRJLANR5L17B0003"),
+        _decision("SD", "L17-SD-1", "SNNLEC-DEBATS-DEC", "TSORTFnull", "2025-03-01"),
+    ]
+    for a in actes:                                         # la source ne publie pas de libellé
+        if a.get("conclusion_code") == "TSORTFnull":
+            a["conclusion_libelle"] = None
+    ctx, _ = _relier(_z2(tmp_path / "z2", actes=actes, dossiers=dossiers), tmp_path / "z3")
+    s = {x["dossier"]: (x["sort"], x["raison_sort"]) for x in _lignes(ctx, "SELECT * FROM etat_dossier")}
+    assert s == {"RC": ("non_connu", "renvoye_en_commission"), "SC": ("adopte", None),
+                 "SD": ("non_connu", "conclusion_non_classee")}
+    nc = _lignes(ctx, "SELECT * FROM conclusion_non_classee")
+    assert [(x["conclusion_code"], x["conclusion_libelle"], x["decisions"], x["exemples"],
+             x["dossiers_dont_c_est_la_derniere_decision"]) for x in nc] == [
+        ("TSORTFnull", None, 1, ["SD"], 1)]
+
 def test_lois_et_projets_rattaches_a_la_date(tmp_path):
     dossiers = [_dos("DL", "Loi de la dissolution"), _dos("DP", "Projet déposé au Sénat", "1"),
                 _dos("DX", "Projet sans date", "1")]
@@ -597,6 +628,33 @@ def test_suite_absente_reliee_par_le_journal_officiel(tmp_path):
     assert s["SA"]["url_loi"] == "https://www.legifrance.gouv.fr/jorf/id/A"
     assert s["SB"]["sort"] == "non_connu"
 
+
+
+def test_legislature_nommee_par_le_journal_officiel(tmp_path):
+    """Issue #146 (loi 2020-839) : le JO nomme la législature d'un numéro (« n° 967 (quinzième
+    législature) »). Seule celle-là est candidate : sans cela, le n° 967 tombait sous la
+    législature précédente sur un autre dossier, et la loi n'était reliée à rien."""
+    from empreinte_src.lecteurs import an_dossiers as lec_dossiers, jo_actes
+    dossiers = [_dos("SA", "Texte de la XVIe poursuivi sous la XVIIe"), _dos("SY", "Homonyme de la XVIe")]
+    z2 = _z2(tmp_path / "z2", dossiers=dossiers)
+    _ecrire(z2, lec_dossiers, "document", [
+        {"uid": "PIONANR5L16B0123", "dossier": "SA"}, {"uid": "RAPPANR5L16B0456", "dossier": "SA"},
+        {"uid": "PIONANR5L16B0789", "dossier": "SY"}])
+    _ecrire(z2, jo_actes, "acte_reglementaire", [
+        {"uid": "jorf:A", "nature": "LOI", "numero": "2025-200", "date_signature": "2025-03-01"},
+        {"uid": "jorf:B", "nature": "LOI", "numero": "2025-201", "date_signature": "2025-03-02"}])
+    tp = lambda acte, nature, numero, leg=None: {"acte": acte, "chambre": "AN", "nature": nature,
+                                                 "numero": numero, "legislature": leg}
+    _ecrire(z2, jo_actes, "travaux_preparatoires", [
+        tp("jorf:A", "proposition_de_loi", "123", 16), tp("jorf:A", "rapport", "456"),
+        tp("jorf:A", "proposition_de_loi", "789", 17),
+        # Même travaux, sans législature nommée : le n° 789 de la XVIe contredit le lien.
+        tp("jorf:B", "proposition_de_loi", "123"), tp("jorf:B", "rapport", "456"),
+        tp("jorf:B", "proposition_de_loi", "789")])
+    ctx, b = _relier(z2, tmp_path / "z3")
+    j = {x["numero_loi"]: x for x in _lignes(ctx, "SELECT * FROM loi_dossier_jo")}
+    assert (j["2025-200"]["dossier"], j["2025-200"]["preuve"]) == ("SA", "plusieurs_numeros")
+    assert (j["2025-201"]["dossier"], j["2025-201"]["raison"]) == (None, "dossiers_differents")
 
 def test_date_de_promulgation_lue_au_journal_officiel(tmp_path):
     """Loi 2021-191 (14/11/2026) : l'acte de promulgation de l'Assemblée est daté du 0021-02-24 ;

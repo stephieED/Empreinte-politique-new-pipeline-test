@@ -128,6 +128,10 @@ def cmd_calculer(a):
     ligne_avant = len(registre.attributions)
     ctx = Contexte(a.z2, a.z3, dossier_decisions=a.decisions, generation=gen,
                    date_reference=(rapport.get("debut") or "")[:10] or None, registre=registre)
+    # Date de chaque génération de l'entrepôt : R-MANDAT-LOCAL date la fin observée d'un mandat
+    # disparu du répertoire par les relevés qui l'encadrent (décision Q49 du 23/11/2026).
+    ctx.dates_generations = {int(g["generation"]): str(g["date"])[:10]
+                             for g in e._lire_table("generations.parquet") if g.get("date")}
     with mesures.etape("E4") as m:
         bilan_regles = relier(ctx)
         m["regles"] = len(bilan_regles)
@@ -178,8 +182,12 @@ def cmd_calculer(a):
         retirees = dict(ctx.x("""SELECT 'candidat/' || adresse, raison_non_publie FROM candidat
                                  WHERE NOT publie AND adresse IS NOT NULL
                                    AND statut IN ('retiree', 'non_listee')""")) if ctx.existe("candidat") else {}
+        # Lignes de mandat local déclarées par Wikidata : leur disparition est toujours expliquée,
+        # nommée en A11 ; l'état des déclarations en donne la raison quand il la connaît (Q55 à Q57).
+        from .regles.r_mandat_local import declarations_wikidata
         ctrl.c1_c6_comparer(a.faits_precedents or None, os.path.join(a.sortie, "export", "faits-publies.parquet"),
-                            uids_changes_a_la_source=changes, fiches_retirees=retirees)
+                            uids_changes_a_la_source=changes, fiches_retirees=retirees,
+                            declarations_wikidata=declarations_wikidata(ctx))
         ctrl.a9_valeurs_videes(a.faits_precedents or None,
                                os.path.join(a.sortie, "export", "faits-publies.parquet"))
         # C3, C7 et avertissements : tables des règles et faits publiés de la candidate.
@@ -204,12 +212,24 @@ def cmd_calculer(a):
             ctrl.a2_signataires(gen, recuperateur(cfg["parametres"]["user_agent"]), nb_am)
             if getattr(ctrl, "bilan_a2_amendements", None):
                 ctrl.bilan_a2_amendements["duree_s"] = round(_t.monotonic() - t0, 1)
+        ctrl.a2_mandats()                            # fiches Sycomore déjà relevées : aucune page lue
+        nb_tx = int(cfg.get("parametres", {}).get("verification_textes", 0) or 0)
+        if nb_tx:
+            from .verification import recuperateur
+            import datetime as _dt
+            import time as _t
+            t0 = _t.monotonic()
+            ctrl.a2_textes(gen, recuperateur(cfg["parametres"]["user_agent"]),
+                           ctx.date_reference or _dt.date.today().isoformat(), nb_tx)
+            if getattr(ctrl, "bilan_a2_textes", None):
+                ctrl.bilan_a2_textes["duree_s"] = round(_t.monotonic() - t0, 1)
         ctrl.a3_totaux()
         ctrl.a4_double_affichage()
         ctrl.a5_famille_a_zero()
         ctrl.a6_couverture()
         ctrl.a8_mandats_ouverts()
         ctrl.a9_liste_des_candidats()
+        ctrl.a10_elus_ambigus()
         ctrl.a7_non_resolues(ctx.decisions)          # en dernier : il vérifie les levées sans objet
     controles = ctrl.bilan()
     rapport["calcul"] = {"lecture": l.bilan, "export": ex, "mesures": mesures.etapes,
@@ -276,7 +296,9 @@ def _ligne_a2(controles: dict) -> str:
     """Décomptes de la vérification croisée (A2) pour le résumé du calcul : ce qui a été relu sur
     les pages publiques, vérifié, en écart, non vérifié."""
     parts = []
-    for cle, nom in (("a2", "votes"), ("a2_amendements", "signataires d'amendement")):
+    for cle, nom in (("a2", "votes"), ("a2_amendements", "signataires d'amendement"),
+                     ("a2_mandats", "périodes de mandat (Sycomore)"),
+                     ("a2_textes", "stade et dates des textes")):
         b = controles.get(cle)
         if b:
             parts.append(f"{nom} : {b.get('faits', 0)} faits, {b.get('verifies', 0)} vérifiés, "

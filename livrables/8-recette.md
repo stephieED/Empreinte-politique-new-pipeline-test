@@ -15,10 +15,10 @@ auxquels renvoient les cellules « doc. 4 ».
 | Notation | Sens |
 | --- | --- |
 | « doc. 1, 1.6 R-MATIERE » | document 1, section 1.6, règle R-MATIERE |
-| « doc. 2, 2.8.1 C1 » | document 2, contrôle bloquant C1 (C1–C7) ; `A1`–`A8` = avertissements de 2.8.2 |
+| « doc. 2, 2.8.1 C1 » | document 2, contrôle bloquant C1 (C1–C7) ; `A1`–`A9` = avertissements de 2.8.2 |
 | « cahier 3.1.4 » | `CAHIER_DES_CHARGES.md`, section 3.1.4 |
 | « mes. an-acteurs §2.1 » | `livrables/annexes/mesures/an-acteurs.md`, § 2.1 (de même `an-scrutins-dossiers`, `an-amendements-cr`, `autres-sources`) |
-| E0 … E8 | étapes du doc. 2, 2.0 : E0 démarrer, E1 relever, E2 découper et versionner, E3 lire, E4 relier et dériver, E5 composer, E6 contrôler, E7 publier, E8 rendre compte |
+| E0 … E8 | étapes du doc. 2, 2.0 : E0 démarrer, E1 relever, E2 dépaqueter et versionner, E3 lire, E4 relier et dériver, E5 composer, E6 contrôler, E7 publier, E8 rendre compte |
 | ZD | décision de la propriétaire (fichier YAML, doc. 1, 1.3.3) |
 | État | `couvert` · `partiel` (couvert en partie, le reste est dit) |
 | Chiffres | Sauf mention contraire, mesurés le 04/11/2026 sur les archives téléchargées ce jour-là ; la population est nommée dans la cellule |
@@ -62,7 +62,7 @@ Z2 = faits lus (doc. 1, 1.4) ; Z3 = graphe relié (doc. 1, 1.5) ; règles : doc.
 | --- | --- | --- | --- | --- |
 | Règle de filiation, fusion, scission | `organe`, `mandat` GP | `groupe` (R-CONTINUITE-GROUPE), `filiation` (R-FILIATION) ; ZD `filiation`, `continuite_groupe` | `catalogue/lignees.json` | couvert |
 | Positions « divergentes » | `organe.position` (versions Z1) | `position_declaree.divergente` (R-BANC) | `lignees/<adr>/fiche.json` | couvert |
-| Ancienne adresse → lignée | — | registre des adresses, page de redirection (doc. 1, 1.2.2) | — | couvert |
+| Ancienne adresse → lignée | — | registre des adresses, page de redirection (doc. 1, 1.2.2) | — | partiel : adresse d'une lignée absorbée inscrite et marquée `redirection` (`lignee_adresse`), aucune page de redirection servie ; douze adresses de l'ancien site par décision `adresse_citee` (doc. 5, Q60) |
 | En-tête | — | `lignee`, maillons | `fiche.json` | couvert |
 | En bref | `mandat` GP, `organe` ASSEMBLEE | `appartenance` (effectif jour par jour), `position_declaree` | `fiche.json` | couvert (en XVIIe, les 14 GP sont « non déclarés » : AMO30 du 03/11/2026) |
 | Qui sont-ils | — | `appartenance`, drapeau `population = candidat` | `membres.json` | couvert |
@@ -158,7 +158,7 @@ Z2 = faits lus (doc. 1, 1.4) ; Z3 = graphe relié (doc. 1, 1.5) ; règles : doc.
 | --- | --- | --- | --- |
 | 1. Ni jugement, ni score, ni classement | schéma en liste blanche : aucun champ de score ni de rang (doc. 1, 1.7.1 ; doc. 3, J13) ; aucune règle du registre ne produit de score | C4, motifs « score, rang » (E6) | couvert : ordre neutre déclaré par le schéma, doc. 1, 1.7.1 ; vérifié par C4, doc. 2, 2.8.1 (T28) |
 | 2. Traçabilité intégrale | provenance obligatoire (doc. 1, 1.0 principe 2) ; `prov_*`, `prov_url`, `licence` en Z2 ; index `src` dans chaque fichier (1.7.1) | C4 (schéma : `src` requis), E6 ; A2 : 40 faits relus sur les pages publiques (tirés en E1, comparés en E6) | couvert |
-| 3. Aucun taux de présence individuel | présences filtrées **avant stockage** : clé `participants` de l'agenda AN (190 885 entrées XVIIe), `activite_participant` du Sénat (683 522 lignes, export du 04/11/2026) ; aucun champ prévu (doc. 1, 1.0 principe 7, 1.3.2 ; doc. 2, 2.4) | C4, motif « taux de présence » (E6) | couvert |
+| 3. Aucun taux de présence individuel | présences gardées dans l'entrepôt comme à la source, **jamais lues** (décision du 06/11/2026) : clé `participants` de l'agenda AN (190 885 entrées XVIIe), `activite_participant` du Sénat (683 522 lignes, export du 04/11/2026) ; aucun champ prévu (doc. 1, 1.0 principe 7, 1.3.2 ; doc. 2, 2.4) | C4, motif « taux de présence » (E6) | couvert |
 | 4. Un 49.3 n'est pas une position de vote | le 49.3 est un acte (`sort_dossier.par_49_3`), jamais une `position_vote` (aucun scrutin à la source, cahier 3.1.4) ; motion de censure = scrutin de nature `motion_censure` | C4, motif « 49.3 en position de vote » (E6) | couvert : 49.3 repéré par l'acte qui l'engage, doc. 1, 1.6 R-SORT-FINAL (T02) |
 | 5. Une donnée manquante reste manquante | `null` + raison (principe 4) ; couverture à 9 statuts ; une règle qui ne conclut pas produit « non établi » (principe 6) ; R-NOMINATIF (scrutins XIVe à dissidents seuls) | C5 : `complet` exige un relevé complet ; un 0 ou une liste vide exige `complet` ou `relu_aucun` (E6) | couvert : doc. 2, 2.8.1 C5 (T29) |
 | 6. Position dans l'hémicycle sourcée | R-BANC : position déclarée seulement, datée par les versions Z1, jamais déduite ; sinon « non déclaré » (XVIIe : 14 GP sans position, AMO30 du 03/11/2026) | — | couvert par construction |
@@ -185,7 +185,7 @@ Z2 = faits lus (doc. 1, 1.4) ; Z3 = graphe relié (doc. 1, 1.5) ; règles : doc.
 | # | Cahier | Piège | Étape | Traitement | Où | État |
 | --- | --- | --- | --- | --- | --- | --- |
 | P01 | 3.1 | Le nom du jeu et du fichier change selon la législature | E1, config | chemins découverts sur les pages de jeux, rangés en configuration par législature, jamais supposés | doc. 2, 2.2 ; doc. 1, 1.8 | partiel (archive figée absente des pages : N15) |
-| P02 | 3.1 | Plusieurs schémas pour un même objet | E2, E3 | découpeur à variantes ; schéma reconnu par l'empreinte des clés, sinon relevé `suspect` | doc. 2, 2.2 étape 3, 2.4 | couvert |
+| P02 | 3.1 | Plusieurs schémas pour un même objet | E2, E3 | dépaqueteur à l'octet près, variantes lues par les lecteurs ; schéma reconnu par l'empreinte des clés, sinon relevé `suspect` | doc. 2, 2.2 étape 3, 2.4 | couvert |
 | P03 | 3.1 | Un objet seul = dictionnaire, plusieurs = liste | E2, E3 | normalisation ; tests « liste au lieu de dictionnaire » | doc. 2, 2.4, 2.12 | couvert |
 | P04 | 3.1 | Une adresse, deux fichiers | E1 | reprise seulement avec `If-Range` sur l'`ETag`, sinon fichier entier ; test du zip | doc. 2, 2.2 étape 2 | couvert |
 | P05 | 3.1 | Transferts coupés ; reprise non honorée | E1 | taille = `Content-Length`, CRC ; 3 tentatives ; sinon relevé `echec`, rien ne change | doc. 2, 2.2, 2.11 | couvert |
@@ -204,14 +204,14 @@ Z2 = faits lus (doc. 1, 1.4) ; Z3 = graphe relié (doc. 1, 1.5) ; règles : doc.
 | P18 | 3.1.1 | Organe créateur d'une mission ; mission commune sans commission | E3 | `organe.organe_createur` | doc. 1, 1.4 B | couvert |
 | P19 | 3.1.1 | La circonscription est un attribut du mandat | E3 | `mandat.circonscription` | doc. 1, 1.4 B | couvert |
 | P20 | 3.1.1 | Rien ne dit pourquoi une législature a pris fin | ZD | décision `fin_legislature` + décret | doc. 1, 1.3.3 | couvert |
-| P21 | 3.1.1 | Collaborateurs nommés | E2 | filtrés avant stockage ; ZD `publication_donnee` (refus par défaut) | doc. 1, 1.3.2, 1.3.3 | couvert |
+| P21 | 3.1.1 | Collaborateurs nommés | E3 | gardés dans l'entrepôt, jamais lus (lecteur `an_acteurs`) ; ZD `publication_donnee` (refus par défaut) | doc. 1, 1.3.2, 1.3.3 | couvert |
 | P22 | 3.1.2 | Le numéro repart à 1 ; le Congrès est hors périmètre | E3 | identifiant complet comme clé | doc. 1, 1.2.1 | couvert : Congrès lu puis écarté avec sa raison, doc. 1, 1.2.1 (T08) |
 | P23 | 3.1.2 | Trois schémas de listes nominatives | E3 | table de correspondance du lecteur | doc. 2, 2.4 | couvert (précisé en N31) |
 | P24 | 3.1.2 | Un scrutin ne dit pas son texte (référence : 3 752 sur 9 578, XVIIe, 04/11/2026) | E4 | R-LIEN-SCRUTIN-DOSSIER, trois routes, accord exigé | doc. 1, 1.6 ; doc. 3, J22 | couvert |
 | P25 | 3.1.2 | « Ordinaire » couvre tout ; nature dans l'intitulé | E4 | R-NATURE-SCRUTIN, sinon `non_etablie` | doc. 1, 1.6 | partiel (N34) |
-| P26 | 3.1.3 | XIVe : autre schéma, autre page | E1, E2 | chemin découvert ; découpeur XIVe | doc. 2, 2.2, 2.4 | couvert |
+| P26 | 3.1.3 | XIVe : autre schéma, autre page | E1, E3 | chemin découvert ; lecteurs XIVe (fichier unique versionné comme un tout) | doc. 2, 2.2, 2.4 | couvert |
 | P27 | 3.1.3 | Couple (état, sous-état) ambigu | E4 | R-SORT-AMENDEMENT (table publiée), sinon « sort non établi » | doc. 1, 1.6 | couvert |
-| P28 | 3.1.3 | Copies divergentes ; fait foi la liste du premier signataire | E3, E4 | `signature` lue dans la copie du premier signataire ; R-AMENDEMENT ; A4 | doc. 1, 1.4 C, 1.6 | couvert : clé (`examenRef`, `numeroLong`), doc. 1, 1.6 R-AMENDEMENT ; découpage par uid, doc. 2, 2.4 (T05) |
+| P28 | 3.1.3 | Copies divergentes ; fait foi la liste du premier signataire | E3, E4 | `signature` lue dans la copie du premier signataire ; R-AMENDEMENT ; A4 | doc. 1, 1.4 C, 1.6 | couvert : clé (`examenRef`, `numeroLong`), doc. 1, 1.6 R-AMENDEMENT ; dépaquetage par uid, doc. 2, 2.4 (T05) |
 | P29 | 3.1.3 | L'amendement vise un document | E3 | `amendement.document` → `document.dossier` | doc. 1, 1.4 C | couvert |
 | P30 | 3.1.3 | Des dizaines de cosignataires | E3, E5 | table `signature` ; liste complète dans le jeu | doc. 1, 1.4 C, 1.7.4 | couvert ; volume : doc. 4 |
 | P31 | 3.1.4 | Loi promulguée sous la législature suivante : dans aucune archive (71 sur 1 085, 04/11/2026) | E6 | A3 compare avec le JO (détection) | doc. 2, 2.8.2 A3 | couvert : rattachement, doc. 1, 1.6 R-LOI-DOSSIER (T18) |
@@ -230,17 +230,17 @@ Z2 = faits lus (doc. 1, 1.4) ; Z3 = graphe relié (doc. 1, 1.5) ; règles : doc.
 | P44 | 3.1.5 | Un créneau n'est pas un sujet ; codes des lois de finances | E4 | R-SUJET | doc. 1, 1.6 | couvert |
 | P45 | 3.1.6 | Schéma en capitales à partir de la XVe | E3 | variantes du lecteur | doc. 2, 2.4 | couvert |
 | P46 | 3.1.6 | Une QG ne cite aucune séance | E4 | R-QAG (date + sujet), sinon `non_appariee` | doc. 1, 1.6 | couvert |
-| P47 | 3.1.7 | Présence nominative dans l'agenda | E2 | `participants` filtré avant stockage | doc. 1, 1.3.2 | couvert |
+| P47 | 3.1.7 | Présence nominative dans l'agenda | E3 | `participants` gardé dans l'entrepôt, jamais lu (lecteur `an_agenda`) | doc. 1, 1.3.2 | couvert |
 | P48 | 3.1.7 | Séances du Sénat, du Congrès et commissions mêlées | E3 | `reunion.type` | doc. 1, 1.4 D | couvert |
 | P49 | 3.1.7 | Points sans dossier ; un titre → deux dossiers | E3, E4 | `point_odj.dossiers` (liste) ; « non lié » en couverture | doc. 1, 1.4 D | couvert |
 | P50 | 3.1.8 | Texte des articles : 404 sur la XIVe ; autre gabarit pour les lois de finances | — | source non retenue (aucun besoin de la partie 4), déclarée sur la page des sources | doc. 1, 1.4 G | couvert (T36) |
-| P51 | 3.1.9 | Pages publiques = seconde route | E1, E6 | A2 (40 faits de vote, 20 signataires d'amendement) ; `prov_url` | doc. 2, 2.2, 2.8.2 | couvert |
+| P51 | 3.1.9 | Pages publiques = seconde route | E1, E6 | A2 (40 faits de vote, 20 signataires d'amendement, toutes les périodes de mandat de député contre Sycomore, 20 textes : dépôt, étape, loi) ; `prov_url` | doc. 2, 2.2, 2.8.2 | couvert |
 | P52 | 3.1.10 | Fichier des places XIVe : sans `PA`, état déduit, usage commercial interdit | E2, E3 | faits seulement ; `PA` rétabli ; `siege.origine` | doc. 1, 1.2.1, 1.3.2, 1.4 B | couvert |
 | P53 | 3.2 | Export du Sénat servi vide (444 o, HTTP 200) | E1 | plancher de taille, nombre de tables | doc. 2, 2.2 | couvert |
 | P54 | 3.2 | Les extraits CSV ne donnent que le groupe courant | E1 | export complet | doc. 2, 2.2 | couvert |
 | P55 | 3.2 | CSV latin-1 précédés de commentaires | E1 | export SQL (UTF-8) | doc. 2, 2.2 | couvert |
 | P56 | 3.2 | Aucun identifiant commun avec l'AN | E4 | Wikidata P1808, sinon état civil + date de naissance | doc. 1, 1.6 R-IDENTITE | partiel (N70) |
-| P57 | 3.2 | Tables de présence | E2 | écartées au découpage | doc. 1, 1.3.2 ; doc. 2, 2.2 | couvert |
+| P57 | 3.2 | Tables de présence | E3 | gardées dans l'entrepôt, jamais lues (liste blanche du lecteur `senat_export`) | doc. 1, 1.3.2 ; doc. 2, 2.2 | couvert |
 | P58 | 3.3 | `data` : objet ou liste | E3 | normalisation | doc. 2, 2.12 | couvert |
 | P59 | 3.3 | Limitation de débit muette (pas de 429) | E1 | délai d'attente de 30 s, débit adaptatif | doc. 2, 2.2 étape 5 | couvert |
 | P60 | 3.3 | 404 passagers pendant la pagination | E1, E2 | nouvelles tentatives ; un relevé incomplet ne fait constater aucun retrait | doc. 2, 2.2, 2.4 | couvert |
@@ -250,7 +250,7 @@ Z2 = faits lus (doc. 1, 1.4) ; Z3 = graphe relié (doc. 1, 1.5) ; règles : doc.
 | P64 | 3.3 | Aucun identifiant commun PE ↔ AN | E4 | R-IDENTITE | doc. 1, 1.6 | couvert |
 | P65 | 3.3 | CC BY 4.0, `User-Agent` qui identifie | E1 | `User-Agent` qui nomme le site et un contact | doc. 2, 2.2 | couvert (T26) |
 | P66 | 3.4 | Trois jours de rétention | E1 | premier remplissage commencé par Parltrack | doc. 2, 2.13 | dépassé (I01) |
-| P67 | 3.4 | Un tableau JSON, un objet par ligne | E2 | découpeur Parltrack | doc. 2, 2.4 | couvert |
+| P67 | 3.4 | Un tableau JSON, un objet par ligne | E3 | lecteurs Parltrack | doc. 2, 2.4 | couvert |
 | P68 | 3.4 | Deux formes d'identifiant de scrutin | E3 | forme canonique + alias | doc. 1, 1.2.1 | couvert |
 | P69 | 3.4 | Scrutins sans dossier | E3 | `null` + raison | doc. 1, 1.0 principe 4 | couvert |
 | P70 | 3.4 | Aucun sort d'amendement, aucune issue de dossier | E3 | `amendement_pe` sans sort, rien de déduit | doc. 1, 1.4 F | couvert |
@@ -270,7 +270,7 @@ Z2 = faits lus (doc. 1, 1.4) ; Z3 = graphe relié (doc. 1, 1.5) ; règles : doc.
 | P84 | 3.6 | Libellé de ministère libre (260 depuis 2007) | E4, ZD | ZD `libelle_ministere` ; libellés inconnus en relecture | doc. 1, 1.3.3 ; doc. 2, 2.6 | couvert |
 | P85 | 3.6 | Serveur en panne trois jours | E1 | rattrapage à partir de la dernière livraison traitée | doc. 2, 2.2 | couvert |
 | P86 | 3.7 | Légifrance fermé aux programmes | ZD | liens seulement ; décrets lus à la main dans les ZD | doc. 1, 1.3.3 | couvert |
-| P87 | 3.8 | 11 formats ; UTF-16 sans en-tête ; exécution 2021-2022 en PDF ; 2023-2025 sans ministère ; exercice sans code ; décalage d'un an | E2, E3 | découpeur par format (empreinte de schéma) ; exécution 2021-2022 en PDF : `non_collecte` ; ministère `null` + raison ; format large remis en long | doc. 2, 2.2 ; doc. 1, 1.4 G | partiel : la règle de recalage du « décalage d'un an » attend la lecture des jeux (non mesuré) (T21) |
+| P87 | 3.8 | 11 formats ; UTF-16 sans en-tête ; exécution 2021-2022 en PDF ; 2023-2025 sans ministère ; exercice sans code ; décalage d'un an | E2, E3 | lecteur par format (empreinte de schéma) ; exécution 2021-2022 en PDF : `non_collecte` ; ministère `null` + raison ; format large remis en long | doc. 2, 2.2 ; doc. 1, 1.4 G | partiel : la règle de recalage du « décalage d'un an » attend la lecture des jeux (non mesuré) (T21) |
 | P88 | 3.8 | Budget de l'année : seulement sur `budget.gouv.fr` | E4 | `trou_source` | doc. 2, 2.2 | couvert (T21) |
 | P89 | 3.8 | Licence à vérifier jeu par jeu | E1 | licence lue jeu par jeu dans le catalogue ; sans licence : non collecté | doc. 2, 2.2 ; doc. 1, 1.4 G | couvert (T21) |
 | P90 | 3.8 | Drees : classeur renommé à chaque édition | E1 | classeur retrouvé sur la page du jeu à chaque édition | doc. 2, 2.2 | couvert (T21) |
@@ -348,7 +348,7 @@ déclarés sur la page des sources (doc. 1, 1.4 G ; T36).
 | N34 | an-scrutins §3.2 | « Partie » d'un texte financier ; ensemble sans le mot ; résolutions 34-1 | E4 | nature `partie_de_texte` ; « ensemble » sans le mot | doc. 1, 1.6 R-NATURE-SCRUTIN | couvert (T06) ; résolutions : doc. 5, Q20 |
 | N35 | an-scrutins §4.3 | Dossiers saisis au seul Sénat (521 en XVIIe) | E4 | matière « saisi au Sénat seulement » | doc. 1, 1.6 R-MATIERE | couvert (décision du 04/11/2026, doc. 5, Q19) |
 | N36 | an-scrutins §4.3 | 49.3 : seules 5 des 16 décisions XVIIe le disent dans la conclusion | E4 | acte `DeclarationGouvernement_Type`, `fam_code = Art.49.3` | doc. 1, 1.6 R-SORT-FINAL | couvert (T02, X4) |
-| N37 | an-amendements §3.1 | Dossier `incorrect_data/` : 170 amendements hors de leur dossier | E2 | découpage par uid, jamais par chemin | doc. 2, 2.4 | couvert (T05) |
+| N37 | an-amendements §3.1 | Dossier `incorrect_data/` : 170 amendements hors de leur dossier | E2 | dépaquetage par uid, jamais par chemin | doc. 2, 2.4 | couvert (T05) |
 | N38 | an-amendements §3.2 | 346 paires de copies `B` / `BTC`, identiques (XVIIe) | E3, E4 | clé (`examenRef`, `numeroLong`), copie `BTC` retenue, autre uid en alias | doc. 1, 1.6 R-AMENDEMENT | couvert (T05, X5) |
 | N39 | an-amendements §3.5 | 23 669 irrecevables sans exposé ni dispositif ; 11 528 discutés sans dispositif | E3, E5 | `null` + raison | doc. 1, 1.0 principe 4 | couvert : couverture du filtre, doc. 1, 1.5.5 (T31) |
 | N40 | an-amendements §3.4 | `sort` rempli pour « Discuté » seulement ; sous-état « R » muet | E4 | R-SORT-AMENDEMENT : « sort non établi » | doc. 1, 1.6 | couvert |
@@ -374,7 +374,7 @@ déclarés sur la page des sources (doc. 1, 1.4 G ; T36).
 | N60 | autres-sources §9 | `schedule` parfois abandonné ; désactivé après 60 jours d'inactivité | E0 | deux déclenchements ; alerte `planification` ; commit nocturne | doc. 2, 2.3 | couvert (un commit du robot compte-t-il comme activité ? non documenté : l'alerte le surveille) |
 | N61 | autres-sources §9 | `concurrency` : une seule exécution en attente, la suivante l'annule | E0 | `concurrency` avec `queue: max` | doc. 2, 2.1 | couvert (T37) |
 | N62 | autres-sources §9 | *Releases* : 1 000 fichiers au plus par *release* | E2, E7 | segments plafonnés à 90 Mo, une *release* d'entrepôt par année | doc. 2, 2.4, 2.9 | couvert ; nombre : doc. 4 |
-| N63 | autres-sources §9 | Artefacts : 500 Mo inclus ; gratuité non dite pour un dépôt public | E7 | la candidate n'est plus gardée en artefact : recalculée hors de la fenêtre interdite ; artefacts : déploiement Pages et essais | doc. 2, 2.9, 2.12 | partiel : gratuité à vérifier (doc. 4) |
+| N63 | autres-sources §9 | Artefacts : 500 Mo inclus ; gratuité non dite pour un dépôt public | E7 | artefacts entre les tâches d'une même exécution : l'acquis et la candidate (14 jours), le rapport (90 jours) ; une candidate n'est jamais reprise d'une exécution à l'autre ; artefacts aussi : déploiement Pages et essais | doc. 2, 2.9, 2.12 | partiel : gratuité à vérifier (doc. 4) |
 
 ### 8.3.3 Pièges du cahier infirmés ou dépassés par les mesures
 
@@ -416,7 +416,7 @@ déclarés sur la page des sources (doc. 1, 1.4 G ; T36).
 | E10 | 6.1 Groupe nouveau rattaché par la règle | R-FILIATION ; `a_trancher` → ZD ; A7 | doc. 1, 1.6 ; doc. 2, 2.6 | couvert ; statut d'un groupe en attente de décision : doc. 5, Q22 (T40) |
 | E11 | 6.1 Sortie pour une raison établie ; plus mise à jour ; données gardées | ZD `perimetre` ; population bornée avec sa raison ; Z1 gardé | doc. 1, 1.3.3, 1.5.1 | couvert : relevés propres arrêtés, doc. 2, 2.1 point 5 (T39) |
 | E12 | 6.1 Aucune personne attendue écartée en silence | R-PERIMETRE ; contrôle bloquant C7 | doc. 1, 1.6 ; doc. 2, 2.8.1 | couvert (T04) |
-| E13 | 6.1 L'adresse d'une fiche ne change pas | registre des adresses (ajout seul) ; redirections ; C2 | doc. 1, 1.2.2 ; doc. 2, C2 | couvert |
+| E13 | 6.1 L'adresse d'une fiche ne change pas | registre des adresses (ajout seul) ; redirections ; C2 | doc. 1, 1.2.2 ; doc. 2, C2 | partiel : registre des adresses pour les lignées seulement, sans page de redirection ; adresses des candidats et des gouvernements recalculées (doc. 1, 1.2.2 ; doc. 5, Q60) |
 | E14 | 6.2 Anomalies | voir 8.4.2 | doc. 2, 2.8 | voir 8.4.2 |
 | E15 | 6.3 Mise à jour chaque soir, qui collecte tout | `schedule` à 19 h 30 et 21 h 30 Europe/Paris ; alerte `planification` au-delà de 26 h ; « tout » = toutes les sources interrogées | doc. 2, 2.3 ; doc. 3, point 1 | couvert |
 | E16 | 6.3 Lancement manuel aux options lisibles | `workflow_dispatch` à listes de choix | doc. 2, 2.12 | couvert (refusé entre 9 h et 19 h les jours ouvrés) |
@@ -424,7 +424,7 @@ déclarés sur la page des sources (doc. 1, 1.4 G ; T36).
 | E18 | 6.3 Erreur de lancement signalée tout de suite | E0 valide les options ; cause en tête du résumé + alerte | doc. 2, 2.1 | couvert |
 | E19 | 6.3 Jamais deux mises à jour à la fois | `concurrency` avec `queue: max` + numéro de génération | doc. 2, 2.1 | couvert (T37) |
 | E20 | 6.3 Le développement continue ; données = code publié | étiquettes `publiable` → `code-publie` ; import le soir ; `recalcul` | doc. 2, 2.12 ; doc. 3, J20 | couvert |
-| E21 | 6.3 Une interruption ne coûte pas tout | E1-E2 persistées par source ; cache E3 | doc. 2, 2.11 ; doc. 3, J15 | couvert |
+| E21 | 6.3 Une interruption ne coûte pas tout | acquis de la collecte remis en artefact, écrit par `ecrire` ou par la nuit suivante (rattrapage) ; collecte arrêtée à 270 min pour le déposer ; cache E3 | doc. 2, 2.4, 2.11 ; doc. 3, J15 | couvert |
 | E22 | 6.3 État précédent complet ou nouveau complet | préfixe `/donnees/<id-publication>/` ; une 404 recharge la page | doc. 1, 1.7.2 ; doc. 2, 2.9 | couvert |
 | E23 | 6.3 Sans geste humain | `deploy-pages` | doc. 2, 2.9 | couvert |
 | E24 | 6.3 Une publication = données + code seulement | — | doc. 2, 2.9 | couvert |
@@ -433,7 +433,7 @@ déclarés sur la page des sources (doc. 1, 1.4 G ; T36).
 | E27 | 6.3 Alertes : une par sujet, sans répétition | issues du dépôt privé, clé de sujet stable | doc. 2, 2.10 ; doc. 3, J19 | couvert |
 | E28 | 6.3 Journaux publics conformes aux règles | indices de contrôle en local seulement ; le rapport ne donne que des comptes et des identifiants | doc. 2, 2.8.3, 2.10 | couvert : catalogue fermé de messages, doc. 2, 2.10 (T38) |
 | E29 | 6.3 Test sans réseau sur extraits réels | transport remplaçable ; extraits datés et sourcés ; fichiers de référence | doc. 2, 2.12 | couvert |
-| E30 | 6.4 Ajouter une source, un champ, un type de fiche sans réécriture à la main | collecteur, découpeur, lecteur, composeur et schéma ajoutés ; Z0-Z1 intacts | doc. 1, 1.8 ; scénario 8.5.3 | couvert |
+| E30 | 6.4 Ajouter une source, un champ, un type de fiche sans réécriture à la main | collecteur, dépaqueteur (format nouveau), lecteur, composeur et schéma ajoutés ; Z0-Z1 intacts | doc. 1, 1.8 ; scénario 8.5.3 | couvert |
 | E31 | 6.4 XVIIIe sans réécrire le traitement | configuration ; variantes de schéma détectées | doc. 1, 1.8 ; scénario 8.5.4 | couvert : détection et alerte, doc. 1, 1.8 ; A7 (T40) |
 
 ### 8.4.2 Chaque anomalie de 6.2 : contrôle, moment, avertissement
@@ -453,13 +453,14 @@ privée** par sujet (notification GitHub, rien quand rien ne change), le **compt
 | **Bloquant** : objets tombés à zéro d'un coup | C6 : une famille à zéro pour tout un type de fiche, ou en baisse de plus de 20 % sans retrait constaté | E6 | issue `controle:C6` | idem |
 | **Bloquant** : personne attendue écartée en silence (6.1) | C7 : chaque personne attendue (R-PERIMETRE) est servie ou sortie avec une raison | E6 | issue `controle:C7` avec les personnes nommées | idem |
 | **Avertissement** : fiche hors modèle (par décision) | A1 | E6 | issue par sujet ; rapport | — (décision `fiche_hors_modele`, doc. 1, 1.3.3 ; T41) |
-| **Avertissement** : faits tirés au sort ≠ autre route | A2 : 40 faits de vote et 20 listes de signataires d'amendement relus sur les pages publiques de l'AN (sorts, mandats, dates : pas encore, #63) | tirage en E1, comparaison en E6 | issue avec le fait et l'adresse | — |
+| **Avertissement** : faits tirés au sort ≠ autre route | A2 : 40 faits de vote, 20 listes de signataires d'amendement et le stade et les dates de 20 textes relus sur les pages publiques de l'AN ; toutes les périodes de mandat de député servies comparées aux fiches Sycomore relevées (sorts d'amendement : pas encore, #63) | tirage en E1, comparaison en E6 | issue avec le fait et l'adresse | — |
 | **Avertissement** : un total diffère d'une autre source | A3 : effectif de chaque groupe à chaque scrutin ; lois promulguées comparées au JO | E6 | issue par sujet | — (scrutins XIVe à dissidents seuls et lignes `PO0` exclus : T09) |
 | **Avertissement** : un objet risque de s'afficher deux fois | A4 : copies d'amendement, dossiers XIVe réapparus, CR XVe dans la XVIe, loi et son rectificatif | E6 | issue par sujet | — (doublons RNE compris : T22) |
 | **Avertissement** : famille à zéro pour tout le monde | A5 (famille nouvelle ou optionnelle) | E6 | issue par sujet | — |
 | **Avertissement** : couverture insuffisante | A6 : candidats sans fiche, personnes sans parole sur une période couverte, groupes trop peu couverts | E6 | issue par sujet | — (seuil : doc. 5, Q1) |
 | **Avertissement** : entrées non résolues, relectures | A7 : files de relecture (E4), décisions qui ne s'appliquent plus | E4 → E6 | issue `relecture:<file>` | — |
 | **Avertissement** (ajouté) : mandat ouvert dans un organe clos | A8 | E6 | issue par sujet | — |
+| **Avertissement** (ajouté le 13/11/2026, issue #42) : valeur vidée d'une publication à l'autre ; liste des candidats | A9 : nombre passé à 0 ou à rien (toujours), autre champ vidé (au-delà de 50 faits ou de 1 %) ; écarts entre la liste des candidats et Wikipédia, fiches de candidat retirées | E6 | issue par sujet | — (doc. 2, 2.8.2) |
 | **À la main** : audit, indices de contrôle | `empreinte audit` : volumes, complétude, cohérence, fraîcheur, cohésion et participation individuelles | à la demande, sur la machine de la propriétaire | sortie locale, hors dépôt, jamais dans les journaux publics | — |
 
 Une levée est un commit sur le dépôt public : elle respecte la fenêtre (pas entre 9 h et 19 h
@@ -483,7 +484,7 @@ du 03/11/2026, le retrait se lit dans l'**unique copie réécrite** ; les 346 pa
 | Avant | Publication du 11/11 : `signature(AM…N000056, B)` est servie dans le jeu téléchargeable (`signatures`) et comptée « à part » dans la lignée de B (`proposes.json`) | — | la signature de B |
 | Nuit du 12 au 13 | L'AN republie l'archive (heure variable : N19) | — | inchangé |
 | 13/11 19 h 30, E0-E1 | Requête conditionnelle → nouvel ETag ; téléchargement vérifié (`Content-Length`, zip) → relevé `nouveau`, `complet`. Si l'archive est coupée → relevé `echec` : **rien ne change**, nouvelle tentative le lendemain (doc. 2, 2.2, 2.11) | si l'échec dure, une issue `panne:an-amendements` | inchangé |
-| E2 | Découpage **par uid**, pas par chemin (doc. 2, 2.4 : un déplacement vers `incorrect_data/` n'est pas un retrait). L'empreinte de l'amendement change → version 2 ; la version 1 est gardée (`vu_jusqu_au` = 12/11) | — | — |
+| E2 | Dépaquetage **par uid**, pas par chemin (doc. 2, 2.4 : un déplacement vers `incorrect_data/` n'est pas un retrait). L'empreinte de l'amendement change → version 2 ; la version 1 est gardée (`vu_jusqu_au` = 12/11) | — | — |
 | E3 | Le lecteur produit les lignes `signature` de la version 2, sans B. S'il existe deux copies et qu'elles divergent, R-AMENDEMENT retient la copie de la clé (`examenRef`, `numeroLong`) dont le texte égale celui de l'examen (doc. 1, 1.6) et A4 signale le double | — | — |
 | E4 | `amendement_canonique` ne change pas : il compte toujours une fois. La signature de B disparaît ; les signatures de son groupe baissent de 1 | — | — |
 | E5 | Composition déterministe : seuls les fichiers touchés changent (`proposes.json` de la lignée de B, table `signatures` du jeu) | — | — |
@@ -528,7 +529,7 @@ conception (doc. 1, 1.4 C ; T42) : le scénario montre comment il se serait ajou
 | E4 | Recalcul complet. Si une règle utilise le champ (compteurs sans non-votes de fonction), elle change de version et la méthodologie publie l'ancienne et la nouvelle | — | — |
 | E5-E6 | Tous les `votes.json` changent. C1 : aucun fait perdu. C3 : bilan équilibré. C4 : le schéma 1.1 admet le champ | rapport : « lecteur scrutin, version n+1 », faits ajoutés par famille | — |
 | E7-E8 | Code et données publiés **ensemble** ; les articles datés gardent leur copie figée | rapport public | le champ apparaît sur toutes les fiches, pour tout l'historique |
-| Limites | Champ d'une source « faits seulement » (Sycomore, Wikipédia) : chantier de relecture des pages (doc. 1, 1.3.2). Champ filtré en E2 (présences) : impossible, et interdit. Champ absent d'une ancienne version : `null` + raison | — | — |
+| Limites | Champ d'une source « faits seulement » (Sycomore, Wikipédia) : chantier de relecture des pages (doc. 1, 1.3.2). Champ interdit (présences, gardées dans l'entrepôt mais jamais lues) : interdit, aucun lecteur ne le lira. Champ absent d'une ancienne version : `null` + raison | — | — |
 
 ### 8.5.4 Ajouter la XVIIIe législature
 
@@ -595,7 +596,7 @@ incohérences sont corrigées.
 | T02 | 49.3 repéré par l'acte `DeclarationGouvernement_Type` (`Art.49.3`) | comblé | doc. 1, 1.6 R-SORT-FINAL, 1.4 C `acte` |
 | T03 | C1 : fait absent de la nouvelle version de son objet | comblé | doc. 2, 2.8.1 C1 |
 | T04 | Contrôle bloquant de périmètre | comblé | doc. 2, 2.8.1 C7 ; doc. 1, 1.6 R-PERIMETRE |
-| T05 | Copies d'amendement : clé, copie retenue, alias ; découpage par uid | comblé | doc. 1, 1.6 R-AMENDEMENT, 1.4 C ; doc. 2, 2.4 |
+| T05 | Copies d'amendement : clé, copie retenue, alias ; dépaquetage par uid | comblé | doc. 1, 1.6 R-AMENDEMENT, 1.4 C ; doc. 2, 2.4 |
 | T06 | Nature `partie_de_texte` ; « ensemble » sans le mot | comblé ; statut des résolutions et des parties renvoyé en question | doc. 1, 1.5.3, 1.6 R-NATURE-SCRUTIN ; doc. 5, Q20 |
 | T07 | Type de scrutin lu par son code | comblé | doc. 1, 1.4 C `scrutin`, 1.6 R-NATURE-SCRUTIN |
 | T08 | Congrès écarté avec sa raison | comblé | doc. 1, 1.2.1, 1.6 R-PERIMETRE |

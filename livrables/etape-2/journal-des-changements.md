@@ -28,7 +28,19 @@ par changement, la plus récente en bas.
 | 14/11/2026 | Q40 : la réponse de Wikidata est gardée sous sa forme canonique (exception à P2) ; la mesure « à mesurer » du 06/11 est faite (annexe `autres-sources.md`, § 10) | 0 (cadrage, P2), 2 (sources), 5 (Q40) |
 | 15/11/2026 | Q33 (suite, issue #35) : une loi du JO est reliée à son dossier par ses travaux préparatoires si au moins deux numéros de l'Assemblée mènent au même dossier ; pour un dossier dont la suite manque aux archives, le seul texte déposé sous la législature de la promulgation suffit (contradiction jugée dans cette législature) | 1 (R-LOI-DOSSIER, R-SORT-FINAL), 5 (Q33) |
 | 15/11/2026 | Q43 (issue #63) : A3 confronte chaque nuit les lois de l'Assemblée à celles du JO ; nommées : les lois du JO absentes de l'Assemblée, sauf celles que R-LOI-DOSSIER relie ou qui précèdent les travaux préparatoires au JO (comptées), et les lois de l'Assemblée absentes du JO | 2 (A3), 5 (Q43) |
+| 23/11/2026 | Q47 (alerte #146) : « option 2 », explication automatique, à la place de la liste de décisions `rattachement_loi` retenue puis abandonnée le même jour ; A3 compte sans les nommer les lois du JO non reliées dont le texte a été engagé sous la législature précédente et dont aucun document de l'Assemblée cité n'existe dans nos archives ; l'explication « avant les travaux au JO » (Q43) est retirée | 2 (A3), 5 (Q47) |
 | 15/11/2026 | Q44 (alerte #148) : C1 tient pour « identité enrichie », et non pour perdu, un fait qui garde tous ses identifiants et en gagne seulement | 2 (C1), 5 (Q44) |
+| 23/11/2026 | Q45 (alerte #118) : une motion de renvoi en commission adoptée (`TSORTMOT01`, motion `TMP03`) laisse le sort « non connu », raison `renvoye_en_commission` | 1 (R-ETAPE, R-SORT-FINAL), 5 (Q45) |
+| 23/11/2026 | Q46 (alerte #118) : une décision publiée sans conclusion (`TSORTFnull`) est « sans conclusion », jamais déduite de la suite | 1 (R-ETAPE, R-SORT-FINAL), 5 (Q46) |
+| 23/11/2026 | Q49 : un mandat local disparu du répertoire garde sa ligne, fin observée entre deux relevés | 1 (R-MANDAT-LOCAL), 2 (RNE), 5 (Q49) |
+| 23/11/2026 | Q50 : mandat et fonction locaux, deux lignes | 1 (R-MANDAT-LOCAL, R-CARRIERE), 5 (Q50) |
+| 23/11/2026 | Q51 : candidat sans date de naissance : « non relu », « aucun élu de ce nom » ou « homonyme non rattaché » | 1 (R-MANDAT-LOCAL), 5 (Q51) |
+| 23/11/2026 | Q52 : mandats locaux passés déclarés par Wikidata (P39) | 1 (`fonction_wikidata`, R-MANDAT-LOCAL), 2 (point `wd-fonctions-candidats`), 5 (Q52) |
+| 23/11/2026 | Q53 : clé ambiguë, aucun rattachement, avertissement A10 | 1 (R-MANDAT-LOCAL), 2 (A10), 5 (Q53) |
+| 23/11/2026 | Q48 (issue #63) : « Ranger par la date » : R-ETAPE ne retiendra dans une législature que les actes datés entre son début et sa fin, l'identifiant de l'archive ne servant que faute de date (PR à part, pas encore autorisée) | 1 (R-ETAPE), 5 (Q48) |
+| 23/11/2026 | Q55 : C1 compte comme perte expliquée la disparition d'une ligne Wikidata P39 ; A10 rapatrié dans `controles.py` | 2 (C1, A10), 5 (Q55) |
+| 23/11/2026 | Q56 : les lignes Wikidata disparues sont nommées en A11, à part des homonymes (A10) | 2 (A10, A11), 5 (Q56) |
+| 23/11/2026 | Q57 : toute disparition d'une ligne Wikidata est expliquée, la raison dite quand elle est connue | 2 (C1, A11), 5 (Q57) |
 
 ## Corrections demandées par la commande de réalisation
 
@@ -43,13 +55,24 @@ par changement, la plus récente en bas.
 - Documents 3, 4, 6, 7 et 8 : ils parlent encore de « découpage » et de « filtrage avant
   stockage » (P2) et ne mentionnent ni le registre des identités (P1) ni les tâches du
   workflow (P3). À aligner avec les chiffres mesurés pendant l'étape 2, en fin d'étape.
+  Fait le 23/11/2026 pour le vocabulaire (P2) et les tâches (P3) des docs 0, 1, 2, 3 et 8 ;
+  les docs 6 et 7 sont des notes de renvoi ; le doc. 4 est remplacé par le rapport de mesures.
 
 ## Écarts entre la conception et le code (à résorber)
 
 | Date | Écart | Prévu |
 | --- | --- | --- |
-| 06/11/2026 | La reprise par la nuit suivante d'un acquis non écrit (tâche `ecrire` perdue) n'est pas encore codée : l'artefact reste 14 jours, mais rien ne le relit | tranche 2, avec le droit `actions: read` pour la seule tâche `preparer` |
-| 06/11/2026 | `concurrency` sans l'option `queue: max` (syntaxe non vérifiée) : une exécution en attente peut être remplacée par une plus récente | à vérifier dans la documentation de GitHub |
+| 06/11/2026 | La reprise par la nuit suivante d'un acquis non écrit (tâche `ecrire` perdue) n'est pas encore codée : l'artefact reste 14 jours, mais rien ne le relit | tranche 2, avec le droit `actions: read` pour la seule tâche `preparer`. **Fait** (module `rattrapage` ; `preparer` et `collecter` ont `actions: read`) |
+| 06/11/2026 | `concurrency` sans l'option `queue: max` (syntaxe non vérifiée) : une exécution en attente peut être remplacée par une plus récente | à vérifier dans la documentation de GitHub. Toujours ouvert au 23/11/2026 ; doc. 2 (2.1) et doc. 8 (E19, N61, T37) le disent pourtant « couvert » |
+| 23/11/2026 | Fenêtre interdite (9 h–19 h, jours ouvrés) non codée : `fenetre_interdite: false`, lu par aucun module | doc. 5, Q59 ; avant le dépôt public |
+| 23/11/2026 | Horaires : déclenchements à 20 h 30 et 23 h 30 **UTC** ; doc. 2 (2.3) et doc. 8 (E15) disent 19 h 30 et 21 h 30 heure de Paris (clé `timezone`) et un troisième déclenchement le week-end | doc. 2, 2.3 à aligner, ou le workflow |
+| 23/11/2026 | Version exécutée : la branche par défaut ; ni étiquette `publiable` ni `code-publie`, ni import du dépôt privé (doc. 2, 2.1 point 3, 2.12 ; doc. 3, J20) | migration |
+| 23/11/2026 | Lancement manuel : modes `quotidien`, `complet`, `essai` et liste de points d'accès ; pas de mode `recalcul`, ni d'options « personnes » et « publier » ; l'essai calcule tout, sans limite aux personnes ; ni `empreinte essai --hors-ligne`, ni `instantane`, ni `audit`, ni `sauvegarde` (doc. 2, 2.8.3, 2.12 ; doc. 5, Q16) | — |
+| 23/11/2026 | E7–E8 : le code écrit les *releases* `entrepot` (une seule, pas une par année), `archives-brutes`, `export` et `publication` ; Pages sert la documentation et la page minimale. Pas de magasin des publications, de `registre/publications.jsonl`, de `donnees-derniere`, d'édition mensuelle, d'empreinte racine sur data.gouv.fr ; le rapport est un artefact `rapport` (90 jours), pas un actif de la *release* `rapports` (doc. 2, 2.9, 2.10, 2.14) | migration |
+| 23/11/2026 | Sources : aucun point d'accès pour les finances, la Drees, l'Unédic ni EuroVoc, que doc. 2 (2.2, 2.3) dit relevés | — |
+| 23/11/2026 | Registre des règles (doc. 1, 1.6, non modifié ici : PR ouvertes) : 17 règles du code n'y ont pas de ligne (R-49-3, R-ACTIVITE-PE, R-CANDIDATURES, R-DEPUTES, R-FONCTIONS, R-GOUVERNEMENTS, R-LEGISLATURES, R-LIGNEE, R-LOI-CITEE, R-MANDAT-LOCAL, R-ORDRE-DU-JOUR, R-PAROLE-PERSONNE, R-PAROLES-GOUVERNEMENT, R-QUESTION-PERSONNE, R-VOTE-PE, R-VOTE-PERSONNE ; R-LOIS n'est citée que dans la ligne de R-LOI-DOSSIER) ; R-COUVERTURE, R-RATIO et R-EXERCICE n'existent pas dans le code ; R-TERME-LEGAL est dans R-LEGISLATURES v2 ; R-ARBITRAGE-ARCHIVES, R-BANC, R-NOMINATIF, R-POSITION-GROUPE, R-SORT-AMENDEMENT et R-MESURE-NOMINATIVE sont des parties d'autres modules, sans version propre | doc. 1, 1.6, après les PR #160 à #165 |
+| 23/11/2026 | C2 vérifie qu'un lien vise une fiche de la candidate, pas une adresse du registre ; C4 vérifie les clés et colonnes interdites, le 49.3 en position de vote et la forme contre le schéma commité, mais ni l'ordre neutre des listes, ni les textes portés servis avant examen (tenus par R-TEXTE-PORTE), ni les licences (calculées par la composition) ; C5 ne vérifie que « complet » avec une source en panne, pas le 0 servi sans `complet` ni `relu_aucun` ; un avertissement `C1-C6` dit l'absence de publication précédente (#40), non documenté | doc. 2, 2.8.1 |
+| 23/11/2026 | Adresses : fiches servies sous `candidat/<adresse>` (`candidats/<adresse>/`), pas `/personnes/…` (doc. 1, 1.2.2) ; registre pour les lignées seulement | doc. 5, Q60 |
 
 ## Tranche 2 (06/11/2026) : lecture et export
 
@@ -1063,6 +1086,19 @@ Essai 45190042750, sur l'entrepôt de la nuit du 22/11, comparé à la g20 : **p
 
 Après la fusion de #144, #151 et #152 dans `main`, essai 45193620673 (branche à jour de `main`, même entrepôt, comparé à la g20) : **publication autorisée**, aucune anomalie C1 ; 72 fiches, 2 971 066 faits publiés ; A2 : votes 40/40, signataires 20/20 ; calcul 12 min 32 s, pic 6,4 Go. Avertissements : A3 (lois, connu) et A9 (5 276 liens `amendement_lignee.source_url` vidés, attendu par #152). Faits sans identifiant de l'essai : mêmes types que dans la g20 (1 961 `actes_compte`, 3 lignes « Non-inscrits » ; plus les 11 095 `parole_sujet`, reconnus à leur contenu), aucun n'est perdu.
 
+## Conclusions non classées : classement décidé (23/11/2026)
+
+Branche `etape-2-a7-conclusions`, alerte #118 (avertissement A7). Classement proposé, puis
+**décidé par la propriétaire le 23/11/2026** (doc. 5, Q45 et Q46).
+Relu sur les archives des dossiers XIVe-XVIIe du 04/11/2026 (`travail/sources`), en local.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-ETAPE version 3 : `TSORTMOT01` « Motion adoptée » se lit avec le type de sa motion (acte `MotionProcedure_Type` de même uid sans `DEC`, même dossier) ; renvoi en commission (`TMP03`) → issue `renvoi_en_commission`, ni adoption ni rejet ; une autre motion, ou une motion introuvable, reste non classée. `TSORTFnull` → issue `sans_conclusion`, jamais déduite de la suite | l'alerte #118 nomme chaque nuit 2 codes (36 décisions : 25 + 11). Les 25 décisions `TSORTMOT01` (25 dossiers, 10 de la XIVe et 15 de la XVe, en première lecture) suivent toutes une motion de renvoi en commission : le journal du 13/11 (« la source ne dit pas laquelle ») cherchait le type de motion sur la décision, il est sur l'acte voisin. Les 11 `TSORTFnull` sont des décisions du Sénat en nouvelle lecture, sans libellé, dans des dossiers tous promulgués | 1 (1.6 R-ETAPE), 5 (Q45, Q46) |
+| R-SORT-FINAL version 5 : raison `renvoye_en_commission` quand la dernière décision est un renvoi en commission ; une décision `sans_conclusion` n'entre dans `conclusion_non_classee` (donc dans A7) que si elle laisse le sort non connu (raison `conclusion_non_classee`) ; le libellé servi est le premier dans l'ordre alphabétique, A7 écrit « sans libellé » au lieu de « None » ; vocabulaire `raison_sort` (C4) complété | 22 dossiers passent de `conclusion_non_classee` à `renvoye_en_commission` (les 3 autres ont une autre raison). La source écrit « Motion adoptée » et « Motion adopté(e) » : `any_value` en prenait un au hasard, et l'empreinte de l'alerte changeait avec lui (4 bascules du 13 au 22/11). Mesuré sur les archives : 4 317 décisions avant et après (la jointure à la motion ne double rien), plus aucun code non classé ; A7 ne devrait plus nommer de conclusion | 1 (1.6 R-SORT-FINAL) ; `config/schema_fichiers.yaml` |
+
+Restent dans l'alerte #118, hors de cette branche : les écarts de date de promulgation entre le JO
+et l'Assemblée (lois 2014-567 à 2024-582, une dizaine).
 
 ## Liste des candidats : lecture franceinfo du 23/11/2026 (alerte #155)
 
@@ -1071,6 +1107,121 @@ Branche `etape-2-candidature-2026-11-23`. La page franceinfo a été télécharg
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
 | Décision `candidature` : nouveau fichier `references/candidature/2026-11-23-franceinfo.yaml` (38 déclarés, 7 retirés, X. Bertrand `non_listee`). Dominique de Villepin (La France humaniste, Q131660) et Serge Tinland (Divers, sans article ni élément Wikidata) entrent comme déclarés ; François Ruffin passe de déclaré à retiré. Le fichier du 13/11 reste, la liste en vigueur est la plus récente | alerte #155 (A9) : Wikipédia disait Villepin déclaré et Ruffin retiré, la liste du 13/11 l'inverse ; la page du 23/11 donne raison à Wikipédia | — |
+
+## Livrables alignés sur le code : les six écarts des illustrations (23/11/2026)
+
+Branche `etape-2-docs-alignes`. À la fusion des docs 6 et 7 dans les docs 2 et 1 (13/11/2026,
+PR #104), six écarts entre les schémas et la spécification ont été relevés sans être
+tranchés. Chacun est corrigé d'après le code de `main` (4084a9c) ; quand le code s'écarte de
+l'intention écrite de la propriétaire, le document dit « prévu » et « réalisé » et la
+question est posée (doc. 5, Q58 à Q60). Aucun code modifié.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| 1. Filtrage : rien n'est filtré avant stockage ; présences et collaborateurs restent dans l'entrepôt, jamais lus (lecteurs `an_agenda`, `an_acteurs`, liste blanche de `senat_export`) ; seule la réponse de Wikidata est gardée sous forme canonique (Q40) | `depaquetage.py` (octets exacts) ; décision du 06/11/2026 | 1 (vue d'ensemble, 1.5.4), 2 (2.0, 2.2 Sénat, 2.15), 8 (règle 3, P21, P47, P57, limites) — fait |
+| 2. Vocabulaire : « dépaqueter », « dépaqueteur » ; les variantes de schéma sont l'affaire des lecteurs | P2 ; module `depaquetage` | 0, 1 (vue d'ensemble, 1.8), 2, 8 — fait |
+| 3. Qui écrit : cinq tâches ; `collecter` remet l'acquis en artefact, seule `ecrire` écrit l'entrepôt, même si le calcul échoue ; `alerter` écrit les issues ; `collecter` fait E1–E2 et `calculer` E3–E6 (2.15 disait E1–E3 et E4–E6) ; la collecte s'arrête à 270 min pour déposer son acquis | `mise-a-jour.yml`, test `test_workflow.py` | 2 (vue d'ensemble, 2.0, soirée normale, 2.11, 2.15), 3 (J15), 8 (E21) — fait |
+| 4. Acquis en attente : un artefact `acquis-gNNNNNN` gardé 14 jours, que la nuit suivante écrit (module `rattrapage`), pas le cache Actions (7 jours) ; la fenêtre interdite elle-même n'est pas codée | `rattrapage.py` ; `fenetre_interdite` lu par aucun module | 2 (2.1, fenêtre horaire, 2.4, 2.9, 2.15), 8 (N63) — fait ; question Q59 |
+| 5. Objet illisible : la version illisible ne donne aucun fait et C1 bloque (#39), là où le schéma gardait les faits précédents ; « prévu » et « réalisé » côte à côte | `lecture.py`, `cli.py` (`uids_illisibles`) | 2 (2.5, 2.11) — fait ; question Q58 |
+| 6. Registre des adresses : dans l'entrepôt (ZI), pas `registre/adresses.csv` du dépôt public ; réalisé pour les lignées seules (`lignee_adresse.parquet`), sans page de redirection | `identites.py`, `r_lignee.py`, `cli.py ecrire` | 1 (1.2.2, 1.3.4, schéma des identifiants), 2 (2.15), 8 (ancienne adresse, E13) — fait ; question Q60 |
+| Écarts mineurs de la PR #104 : statut `partiel` dans le schéma de la couverture ; zone ZI dans le modèle en une image ; A9 dans 2.8.2, le doc. 8 et les décomptes (« A1 à A9 », neuf avertissements) | `config/schema_fichiers.yaml`, `controles.py` | 0, 1, 2, 8 — fait |
+
+Les autres écarts relevés entre les docs et le code sont dans « Écarts entre la conception et
+le code (à résorber) », en tête de ce journal. Le registre des règles (doc. 1, 1.6) et les
+lignes A1 à A8 de 2.8.2 ne sont pas modifiés : les PR #160 à #165 les touchent.
+## Périodes de mandat de député confrontées à Sycomore (23/11/2026)
+
+Branche `etape-2-relecture-mandats`, issue #63 (troisième famille : les périodes de mandat de député).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| A2, mandats : chaque nuit, toutes les périodes de mandat de député servies dans les carrières des candidats (faits `periode_carriere`, Assemblée, en fonction, depuis le 19/06/2002 ; segments d'un même mandat réunis) sont comparées, début et fin, à la fiche Sycomore de la personne (identifiant déclaré par Wikidata, P1045, comme R-CARRIERE). Sont nommés : une borne différente, une période servie qu'aucun mandat de Sycomore ne recouvre, un mandat de Sycomore depuis le 19/06/2002 absent de la carrière servie. Sans identifiant Sycomore ou sans fiche relevée : « non vérifié ». Comptés sans être nommés : les suspensions (Sycomore ne les publie pas ; leurs bornes sont celles de mandats comparés) et les périodes d'avant 2002 (lues dans Sycomore même). Bilan `a2_mandats` dans le rapport, ligne du résumé du calcul | #63 : les périodes de mandat n'étaient confrontées à rien. Sycomore est une page publique de l'Assemblée, base historique distincte de l'archive des acteurs, déjà relevée chaque nuit pour les candidats (point `sycomore-fiches`, faits seulement, Q36) : **aucune page lue en plus**, et pas de tirage, car la population est petite (33 périodes en g20). Mesuré en local sur la g20 : 33 périodes comparées, 33 vérifiées, 0 écart, 0 non vérifiée ; 6 suspensions et 2 périodes d'avant 2002 comptées. Échantillon élargi aux 16 personnes dont Sycomore donne un mandat depuis 2002 (dont 6 sans fiche publiée), contre l'archive des acteurs : 51 lignes, 50 identiques ; 1 écart, le mandat de Xavier Bertrand de la XIIe législature (19/06/2002 – 30/04/2004), absent de l'archive des acteurs (trou de la source ; sans effet aujourd'hui, Xavier Bertrand n'ayant pas de fiche publiée) | 2 (2.8, A2), 8 |
+
+## Mandats locaux : fins observées, mandat et fonction, Wikidata, homonymes (23/11/2026)
+
+Branche `etape-2-mandats-locaux` (sur `main` = `12bc5d4`). Instruction du 23/11/2026
+(`passations/2026-11-23-instruction-mandats-locaux-rne.md`), puis décisions de la propriétaire du
+même jour, « Mandats locaux A à E » : Q49 à Q53.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-MANDAT-LOCAL v2 : fin observée d'une ligne disparue d'un fichier trimestriel, entre le dernier relevé qui la portait et le premier qui ne la porte plus (vue `rne_elus__mandat_local__hist` ; dates des générations passées au contexte par `cli`) | Q49 : la ligne restait effacée, et C1 aurait bloqué la publication | 1, 2 |
+| Deux lignes par mandat exercé avec une fonction (`nature_periode` : `mandat`, `fonction`) ; une ligne garde son identifiant (`<fichier>:<code>`), le mandat qui partagerait celui de sa fonction prend `:mandat` | Q50 ; aucune identité servie ne change (C1) | 1 |
+| Table `mandat_local_recherche` : `rattache`, `aucun_mandat`, `aucun_elu_de_ce_nom`, `homonyme_non_rattache`, `ambigu_non_rattache` ; R-CARRIERE v5 en tire le statut (`non_etabli`, servi `non_relu`) et le détail de la couverture `local` | Q51 | 1 |
+| Point `wd-fonctions-candidats` (`collecte_wd_fonctions`, une requête SPARQL, forme canonique), lecteur `wd_fonctions` (`fonction_wikidata`) ; R-MANDAT-LOCAL retient les déclarations P39 locales terminées, hors des périodes du répertoire de même niveau et de même nature (tolérance 7 jours), `declare_par = wikidata`, `fin_nature = declaree`, identifiant `wikidata:<déclaration>` | Q52 | 1, 2 |
+| Garde-fou d'homonymie : une clé qui désigne deux collectivités dans un fichier à siège unique ne rattache personne (`mandat_local_ambigu`) ; avertissement A10 (`controles_mandats_locaux`, appelé par `cli` après A9) | Q53 | 2 |
+| Composeur candidat : colonnes `nature_periode`, `fin_nature`, `declare_par` dans `en_bref.carriere` ; licence CC0 des lignes Wikidata ; la couverture `local` cite les points `rne-*` et `wd-fonctions-candidats` (elle servait `points_acces: []`) | défaut relevé par l'instruction | — |
+| `config/schema_fichiers.yaml` : vocabulaires `nature_periode`, `fin_nature`, `declare_par` (l'en-tête des fiches n'est pas comparé colonne à colonne par C4) | C4 | — |
+
+Mesure sur les entrées de g20 (23/11/2026, entrepôt minimal reconstitué : les 11 fichiers du
+20/11, plus le fichier municipal du 11/08 en génération précédente ; réponse P39 du 23/11 ;
+identités des 37 fiches publiées de g20) :
+
+- 68 lignes locales pour les fiches publiées (29 servies en g20) : 45 du répertoire (29 mandats, 16
+  fonctions) et 23 déclarées par Wikidata. Ces 23 lignes vont à 11 candidats, dont 5 qui n'avaient
+  aucune ligne locale : Le Pen, Mélenchon, Lassalle, Asselineau, Arthaud. Philippot n'en gagne
+  pas, car Wikidata ne déclare pas la fin de son mandat régional ;
+- fins : 14 déduites, 0 observée (aucune ligne de candidat n'a disparu entre le 11/08 et le 20/11 ;
+  7 464 lignes municipales sur 511 225 ont disparu dans tout le répertoire) ;
+- `non_relu` : 10 candidats (9 « aucun élu de ce nom », Benoît Mathieu « homonyme non
+  rattaché ») ; 0 clé ambiguë ;
+- **C1** : les 29 identités `local` servies en g20 (fiche, `mandat`) se retrouvent toutes ;
+  aucune perte ;
+- R-MANDAT-LOCAL 1,95 s, avec deux versions du fichier municipal dans l'historique (0,3 à 0,4 s
+  avant) ; pic du processus de mesure 1,1 Go.
+
+Risque C1 propre à Q52 : une déclaration P39 supprimée dans Wikidata, ou dont le libellé ne dit plus
+une fonction locale, retire sa ligne de la frise, et C1 y verra une perte.
+
+## R-ETAPE : la législature d'un acte est celle de sa date (23/11/2026)
+
+Branche `etape-2-etape-par-date`, décision du 23/11/2026 (doc. 5, Q48 « Ranger par la date » ; issue #63).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-ETAPE version 4 (après la version 3 de la PR #161) : un acte compte dans la législature où tombe sa date, entre son début et sa fin (table `legislature`, R-LEGISLATURES, désormais une dépendance) ; l'identifiant de l'acte ne sert que faute de date, ou pour une date hors de toute législature (dissolution). Vaut pour l'étape (`etape_dossier`) et pour la législature des décisions (`decisions`, lue par R-SORT-FINAL) | Q48 : l'archive close de la XIVe numérote `L14-` des actes de 2018 ; la relecture A2 des textes (#162) l'a relevé sur DLR5L14N35418, servi pour la XIVe à l'étape « examen en commission » du 17/01/2018. Mesuré sur la g20 (R-ETAPE rejouée sur l'export des faits lus, 12 755 textes servis reproduits à l'identique) : 25 lignes changent d'étape (XIVe 15 et XVe 8, examen en commission → dépôt ; XVIe : 1 dans chaque sens) ; les 5 autres textes datés après la fin de leur législature le sont pendant la dissolution de 2024 et gardent la XVIe ; 11 textes servis apparaissent dans une législature (XVe 10, XVIe 1) où ils n'ont qu'un retrait ou une procédure accélérée, à l'étape « non établie » ; aucune ligne ne disparaît, donc aucune perte pour C1 | 1 (1.6 R-ETAPE) |
+| Doc. 5 : Q54, décidée le 23/11/2026, « Selon l'identifiant » : pendant la dissolution, tant qu'aucune législature ne couvre la date d'un acte, l'identifiant de l'archive décide (ce que fait déjà R-ETAPE version 4) | 5 promulgations et actes des 12 et 13/06/2024 restent sous la XVIe | 5 (Q54) |
+
+## Stade et dates des textes relus sur la page publique de leur dossier (23/11/2026)
+
+Branche `etape-2-relecture-textes`, issue #63 (troisième famille : le stade atteint et les dates d'un texte).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| A2 : chaque nuit, 20 textes servis (faits `texte_legislature`, paramètre `verification_textes`) sont tirés au sort ; la page publique de leur dossier (`/dyn/<lég.>/dossiers/<chemin>`) est relue (module `verification_textes`). Comparés : la date de dépôt ; l'étape dans la législature du fait (palier le plus haut des actes de la page de cette législature datés au plus tard à la date de référence) et sa date quand la page l'affiche ; le numéro et la date de la loi. Seul l'inexpliqué est nommé ; expliqués et comptés : `date_non_affichee` (la page ne date pas les réunions), `date_de_promulgation_du_jo` (déjà nommée par A7). Bilan `a2_textes` dans le rapport ; ligne du résumé du calcul | #63 : le stade et les dates d'un texte n'étaient confrontés à rien. Source choisie : la page du dossier, qui couvre tous les stades ; les travaux préparatoires du JO ne portent que sur les lois promulguées depuis 2015, et la date de promulgation servie en vient déjà (R-LOIS v2). Mesuré en local sur la g20 (180 textes, 391 faits) : dépôt 180 vérifiés sur 180 ; étape 173 vérifiés, 6 expliqués, 1 écart ; loi 30 vérifiés, 1 non vérifié (2021-191 : la page ne montre pas de promulgation) | 2 (2.8, A2), 8 |
+| Doc. 5 : Q48, étape d'un texte datée après la fin de sa législature ; décidée le 23/11/2026, « Ranger par la date » (R-ETAPE ne retient dans une législature que les actes datés entre son début et sa fin ; mise en œuvre dans une PR à part) | l'écart relevé (DLR5L14N35418) : l'archive de la XIVe range sous `L14-` un rapport du Sénat de 2018 ; 29 textes servis de la g20 ont une étape datée après la fin de leur législature | 5 (Q48) |
+
+## Les onze lois d'A3 : travaux préparatoires lus dans les signataires (23/11/2026)
+
+Branche `etape-2-a3-onze-lois`, alerte #146 (A3, 11 lois du JO absentes de l'Assemblée et non reliées à un dossier). Mesuré en local sur l'export des faits de la g20, chaîne lecteur → R-LOIS → R-LOI-DOSSIER → A3 rejouée : sans changement, elle redonne exactement les 11 lois de l'alerte et les 644 lois reliées du 15/11.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Lecteur `jo_actes` version 3 : quand le bloc `TP` est vide, les travaux préparatoires sont lus à la fin du bloc des signataires (après « (1) Travaux préparatoires : loi n° … », « (1) Loi n° … ― Travaux préparatoires : », ou à défaut le premier « Sénat : » / « Assemblée nationale : ») ; colonne `bloc` (`TP` / `SIGNATAIRES`) ; « (TA, n° 671) » lu comme un texte adopté | erreur de notre lecture : 2016-113, 2019-127 et 2019-284 étaient nommées « sans travaux préparatoires » alors que le JO les publie, dans les signataires (XML relu dans l'entrepôt). 418 lois sont dans ce cas, la plupart d'avant 2016 ; aucune n'a des travaux aux deux endroits | 1 (1.6 R-LOI-DOSSIER), 2 (A3) : alignés ici |
+| Lecteur `jo_actes` : colonne `legislature`, la législature que le JO nomme (« n° 4348 (quatorzième législature) », « Assemblée nationale (treizième législature) : ») ; R-LOI-DOSSIER version 2 : un numéro dont le JO nomme la législature n'est cherché que dans celle-là | erreur de notre lecture : loi 2020-839, le n° 967 « (quinzième législature) » était cherché aussi sous la XIVe, où il tombe sur un autre dossier (`dossiers_differents`). Elle est maintenant reliée à DLR5L14N35468 (n° 4348 et 4403 de la XIVe), le dossier « suite absente » cité le 15/11 ; R-SORT-FINAL le dit `promulgue` | 1 (1.6 R-LOI-DOSSIER) : aligné ici |
+
+Effet mesuré (g20) : R-LOI-DOSSIER relie 987 lois sur 1 221 au lieu de 644, 975 sur 975 en accord avec l'Assemblée ; aucun lien existant ne change. A3 nomme **59 lois au lieu de 11** : l'explication `avant_les_travaux_au_jo` (49 lois de la XIVe, Q43) reposait sur la même erreur de lecture et ne couvre plus rien.
+
+Cause des 59 (écart réel de la source) : les documents de l'Assemblée que le JO cite pour ces lois ne sont dans aucune archive de l'Assemblée. Vérifié sur les archives brutes (XIVe : un seul fichier, arrêté au 09/03/2018 ; XVe : fichiers par document) : seuls des homonymes d'un autre type ou d'une autre législature y portent ces numéros ; notre lecteur de l'Assemblée lit tous les documents publiés (7 120 sur 7 120 pour la XIVe, 10 506 sur 10 506 pour la XVe). Les 59 lois viennent toutes d'un texte engagé avant le début de la législature de promulgation (première date ou session du Sénat citée par le JO) ; aucune loi engagée dans la même législature ne manque. XIVe (52) : 2012-916 à 919, 2012-946, 954, 955, 1166, 1167, 1188, 1289, 1320, 1361, 1442, 1471, 1474 ; 2013-98, 241, 242, 243, 325, 326, 327, 343, 354, 428, 614, 708, 715, 1114, 1116, 1118 ; 2014-56, 200, 305, 307, 308, 459, 774, 874, 875, 876, 1392 ; 2015-274, 275, 291, 294, 468, 735, 1704, 1705 ; 2016-113. XVe (7) : 2018-1068, 2018-1214 (le JO dit aussi « projet » pour une proposition), 2019-127, 2019-282, 2019-284, 2019-983, 2020-43. Comment les déclarer expliquées : doc. 5, Q47 (tranchée le même jour, ci-dessous).
+
+## Lois du JO hors des archives de l'Assemblée : explication automatique (23/11/2026)
+
+Branche `etape-2-a3-onze-lois`, alerte #146 ; décision de la propriétaire du 23/11/2026, « option 2 » (doc. 5, Q47), à la place d'une décision `rattachement_loi` par loi (59 entrées, retenue puis abandonnée le même jour : ni type de référence ni fichier dans `references/`).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| A3 : une loi du JO absente de l'Assemblée et non reliée est comptée sans être nommée (`expliquees_texte_anterieur_hors_archives`, compteur à part par législature) si 1. son texte a été engagé sous la législature précédente (plus ancienne date des travaux lus au JO : date écrite dans une ligne, début de la session du Sénat citée, début de la législature nommée) et 2. le JO cite au moins un document de l'Assemblée et aucun n'existe dans `an_dossiers__document` avec le type que nomme la ligne et dans la législature voulue (celle que le JO nomme, sinon celle de la date d'adoption du même passage à l'Assemblée, sinon celle de la promulgation ou la précédente) | Q47 : A3 ne nomme que l'inexpliqué (décision du 13 au 15/11) ; ces lois sont des écarts réels de la source | 2 (A3) |
+| A3 : l'explication `avant_les_travaux_au_jo` et son seuil sont retirés | elle reposait sur l'erreur de lecture corrigée plus haut | 2 (A3) |
+
+Mesuré sur la g20 (chaîne rejouée en local) : 59 lois expliquées ainsi (52 de la XIVe, 7 de la XVe), **aucune nommée** ; XIVe 396 présentes, XVe 334 présentes et 12 reliées ; XVIe et XVIIe identiques au JO. 2018-1214 est comprise : le JO cite un « projet » n° 631 qui n'existe pas (le texte est la proposition n° 631, dans le dossier DLR5L14N36253). Contrôle : appliquée aux 1 027 lois présentes ou reliées, la règle n'en expliquerait aucune.
+Suite décidée le même jour (Q55 « Perte expliquée dans C1 », puis Q56 « Un code à part, A11 » et
+Q57 « Oui, toute perte Wikidata »), branche `etape-2-c1-wikidata` (sur `etape-2-mandats-locaux`) :
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| C1 : une ligne perdue dont `id_mandat` est `wikidata:<déclaration>` est toujours expliquée (sauf sur une fiche retirée, déjà expliquée et nommée en A9) ; comptée (`expliques.c1_lignes_wikidata`) et nommée en A11 avec sa raison : « déclaration supprimée dans Wikidata » (absente de la réponse, son élément présent), « le libellé ne désigne plus une fonction locale », « élément absent de la réponse Wikidata », « réponse Wikidata non lue ou vide », sinon « raison non établie : déclaration toujours présente et locale ». `cli` passe à C1 l'état des déclarations (`r_mandat_local.declarations_wikidata`, mêmes motifs que la règle, factorisés dans `_niveau_wd_sql`) | Q55, Q57 : le risque C1 relevé ci-dessus | 2 (C1) |
+| Avertissement A11, à part de A10 | Q56 | 2 (A11) |
+| A10 (homonymes, Q53) rapatrié dans `controles.py` (`Controles.a10_elus_ambigus`), même comportement ; module `controles_mandats_locaux` supprimé | le module à part ne servait qu'à ne pas toucher `controles.py` pendant #161 ; demandé avec Q55 | 2 (A10) |
 
 ## Vote solennel et initiateur nominatif des textes d'une législature (23/11/2026)
 

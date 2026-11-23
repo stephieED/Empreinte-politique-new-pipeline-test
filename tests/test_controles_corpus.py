@@ -1,6 +1,7 @@
 """Contrôles C3 (données laissées de côté), C7 (personne attendue écartée en silence), règle
 R-PERIMETRE, et avertissements A1 à A8 (doc. 2, 2.8), sur de petites tables à la forme exacte des
 sorties des règles et de l'export des faits publiés."""
+import json
 import os
 
 import duckdb
@@ -292,44 +293,73 @@ def test_a3_tous_expliques_pas_d_avertissement(tmp_path):
 
 
 def test_a3_lois_contre_le_journal_officiel(tmp_path):
-    """Issue #63 (décision du 15/11/2026) : les lois servies (Assemblée) contre celles du JO. Une loi
-    du JO absente de l'Assemblée est expliquée si R-LOI-DOSSIER la relie, ou si elle est sans
-    travaux préparatoires et antérieure à la première loi que le JO publie avec les siens ; toute
-    autre est nommée, comme une loi de l'Assemblée absente du JO."""
+    """Issue #63 (décision du 15/11/2026) et Q47 (décision du 23/11/2026, « option 2 ») : les lois
+    servies (Assemblée) contre celles du JO. Une loi du JO absente de l'Assemblée est expliquée si
+    R-LOI-DOSSIER la relie, ou si son texte a été engagé sous la législature précédente et
+    qu'aucun document de l'Assemblée cité par le JO n'existe dans nos archives, avec le type et
+    dans la législature voulus ; toute autre est nommée (même sans travaux préparatoires :
+    l'explication « avant les travaux au JO » est retirée), comme une loi de l'Assemblée absente
+    du JO."""
     loi = lambda n, d, l: {"numero_loi": n, "date_promulgation": d, "legislature": l, "dossier": "D" + n}
     acte = lambda n, d, nature="LOI": {"uid": "jorf:" + n, "nature": nature, "numero": n, "date_signature": d}
     lien = lambda n, dossier=None, raison=None: {"numero_loi": n, "dossier": dossier, "raison": raison}
+    tp = []
+
+    def travaux(n, *lignes):
+        for k, (chambre, nature, numero, ta, session, leg, ligne) in enumerate(lignes):
+            tp.append({"acte": "jorf:" + n, "rang": k, "chambre": chambre, "nature": nature, "numero": numero,
+                       "numero_ta": ta, "session": session, "legislature": leg, "ligne": ligne})
+    # Engagée au Sénat en 2011-2012, aucun document de l'Assemblée cité dans nos archives : expliquée.
+    travaux("2016-7", ("SN", "projet_de_loi", "10", None, "2011-2012", None, "Projet de loi n° 10 (2011-2012)"),
+            ("AN", "projet_de_loi", "500", None, None, None, "Projet de loi, adopté par le Sénat, n° 500"),
+            ("AN", "rapport", "600", None, None, None, "Rapport de M. X, n° 600"),
+            ("AN", "discussion", None, "70", None, None, "Discussion et adoption le 3 mars 2016 (TA n° 70)"))
+    # Engagée avant, mais le projet n° 501 de la XIVe est dans nos archives : nommée.
+    travaux("2016-6", ("SN", "projet_de_loi", "11", None, "2011-2012", None, "Projet de loi n° 11 (2011-2012)"),
+            ("AN", "projet_de_loi", "501", None, None, None, "Projet de loi, adopté par le Sénat, n° 501"),
+            ("AN", "discussion", None, "71", None, None, "Discussion et adoption le 3 mars 2016 (TA n° 71)"))
+    # Engagée sous la XVe (session 2017-2018 : octobre 2017) : nommée.
+    travaux("2018-4", ("SN", "projet_de_loi", "5", None, "2017-2018", None, "Projet de loi n° 5 (2017-2018)"),
+            ("AN", "projet_de_loi", "20", None, None, None, "Projet de loi, adopté par le Sénat, n° 20"))
+    # Législature nommée par le JO (XIVe) : le n° 967 de la XVe est un homonyme ; expliquée.
+    travaux("2018-8", ("AN", "proposition_de_loi", "967", None, None, 14,
+                       "Proposition de loi n° 967 (quatorzième législature)"),
+            ("AN", "discussion", None, "904", None, None, "Discussion et adoption le 2 février 2017 (TA n° 904)"))
     t = dict(TABLES,
              legislature=[{"numero": 14, "debut": "2012-06-20", "fin": "2017-06-20"},
                           {"numero": 15, "debut": "2017-06-21", "fin": "2022-06-21"}],
              loi=[loi("2016-1", "2016-03-01", 14), loi("2017-9", "2017-01-01", 14), loi("2018-9", "2018-02-01", 15)],
              jo_actes__acte_reglementaire=[
                  acte("2016-1", "2016-03-01"), acte("2018-9", "2018-02-01"),
-                 acte("2013-5", "2013-04-01"),                       # avant les travaux au JO : expliquée
-                 acte("2016-8", "2016-06-01"),                       # sans travaux, mais après : nommée
-                 acte("2016-7", "2016-05-01"),                       # aucun document : nommée
+                 acte("2013-5", "2013-04-01"),                       # sans travaux : nommée
+                 acte("2016-7", "2016-05-01"),                       # expliquée (Q47)
+                 acte("2016-6", "2016-05-02"),                       # document dans nos archives : nommée
                  acte("2018-3", "2018-03-01"),                       # reliée par le JO : expliquée
-                 acte("2018-4", "2018-04-01", "LOI_ORGANIQUE"),      # nommée
+                 acte("2018-4", "2018-04-01", "LOI_ORGANIQUE"),      # engagée sous la XVe : nommée
+                 acte("2018-8", "2018-06-01"),                       # expliquée (Q47)
                  acte("2018-5", "2018-05-01", "DECRET")],            # pas une loi
+             jo_actes__travaux_preparatoires=tp,
+             an_dossiers__document=[{"uid": "PRJLANR5L14B0501", "dossier": "DX"},
+                                    {"uid": "PIONANR5L15B0967", "dossier": "DY"}],
              loi_dossier_jo=[lien("2016-1", "D2016-1"), lien("2018-9", "D2018-9"),
                              lien("2013-5", raison="pas_de_travaux_preparatoires"),
-                             lien("2016-8", raison="pas_de_travaux_preparatoires"),
-                             lien("2016-7", raison="aucun_document"), lien("2018-3", "D3"),
-                             lien("2018-4", raison="aucun_document")])
+                             lien("2016-7", raison="aucun_document"), lien("2016-6", raison="un_seul_numero"),
+                             lien("2018-3", "D3"), lien("2018-4", raison="aucun_document"),
+                             lien("2018-8", raison="un_seul_numero")])
     c = _ctrl(tmp_path, tables=t)
     c.a3_totaux()
     lois = [a for a in _an(c, "A3") if a["titre"].startswith("Lois du Journal officiel")][0]
     assert lois["exemples"] == sorted([
-        "loi 2016-7 (2016-05-01) publiée au JO, absente de l'Assemblée et non reliée à un dossier (aucun_document)",
-        "loi 2016-8 (2016-06-01) publiée au JO, absente de l'Assemblée et non reliée à un dossier "
+        "loi 2013-5 (2013-04-01) publiée au JO, absente de l'Assemblée et non reliée à un dossier "
         "(pas_de_travaux_preparatoires)",
+        "loi 2016-6 (2016-05-02) publiée au JO, absente de l'Assemblée et non reliée à un dossier (un_seul_numero)",
         "loi 2018-4 (2018-04-01) publiée au JO, absente de l'Assemblée et non reliée à un dossier (aucun_document)",
         "loi 2017-9 (2017-01-01) promulguée selon l'Assemblée, absente du JO"])
     assert lois["detail"] == {
         "14": {"lois_au_jo": 4, "presentes_a_l_assemblee": 1, "reliees_par_le_jo": 0,
-               "expliquees_avant_les_travaux_au_jo": 1, "nommees": 2, "assemblee_absentes_du_jo": 1},
-        "15": {"lois_au_jo": 3, "presentes_a_l_assemblee": 1, "reliees_par_le_jo": 1,
-               "expliquees_avant_les_travaux_au_jo": 0, "nommees": 1, "assemblee_absentes_du_jo": 0}}
+               "expliquees_texte_anterieur_hors_archives": 1, "nommees": 2, "assemblee_absentes_du_jo": 1},
+        "15": {"lois_au_jo": 4, "presentes_a_l_assemblee": 1, "reliees_par_le_jo": 1,
+               "expliquees_texte_anterieur_hors_archives": 1, "nommees": 1, "assemblee_absentes_du_jo": 0}}
     assert c.bilan()["expliques"]["a3_lois"] == lois["detail"]
 
 
@@ -450,3 +480,177 @@ def test_a2_page_de_la_legislature_du_scrutin():
     lues = []
     verifier(con, 1, lambda url: lues.append(url) or PAGE, nb_scrutins=1)
     assert lues == ["https://www.assemblee-nationale.fr/dyn/14/scrutins/34"]
+
+
+def _periode(mandat, debut, fin, etat="en_fonction", institution="assemblee", legislature=None):
+    import json
+    r = _fait("candidat/alice-martin", "entete", json.dumps(
+        {"per": "per:000001", "institution": institution, "etat": etat, "legislature": legislature,
+         "debut": debut, "fin": fin, "mandat": mandat}), mandat=mandat, acteur="PA1")
+    r["type_fait"] = "periode_carriere"
+    return r
+
+
+# Carrière servie d'Alice Martin : un mandat découpé par deux groupes, un mandat suspendu (entrée au
+# gouvernement), un mandat en cours découpé lui aussi, et une période d'avant 2002 lue dans Sycomore.
+PERIODES = [_periode("PM15", "2017-06-21", "2018-01-01", legislature=15),
+            _periode("PM15", "2018-01-02", "2022-06-21", legislature=15),
+            _periode("PM16", "2022-06-22", "2022-07-22", legislature=16),
+            _periode("PM16", "2022-07-23", "2024-06-09", etat="suspendu", legislature=16),
+            _periode("PM17", "2024-07-08", "2024-07-18", legislature=17),
+            _periode("PM17", "2024-07-19", None, legislature=17),
+            _periode("sycomore:100:1997-06-01", "1997-06-01", "2002-06-18", institution="assemblee_avant_2002")]
+SYCOMORE = [{"identifiant": "100", "chambre": c, "debut": d, "fin": f, "legislature": l}
+            for c, d, f, l in (("assemblee", "1997-06-01", "2002-06-18", "XIe législature"),
+                               ("assemblee", "2017-06-21", "2022-06-21", "XVe législature"),
+                               ("assemblee", "2022-06-22", "2022-07-22", "XVIe législature"),
+                               ("assemblee", "2024-07-08", None, "XVIIe législature"),
+                               ("senat", "1990-10-01", "1999-09-30", None))]
+
+
+def _tables_mandats(sycomore=SYCOMORE, identifiants=({"element": "Q1", "identifiant": "100"},)):
+    t = dict(TABLES, candidat=[dict(c, sycomore=None, element_wikidata="Q1" if c["per"] == "per:000001" else None)
+                               for c in TABLES["candidat"]])
+    if sycomore is not None:
+        t["sycomore__mandat_sycomore"] = list(sycomore)
+    if identifiants:
+        t["sycomore__identifiant_sycomore"] = list(identifiants)
+    return t
+
+
+def test_a2_mandats_contre_sycomore(tmp_path):
+    """Issue #63 (23/11/2026) : chaque période de mandat de député servie (début, fin), contre la
+    fiche Sycomore relevée la même nuit, sans page lue en plus. L'identifiant Sycomore est celui que
+    Wikidata déclare pour l'élément (comme R-CARRIERE). Seul l'inexpliqué est nommé."""
+    c = _ctrl(tmp_path, tables=_tables_mandats(), faits=FAITS + PERIODES)
+    r = c.a2_mandats()
+    # Segments d'un même mandat réunis ; la suspension et la période d'avant 2002 comptées, pas comparées.
+    assert (r["faits"], r["verifies"], r["ecarts"], r["non_verifies"]) == (3, 3, [], [])
+    assert (r["suspensions_non_comparees"], r["avant_2002_lues_dans_sycomore"]) == (1, 1)
+    assert not [a for a in _an(c, "A2") if "mandat" in a["titre"]]
+    assert c.bilan()["a2_mandats"]["verifies"] == 3
+    from empreinte_src.cli import _ligne_a2
+    assert "périodes de mandat (Sycomore) : 3 faits, 3 vérifiés, 0 en écart, 0 non vérifiés" in _ligne_a2(c.bilan())
+
+    # Une fin différente, et un mandat de Sycomore que la carrière servie n'a pas : nommés.
+    autre = [dict(s, fin="2022-06-20") if s["debut"] == "2017-06-21" else s for s in SYCOMORE]
+    autre.append({"identifiant": "100", "chambre": "assemblee", "debut": "2012-06-20", "fin": "2017-06-20",
+                  "legislature": "XIVe législature"})
+    c = _ctrl(tmp_path, tables=_tables_mandats(autre), faits=FAITS + PERIODES)
+    r = c.a2_mandats()
+    url = "https://www2.assemblee-nationale.fr/sycomore/fiche?num_dept=100"
+    assert r["ecarts"] == [
+        f"candidat/alice-martin PM15 (15e législature) fin : nous 2022-06-21, Sycomore 2022-06-20 — {url}",
+        f"candidat/alice-martin : mandat de Sycomore du 2012-06-20 au 2017-06-20 (XIVe législature), "
+        f"absent de la carrière servie — {url}"]
+    a2 = [a for a in _an(c, "A2") if a["titre"].startswith("Périodes de mandat")][0]
+    assert a2["bloquant"] is False and c.bilan()["a2_mandats"]["ecarts"] == 2
+
+    # Un mandat servi qu'aucune ligne de Sycomore ne recouvre : nommé.
+    c = _ctrl(tmp_path, tables=_tables_mandats([s for s in SYCOMORE if s["debut"] != "2022-06-22"]),
+              faits=FAITS + PERIODES)
+    assert c.a2_mandats()["ecarts"] == [
+        "candidat/alice-martin PM16 (16e législature, du 2022-06-22 au 2022-07-22) : aucun mandat de "
+        f"Sycomore sur cette période — {url}"]
+
+    # Sans identifiant Sycomore, ou sans relevé : non vérifié, jamais un écart ; tout non vérifié → averti.
+    for t in (_tables_mandats(identifiants=()), _tables_mandats(sycomore=None)):
+        c = _ctrl(tmp_path, tables=t, faits=FAITS + PERIODES)
+        r = c.a2_mandats()
+        assert (r["faits"], r["verifies"], r["ecarts"], len(r["non_verifies"])) == (3, 0, [], 3)
+        assert [a for a in _an(c, "A2") if a["titre"].startswith("Vérification des mandats impossible")]
+
+
+# Page de dossier de l'Assemblée, réduite à ses motifs (DLR5L16N48925, relevée le 23/11/2026).
+PAGE_DOSSIER = """
+<div data-id="L16-VD216427DI / Bloc de style '21'"></div>
+<div data-id="L16-VD216427DI (DepotInitiative / -DEPOT)"><span>Dépôt à l&#039;Assemblée nationale</span>
+<span>Vendredi 17 novembre 2023</span></div>
+<div data-id="L16-AN1-48925 (Etape / AN1)"><span>Première lecture</span><span>Vendredi 17 novembre 2023</span>
+ <div data-id="L16-VD216427DI (DepotInitiative / -DEPOT)"></div>
+ <div data-id="L16-AN1-COM-48925 (Etape / -COM)"><div data-id="L16-VD216428CF (Etape / -COM-FOND)">
+  <div data-id="L16-VD216428CFS (SaisieComFond / -COM-FOND-SAISIE)"></div>
+  <span>Acte(s) de réunion : L16-VD216429R33493 - L16-VD216429R33494</span>
+  <div data-id="L16-VD216534 (DepotRapport / -COM-FOND-RAPPORT)"><span>Rapport</span><span>Mardi 21 novembre 2023</span></div>
+ </div></div>
+ <div data-id="L16-AN1-DEBATS-48925 (Etape / -DEBATS)"><span>Discussion</span><span>Jeudi 23 novembre 2023</span>
+  <button title="Acte(s) de réunion : L16-VD216453S46932">x</button><span>Acte(s) de réunion : L16-VD216453S46932</span>
+  <div data-id="L16-VD216587DEC (Decision / -DEBATS-DEC)"><span>Texte adopté ✅</span><span>Jeudi 23 novembre 2023</span></div>
+ </div>
+</div>
+<div data-id="L16-SN1-48925 (Etape / SN1)"><span>Jeudi 23 novembre 2023</span>
+ <div data-id="L16-VD216596DIN (DepotInitiativeNavette / -DEPOT)"></div></div>
+<div data-id="L16-PROM-48925 (Etape / PROM)"><span>Promulgation de la loi</span><span>Mardi 26 décembre 2023</span>
+ <div data-id="L16-VD217259PL (Promulgation / PROM-PUB)">
+ <span>Loi n°2023-1252  du mardi 26 décembre 2023 visant à prolonger…</span></div></div>
+"""
+
+
+def test_a2_lire_page_de_dossier():
+    from empreinte_src.verification_textes import lire_dossier
+    p = lire_dossier(PAGE_DOSSIER)
+    actes = {a["uid"]: (a["type"], a["date"], a["palier"]) for a in p["actes"]}
+    assert actes["L16-VD216427DI"] == ("DepotInitiative", "2023-11-17", 1)     # première date lue gardée
+    assert actes["L16-VD216428CFS"] == ("SaisieComFond", None, None)          # une saisine ne prouve rien
+    assert actes["L16-VD216534"] == ("DepotRapport", "2023-11-21", 2)
+    assert actes["L16-VD216587DEC"] == ("Decision", "2023-11-23", 3)
+    assert actes["L16-PROM-48925"] == ("Etape", "2023-12-26", 4)
+    assert actes["L16-VD216596DIN"] == ("DepotInitiativeNavette", None, 1)
+    assert [(r["uid"], r["palier"]) for r in p["reunions"]] == [
+        ("L16-VD216429R33493", 2), ("L16-VD216429R33494", 2), ("L16-VD216453S46932", 3)]
+    assert p["lois"] == [("2023-1252", "2023-12-26")]
+    assert lire_dossier("<html>Page introuvable</html>") is None
+
+
+def _texte(**k):
+    v = {"dossier": "DLR5L16N48925", "date_depot": "2023-11-17", "etape": "promulgue",
+         "date_etape": "2023-12-26", "numero_loi": "2023-1252", "date_promulgation": "2023-12-26",
+         "source_url": "https://www.assemblee-nationale.fr/dyn/16/dossiers/tickets"}
+    v.update(k)
+    return v
+
+
+def test_a2_textes_comparer_ne_nomme_que_l_inexplique():
+    from empreinte_src.verification_textes import comparer, lire_dossier
+    p = lire_dossier(PAGE_DOSSIER)
+    issues = lambda v, au="2026-11-20", loi=None: [(f, i) for f, i, _ in comparer(v, 16, p, au, loi)]
+    assert issues(_texte()) == [("depot", "verifie"), ("etape", "verifie"), ("loi", "verifie")]
+    # Au 24/11/2023, la séance est le plus haut palier atteint ; la promulgation n'est pas encore là.
+    assert issues(_texte(etape="adopte", date_etape="2023-11-23", numero_loi=None), au="2023-11-24") == \
+        [("depot", "verifie"), ("etape", "verifie")]
+    # Étape servie trop basse : la page montre la séance et la promulgation.
+    r = comparer(_texte(etape="examen_commission", date_etape="2023-11-21", numero_loi=None), 16, p, "2026-11-20")
+    assert r[1][:2] == ("etape", "ecart") and "page promulgation" in r[1][2]
+    # Étape « examen en commission » datée d'une réunion : la page ne date pas les réunions.
+    assert issues(_texte(etape="examen_commission", date_etape="2023-11-22", numero_loi=None),
+                  au="2023-11-22")[1] == ("etape", "date_non_affichee")
+    # Date de dépôt différente : écart nommé.
+    r = comparer(_texte(date_depot="2023-11-16"), 16, p, "2026-11-20")
+    assert r[0] == ("depot", "ecart", "dépôt : nous 2023-11-16, page 2023-11-17")
+    # Date de la loi : celle du JO, que l'acte de l'Assemblée dément (A7 la nomme déjà) : expliquée.
+    jo = {"source_date_promulgation": "journal_officiel", "date_assemblee": "2023-12-26"}
+    assert issues(_texte(date_promulgation="2023-12-27"), loi=jo)[2] == ("loi", "date_de_promulgation_du_jo")
+    assert issues(_texte(date_promulgation="2023-12-27"))[2] == ("loi", "ecart")
+    # Étape d'une législature dont la page ne montre aucun acte : non vérifiée.
+    assert [(f, i) for f, i, _ in comparer(_texte(), 17, p, "2026-11-20")][1] == ("etape", "non_verifie")
+
+
+def test_a2_textes_tirage_et_avertissement(tmp_path):
+    v = json.dumps(_texte(etape="seance", date_etape="2023-11-23", numero_loi=None))
+    faits = [dict(_fait("legislature/16", "textes", v, dossier="DLR5L16N48925"), type_fait="texte_legislature",
+                  source_url="https://www.assemblee-nationale.fr/dyn/16/dossiers/tickets")]
+    c = _ctrl(tmp_path, faits=faits)
+    r = c.a2_textes(1, lambda url: PAGE_DOSSIER, "2026-11-20", nb_textes=5)
+    assert (r["tires"], r["faits"], r["verifies"], len(r["non_verifies"])) == (1, 2, 1, 0)
+    assert r["ecarts"] == ["DLR5L16N48925 (legislature/16) étape : nous « seance » (2023-11-23), page "
+                           "promulgation (L16-PROM-48925 du 2023-12-26, L16-VD217259PL) — "
+                           "https://www.assemblee-nationale.fr/dyn/16/dossiers/tickets"]
+    a2 = [a for a in _an(c, "A2") if a["titre"].startswith("Stade ou dates")][0]
+    assert a2["bloquant"] is False and c.bilan()["a2_textes"]["ecarts"] == 1
+
+    def panne(url):
+        raise TimeoutError
+    c = _ctrl(tmp_path, faits=faits)
+    r = c.a2_textes(1, panne, "2026-11-20", nb_textes=5)
+    assert r["ecarts"] == [] and len(r["non_verifies"]) == 2
+    assert [a for a in _an(c, "A2") if a["titre"].startswith("Vérification des textes impossible")]
