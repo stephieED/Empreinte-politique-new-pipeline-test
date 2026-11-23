@@ -1028,3 +1028,5 @@ Cause vérifiée sur les faits publiés de la g20 et ceux de la nuit du 22/11 (r
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
 | C1 : les champs de compte d'un fait sans identifiant sont nommés (`CHAMPS_DE_COMPTE`, `PREFIXES_DE_COMPTE`) ; `sieges_dans_l_hemicycle` s'y ajoute. Une ligne « Non-inscrits » qui disparaît, ou dont le sigle, le libellé ou le rattachement change, reste une perte | fausse perte à chaque arrivée ou départ d'un non-inscrit (alerte #156). Rejoué en local sur la g20 et la nuit du 22/11 : la ligne n'est plus perdue (7 s, pic 4,1 Go) | — |
+
+Essai 45190042750, sur l'entrepôt de la nuit du 22/11, comparé à la g20 : **publication autorisée**. 72 fiches, 2 971 077 faits publiés ; A2 : votes 40/40, signataires 20/20 ; calcul 10 min 36 s, pic 6,4 Go.
