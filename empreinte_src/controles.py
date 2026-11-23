@@ -556,6 +556,20 @@ class Controles:
                           r["non_verifies"][:5], detail=self.bilan_a2_amendements)
         return r
 
+    def a2_textes(self, generation: int, recuperer, au: str, nb_textes=20):
+        """Stade atteint et dates de textes servis, tirés au sort, contre la page publique de leur
+        dossier (issue #63, `verification_textes`). Seul l'inexpliqué est nommé ; les explications
+        sont comptées dans le bilan ; une page illisible ou injoignable est « non vérifiée »."""
+        from .verification_textes import verifier_textes
+        r = verifier_textes(self.con, generation, recuperer, au, nb_textes)
+        self.bilan_a2_textes = {k: (v if not isinstance(v, list) else len(v)) for k, v in r.items()}
+        self._avertir("A2", "Stade ou dates d'un texte différents de la page publique de son dossier",
+                      r["ecarts"], detail=self.bilan_a2_textes)
+        if r["faits"] and len(r["non_verifies"]) == r["faits"]:
+            self._avertir("A2", "Vérification des textes impossible : aucune page lue",
+                          r["non_verifies"][:5], detail=self.bilan_a2_textes)
+        return r
+
     # Fenêtre d'une transition (A3) : entrées et sorties du groupe à moins de tant de jours du scrutin.
     A3_FENETRE_TRANSITION = 7
 
@@ -891,6 +905,7 @@ class Controles:
                 "avertissements": [a["empreinte"] for a in self.anomalies if a["controle"].startswith("A")],
                 "c3": getattr(self, "bilan_c3", None), "a2": getattr(self, "bilan_a2", None),
                 "a2_amendements": getattr(self, "bilan_a2_amendements", None),
+                "a2_textes": getattr(self, "bilan_a2_textes", None),
                 # Ce que A3, A5 et A6 ont compté comme expliqué : gardé même quand l'avertissement se
                 # tait, pour que le rapport de la nuit le dise (décisions du 13, du 14 et du 15/11/2026).
                 "expliques": {k: v for k, v in (("c1_identite_enrichie", getattr(self, "bilan_c1_identite_enrichie", None)),

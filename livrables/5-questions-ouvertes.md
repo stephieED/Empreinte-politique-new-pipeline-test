@@ -150,6 +150,22 @@ défaut peut rester.
   propriétaire peut, par décision, les borner à la fin du gouvernement ou les faire signaler à
   la source.
 
+### Q45. Étape d'un texte datée après la fin de sa législature (23/11/2026, issue #63)
+
+- **Constat** (relecture A2 des textes, mesure locale du 23/11/2026 sur la g20) : l'archive
+  close de la XIVe range sous `L14-` des actes de 2018 (rapport du Sénat du 17/01/2018 sur le
+  dossier DLR5L14N35418, accord Chili–Bolivie), que la page publique du dossier range sous la
+  XVe. R-ETAPE prend la législature d'un acte dans son identifiant : le texte est servi pour la
+  XIVe à l'étape « examen en commission », datée du 17/01/2018, sept mois après la fin de la
+  XIVe. Dans la g20, 29 textes servis ont une étape datée après la fin de leur législature
+  (XIVe 15, XVe 8, XVIe 6).
+- **Bloque** : la justesse de l'étape d'un texte par législature (fiche législature, textes).
+- **Options** : (1) R-ETAPE ne compte dans une législature que les actes datés entre son début
+  et sa fin, l'identifiant ne servant qu'en l'absence de date (recommandé : c'est ce que montre
+  la page publique) ; (2) garder l'identifiant de l'archive, et A2 nomme l'écart quand le texte
+  est tiré.
+- **En attendant** : rien ne change ; A2 nomme l'écart quand le texte est tiré au sort.
+
 ---
 
 ## C — Réglages (le défaut peut rester)

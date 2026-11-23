@@ -204,6 +204,16 @@ def cmd_calculer(a):
             ctrl.a2_signataires(gen, recuperateur(cfg["parametres"]["user_agent"]), nb_am)
             if getattr(ctrl, "bilan_a2_amendements", None):
                 ctrl.bilan_a2_amendements["duree_s"] = round(_t.monotonic() - t0, 1)
+        nb_tx = int(cfg.get("parametres", {}).get("verification_textes", 0) or 0)
+        if nb_tx:
+            from .verification import recuperateur
+            import datetime as _dt
+            import time as _t
+            t0 = _t.monotonic()
+            ctrl.a2_textes(gen, recuperateur(cfg["parametres"]["user_agent"]),
+                           ctx.date_reference or _dt.date.today().isoformat(), nb_tx)
+            if getattr(ctrl, "bilan_a2_textes", None):
+                ctrl.bilan_a2_textes["duree_s"] = round(_t.monotonic() - t0, 1)
         ctrl.a3_totaux()
         ctrl.a4_double_affichage()
         ctrl.a5_famille_a_zero()
@@ -276,7 +286,8 @@ def _ligne_a2(controles: dict) -> str:
     """Décomptes de la vérification croisée (A2) pour le résumé du calcul : ce qui a été relu sur
     les pages publiques, vérifié, en écart, non vérifié."""
     parts = []
-    for cle, nom in (("a2", "votes"), ("a2_amendements", "signataires d'amendement")):
+    for cle, nom in (("a2", "votes"), ("a2_amendements", "signataires d'amendement"),
+                     ("a2_textes", "stade et dates des textes")):
         b = controles.get(cle)
         if b:
             parts.append(f"{nom} : {b.get('faits', 0)} faits, {b.get('verifies', 0)} vérifiés, "

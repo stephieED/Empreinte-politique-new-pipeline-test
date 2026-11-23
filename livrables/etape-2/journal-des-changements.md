@@ -1047,3 +1047,12 @@ Branche `etape-2-natures-parole`, issue #87.
 | Regroupement `nature_parole` (`references/regroupement/nature_parole.yaml`), 7 cases : questions au gouvernement (QG, QPM), questions orales (QOSD), textes, motion de censure, explications de vote, commission (aucun code : comptes rendus de commission non relevés), autres | issue #87 | — |
 | Forme commune : `ordre` facultatif d'une case (l'ordre de la légende peut différer de l'ordre de rangement) ; le fichier servi donne `champs`, l'ordre dans lequel le code d'une valeur est cherché | une motion de censure doit être rangée avant « Textes » mais vient après dans la légende | 1 (1.3.3) |
 
+
+## Stade et dates des textes relus sur la page publique de leur dossier (23/11/2026)
+
+Branche `etape-2-relecture-textes`, issue #63 (troisième famille : le stade atteint et les dates d'un texte).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| A2 : chaque nuit, 20 textes servis (faits `texte_legislature`, paramètre `verification_textes`) sont tirés au sort ; la page publique de leur dossier (`/dyn/<lég.>/dossiers/<chemin>`) est relue (module `verification_textes`). Comparés : la date de dépôt ; l'étape dans la législature du fait (palier le plus haut des actes de la page de cette législature datés au plus tard à la date de référence) et sa date quand la page l'affiche ; le numéro et la date de la loi. Seul l'inexpliqué est nommé ; expliqués et comptés : `date_non_affichee` (la page ne date pas les réunions), `date_de_promulgation_du_jo` (déjà nommée par A7). Bilan `a2_textes` dans le rapport ; ligne du résumé du calcul | #63 : le stade et les dates d'un texte n'étaient confrontés à rien. Source choisie : la page du dossier, qui couvre tous les stades ; les travaux préparatoires du JO ne portent que sur les lois promulguées depuis 2015, et la date de promulgation servie en vient déjà (R-LOIS v2). Mesuré en local sur la g20 (180 textes, 391 faits) : dépôt 180 vérifiés sur 180 ; étape 173 vérifiés, 6 expliqués, 1 écart ; loi 30 vérifiés, 1 non vérifié (2021-191 : la page ne montre pas de promulgation) | 2 (2.8, A2), 8 |
+| Doc. 5 : Q45, étape d'un texte datée après la fin de sa législature | l'écart relevé (DLR5L14N35418) : l'archive de la XIVe range sous `L14-` un rapport du Sénat de 2018 ; 29 textes servis de la g20 ont une étape datée après la fin de leur législature | 5 (Q45) |

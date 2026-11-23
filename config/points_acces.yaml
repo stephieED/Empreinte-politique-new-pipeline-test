@@ -13,6 +13,7 @@ parametres:
   duree_collecte_max_s: 16200     # 270 min : la collecte se termine avant la limite de la tâche (330 min) et dépose son acquis (#38)
   verification_croisee: 20        # Q14 : scrutins relus sur les pages publiques (2 faits chacun, A2) ; 0 pour ne pas relire
   verification_amendements: 20    # #63 : signataires d'amendements servis relus sur leur page publique (1 fait chacun, A2) ; 0 pour ne pas relire
+  verification_textes: 20         # #63 : textes servis relus sur la page de leur dossier (dépôt, étape, loi : 2 ou 3 faits chacun, A2) ; 0 pour ne pas relire
 
 points_acces:
 
