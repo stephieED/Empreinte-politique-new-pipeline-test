@@ -1047,3 +1047,11 @@ Branche `etape-2-natures-parole`, issue #87.
 | Regroupement `nature_parole` (`references/regroupement/nature_parole.yaml`), 7 cases : questions au gouvernement (QG, QPM), questions orales (QOSD), textes, motion de censure, explications de vote, commission (aucun code : comptes rendus de commission non relevés), autres | issue #87 | — |
 | Forme commune : `ordre` facultatif d'une case (l'ordre de la légende peut différer de l'ordre de rangement) ; le fichier servi donne `champs`, l'ordre dans lequel le code d'une valeur est cherché | une motion de censure doit être rangée avant « Textes » mais vient après dans la légende | 1 (1.3.3) |
 
+
+## Liste des candidats : lecture franceinfo du 23/11/2026 (alerte #155)
+
+Branche `etape-2-candidature-2026-11-23`. La page franceinfo a été téléchargée par la propriétaire, qui a autorisé l'agent à la lire une fois ; elle n'est pas collectée (option « A » du 13/11/2026).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Décision `candidature` : nouveau fichier `references/candidature/2026-11-23-franceinfo.yaml` (38 déclarés, 7 retirés, X. Bertrand `non_listee`). Dominique de Villepin (La France humaniste, Q131660) et Serge Tinland (Divers, sans article ni élément Wikidata) entrent comme déclarés ; François Ruffin passe de déclaré à retiré. Le fichier du 13/11 reste, la liste en vigueur est la plus récente | alerte #155 (A9) : Wikipédia disait Villepin déclaré et Ruffin retiré, la liste du 13/11 l'inverse ; la page du 23/11 donne raison à Wikipédia | — |
