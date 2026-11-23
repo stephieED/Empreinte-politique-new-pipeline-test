@@ -182,8 +182,8 @@ def cmd_calculer(a):
         retirees = dict(ctx.x("""SELECT 'candidat/' || adresse, raison_non_publie FROM candidat
                                  WHERE NOT publie AND adresse IS NOT NULL
                                    AND statut IN ('retiree', 'non_listee')""")) if ctx.existe("candidat") else {}
-        # Lignes de mandat local déclarées par Wikidata : leur disparition est expliquée si la
-        # déclaration est supprimée ou n'est plus locale (Q55, « Perte expliquée dans C1 »).
+        # Lignes de mandat local déclarées par Wikidata : leur disparition est toujours expliquée,
+        # nommée en A11 ; l'état des déclarations en donne la raison quand il la connaît (Q55 à Q57).
         from .regles.r_mandat_local import declarations_wikidata
         ctrl.c1_c6_comparer(a.faits_precedents or None, os.path.join(a.sortie, "export", "faits-publies.parquet"),
                             uids_changes_a_la_source=changes, fiches_retirees=retirees,

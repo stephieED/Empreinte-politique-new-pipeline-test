@@ -113,10 +113,10 @@ def _niveau_wd_sql(t: str) -> str:
 def declarations_wikidata(ctx) -> dict[str, bool]:
     """{déclaration P39 de la réponse Wikidata en vigueur : son libellé désigne-t-il une fonction
     locale ?}, selon les motifs de la règle (`NIVEAUX_WD`, `EXCLUS_WD`), sans tenir compte des
-    dates. C1 s'en sert pour expliquer la disparition d'une ligne déclarée par Wikidata (décision
-    Q55 du 23/11/2026, « Perte expliquée dans C1 ») : déclaration absente de la réponse alors que
-    son élément y est encore (supprimée dans Wikidata), ou présente mais plus locale. Vide si la
-    réponse n'a jamais été lue."""
+    dates. C1 s'en sert pour dire pourquoi une ligne déclarée par Wikidata a disparu (décisions
+    Q55 à Q57 du 23/11/2026 ; la disparition est expliquée dans tous les cas) : déclaration absente
+    de la réponse alors que son élément y est encore (supprimée dans Wikidata), ou présente mais
+    plus locale. Vide si la réponse n'a jamais été lue."""
     if not ctx.existe("wd_fonctions__fonction_wikidata"):
         return {}
     return dict(ctx.x(f"""

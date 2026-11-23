@@ -34,7 +34,9 @@ par changement, la plus récente en bas.
 | 23/11/2026 | Q51 : candidat sans date de naissance : « non relu », « aucun élu de ce nom » ou « homonyme non rattaché » | 1 (R-MANDAT-LOCAL), 5 (Q51) |
 | 23/11/2026 | Q52 : mandats locaux passés déclarés par Wikidata (P39) | 1 (`fonction_wikidata`, R-MANDAT-LOCAL), 2 (point `wd-fonctions-candidats`), 5 (Q52) |
 | 23/11/2026 | Q53 : clé ambiguë, aucun rattachement, avertissement A10 | 1 (R-MANDAT-LOCAL), 2 (A10), 5 (Q53) |
-| 23/11/2026 | Q55 : C1 compte comme perte expliquée la disparition d'une ligne Wikidata P39 (déclaration supprimée, ou plus locale), nommée en A10 ; A10 rapatrié dans `controles.py` | 2 (C1, A10), 5 (Q55) |
+| 23/11/2026 | Q55 : C1 compte comme perte expliquée la disparition d'une ligne Wikidata P39 ; A10 rapatrié dans `controles.py` | 2 (C1, A10), 5 (Q55) |
+| 23/11/2026 | Q56 : les lignes Wikidata disparues sont nommées en A11, à part des homonymes (A10) | 2 (A10, A11), 5 (Q56) |
+| 23/11/2026 | Q57 : toute disparition d'une ligne Wikidata est expliquée, la raison dite quand elle est connue | 2 (C1, A11), 5 (Q57) |
 
 ## Corrections demandées par la commande de réalisation
 
@@ -1105,10 +1107,11 @@ identités des 37 fiches publiées de g20) :
 Risque C1 propre à Q52 : une déclaration P39 supprimée dans Wikidata, ou dont le libellé ne dit plus
 une fonction locale, retire sa ligne de la frise, et C1 y verra une perte.
 
-Suite décidée le même jour (Q55, « Perte expliquée dans C1 »), branche `etape-2-c1-wikidata` (sur
-`etape-2-mandats-locaux`) :
+Suite décidée le même jour (Q55 « Perte expliquée dans C1 », puis Q56 « Un code à part, A11 » et
+Q57 « Oui, toute perte Wikidata »), branche `etape-2-c1-wikidata` (sur `etape-2-mandats-locaux`) :
 
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
-| C1 : une ligne perdue dont `id_mandat` est `wikidata:<déclaration>` est expliquée si la déclaration manque à la réponse de la nuit alors que son élément y figure (« supprimée dans Wikidata »), ou si elle y figure avec un libellé qui ne désigne plus une fonction locale ; comptée (`expliques.c1_lignes_wikidata`) et nommée dans A10. `cli` passe à C1 l'état des déclarations (`r_mandat_local.declarations_wikidata`, mêmes motifs que la règle, factorisés dans `_niveau_wd_sql`) | Q55 : le risque C1 relevé ci-dessus | 2 (C1) |
+| C1 : une ligne perdue dont `id_mandat` est `wikidata:<déclaration>` est toujours expliquée (sauf sur une fiche retirée, déjà expliquée et nommée en A9) ; comptée (`expliques.c1_lignes_wikidata`) et nommée en A11 avec sa raison : « déclaration supprimée dans Wikidata » (absente de la réponse, son élément présent), « le libellé ne désigne plus une fonction locale », « élément absent de la réponse Wikidata », « réponse Wikidata non lue ou vide », sinon « raison non établie : déclaration toujours présente et locale ». `cli` passe à C1 l'état des déclarations (`r_mandat_local.declarations_wikidata`, mêmes motifs que la règle, factorisés dans `_niveau_wd_sql`) | Q55, Q57 : le risque C1 relevé ci-dessus | 2 (C1) |
+| Avertissement A11, à part de A10 | Q56 | 2 (A11) |
 | A10 (homonymes, Q53) rapatrié dans `controles.py` (`Controles.a10_elus_ambigus`), même comportement ; module `controles_mandats_locaux` supprimé | le module à part ne servait qu'à ne pas toucher `controles.py` pendant #161 ; demandé avec Q55 | 2 (A10) |
