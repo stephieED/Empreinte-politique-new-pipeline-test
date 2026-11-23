@@ -488,7 +488,8 @@ def _section_groupes(ctx, f, leg, au, lic):
     for l in lignes:
         l["licence"] = lic.get(l["source_point"])
         # Lien vers la lignée pour les groupes seulement : une ligne sans identifiant (non-inscrits)
-        # est reconnue par C1 à sa valeur, qui ne doit pas changer.
+        # est reconnue par C1 à sa valeur sans ses comptes (`CHAMPS_DE_COMPTE`), qui ne doit pas
+        # changer.
         if l["groupe"]:
             ad = lignee_de.get(l["groupe"])
             l["lien"] = f"lignee/{ad}" if ad else None
