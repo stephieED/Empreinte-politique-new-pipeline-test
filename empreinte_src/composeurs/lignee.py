@@ -17,8 +17,8 @@ Fichiers de `lignees/<adresse>/` :
 | `paroles.json.gz` | XVe à XVIIe : débats (sujets) avec leurs prises de parole et leurs orateurs distincts, prises de parole par nature et par orateur, index léger | à la demande |
 | `paroles-textes-<aaaa>-s<n>[-<k>].json.gz` | extraits (300 caractères) et lien au paragraphe | au clic, ou pour un filtre |
 | `proposes.json.gz` | XIVe à XVIIe : textes portés par les membres pendant leur appartenance (rôle, étape, matière) | à la demande |
-| `amendements.json.gz` | XIVe à XVIIe : amendements distincts déposés par les membres pendant leur appartenance, par commission et par année ; irrecevables et signatures à part | à la demande |
-| `amendements-<annee>[-<k>].json.gz` | liste de l'année | au clic |
+| `amendements.json.gz` | XIVe à XVIIe : amendements distincts déposés par les membres pendant leur appartenance, par commission et par année, dont ceux déposés comme député et comme rapporteur (type de déposant publié par l'Assemblée) ; irrecevables et signatures à part | à la demande |
+| `amendements-<annee>[-<k>].json.gz` | liste de l'année, avec le type de déposant de chaque amendement (`type_auteur`) | au clic |
 | `votes-<législature>.json.gz` | un fichier par législature du groupe : décompte publié de chaque scrutin pour le groupe (pour, contre, abstention, non-votants, membres), position majoritaire publiée et si elle est établie (Q30), partage du groupe | à la demande |
 | `avec-qui-<législature>.json.gz` | les autres groupes de la législature, dans l'ordre de l'hémicycle (législature en cours, ou close avec une archive figée : XVe, XVIe) ou des sigles (XIVe) : scrutins où les deux positions sont établies et ceux où elles coïncident, par nature de scrutin | à la demande |
 | `mots/<xx>.json.gz` | index de mots | au filtre par mot |
@@ -36,6 +36,7 @@ prises de parole de la XVe à la XVIIe — pour un maillon de la XIVe, la sectio
 from __future__ import annotations
 
 import datetime as dt
+import unicodedata
 from collections import defaultdict
 
 from ..perimetre import LEGISLATURES, LEGISLATURES_PAROLES, PAROLES_DEPUIS, points
@@ -539,9 +540,24 @@ def _proposes(ctx, f, l, ms, anciens, commun, idx):
 
 COLS_AMENDEMENTS = ["amendement", "numero_long", "date_depot", "sort", "famille_sort", "commission",
                     "commission_libelle", "dossier", "titre_dossier", "document", "article_designation",
-                    "acteur", "nom", "source_url", "raison_source_url", "licence"]
-COLS_AGREGATS = ["commission", "commission_libelle", "annee", "nb_amendements", "nb_dossiers_distincts",
+                    "acteur", "nom", "type_auteur", "source_url", "raison_source_url", "licence"]
+COLS_AGREGATS = ["commission", "commission_libelle", "annee", "nb_amendements", "nb_amendements_depute",
+                 "nb_amendements_rapporteur", "nb_dossiers_distincts",
                  "nb_irrecevables_40", "nb_irrecevables_45", "nb_signatures_cosignataire", "au"]
+
+
+# Type de déposant publié par l'Assemblée (`typeAuteur`, lu tel quel par `an_amendements`) → compteur
+# de l'agrégat ; « Gouvernement » n'a pas d'auteur personne et n'entre jamais dans une lignée.
+TYPES_DEPOSANT = {"depute": "nb_amendements_depute", "rapporteur": "nb_amendements_rapporteur"}
+
+
+def _type_deposant(type_auteur):
+    """Rend la clé de `TYPES_DEPOSANT` du type publié `type_auteur` (« Député » → `depute`,
+    « Rapporteur » → `rapporteur`, sans tenir compte des accents ni de la casse), sinon `None`."""
+    if not type_auteur:
+        return None
+    t = unicodedata.normalize("NFKD", str(type_auteur)).encode("ascii", "ignore").decode().strip().lower()
+    return t if t in TYPES_DEPOSANT else None
 
 
 def _amendements(ctx, f, l, ms, anciens, commun):
@@ -589,7 +605,8 @@ def _amendements(ctx, f, l, ms, anciens, commun):
         k = (com, annee)
         if k not in agr:
             agr[k] = {"commission": com, "commission_libelle": lib.get(com) if com else "Commission non établie",
-                      "annee": annee, "nb_amendements": 0, "_d": set(), "nb_irrecevables_40": 0,
+                      "annee": annee, "nb_amendements": 0, "nb_amendements_depute": 0,
+                      "nb_amendements_rapporteur": 0, "_d": set(), "nb_irrecevables_40": 0,
                       "nb_irrecevables_45": 0, "nb_signatures_cosignataire": 0, "au": au}
         return agr[k]
     for r in rows:
@@ -600,6 +617,9 @@ def _amendements(ctx, f, l, ms, anciens, commun):
             x["nb_irrecevables_45"] += 1
         else:
             x["nb_amendements"] += 1
+            t = _type_deposant(r.get("type_auteur"))
+            if t:
+                x[TYPES_DEPOSANT[t]] += 1
             if r["dossier"]:
                 x["_d"].add(r["dossier"])
     for s in sig:
@@ -611,11 +631,16 @@ def _amendements(ctx, f, l, ms, anciens, commun):
         agregats.append(x)
     hors = sum(1 for r in rows if r["famille_sort"] not in ("irrecevable_40", "irrecevable_45"))
     com = sum(1 for r in rows if r["commission"])
+    sans_type = sum(1 for r in rows if r["famille_sort"] not in ("irrecevable_40", "irrecevable_45")
+                    and not _type_deposant(r.get("type_auteur")))
+    autre_type = f" ; autre ou absent pour {sans_type}" if sans_type else ""
     cv = _couv("amendements", "complet" if ms else "non_collecte",
                f"Amendements distincts dont un membre est l'auteur principal, déposés pendant son "
                f"appartenance : {hors}, plus {len(rows) - hors} irrecevables (articles 40 et 45) comptés à "
                f"part ; {len(sig)} amendements d'autres auteurs cosignés par des membres, comptés à part. "
-               f"Commission établie pour {com} sur {len(rows)}. Aucun taux d'adoption.",
+               f"Commission établie pour {com} sur {len(rows)}. Type de déposant (député, rapporteur) "
+               f"publié par l'Assemblée{autre_type}. "
+               "Aucun taux d'adoption.",
                com, len(rows), pts, au=au)
     cv["maillons_hors_perimetre"] = _couv_anciens(anciens, "amendements", pts, au)
     f.section("amendements", agregats, "amendements_compte_lignee", ids={"organe": "commission", "autre": "annee"},
@@ -624,6 +649,10 @@ def _amendements(ctx, f, l, ms, anciens, commun):
                      "aide_a_la_lecture": ["commission_libelle"],
                      "definitions": {"nb_amendements": "amendements dont l'auteur principal est membre à la "
                                                        "date de dépôt, hors irrecevables 40 et 45",
+                                     "nb_amendements_depute": "parmi nb_amendements, ceux que l'Assemblée dit "
+                                                              "déposés par le membre comme député",
+                                     "nb_amendements_rapporteur": "parmi nb_amendements, ceux que l'Assemblée "
+                                                                  "dit déposés par le membre comme rapporteur",
                                      "nb_signatures_cosignataire": "amendements d'un auteur extérieur au "
                                                                    "groupe cosignés par au moins un membre"},
                      "au": au})
