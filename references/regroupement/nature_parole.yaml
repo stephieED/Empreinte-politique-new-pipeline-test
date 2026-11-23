@@ -1,0 +1,41 @@
+# Issue #87 : les prises de parole regroupées en sept natures pour l'affichage (filtre des
+# paroles d'une lignée ou d'un candidat). Forme commune des regroupements : voir
+# commission_saisie.yaml.
+#
+# Les codes viennent de R-SUJET (version 2) : `genre_point` (explications de vote, motion de
+# censure), `code_creneau` (QG, QOSD, QPM), `type_sujet`. Le code d'une prise de parole est son
+# premier champ non vide dans cet ordre ; les entrées sont lues dans l'ordre du fichier (une
+# motion de censure avant les textes), et `ordre` donne celui de la légende.
+#
+# Mesuré sur les comptes rendus de la XVIe et de la XVIIe (15/11/2026) : explications de vote,
+# sous-point codé DISC_ARTICLES_1_2 (150 et 162) ; motions de censure, point intitulé ainsi
+# (48 et 33) ; questions au gouvernement QG_1_1 (1 957 en XVIIe), orales sans débat QOSD_1_1
+# (815), au Premier ministre QPM_1_1 (6).
+#
+# « Commission » n'a aucun code : aucun point d'accès ne relève les comptes rendus de commission.
+# Les questions au Premier ministre vont avec les questions au gouvernement (même séance de
+# questions, autre format) : proposition à valider.
+type: regroupement
+date: 2026-11-15
+nom: nature_parole
+titre: "Nature d'une prise de parole"
+description: >-
+  La nature d'une prise de parole en séance se lit dans le compte rendu (règle R-SUJET) : le
+  créneau des questions (au gouvernement, au Premier ministre, orales sans débat), le sous-point
+  des explications de vote, le point d'une motion de censure, sinon le texte discuté. Elle est
+  ramenée à sept cases pour l'affichage. Les comptes rendus de commission ne sont pas relevés :
+  la case « Commission » reste vide. Le code exact reste donné pour chaque prise de parole.
+decisions:
+  - {groupe: motion_de_censure, libelle: "Motion de censure", ordre: 4, champ: genre_point, valeur: motion_de_censure}
+  - {groupe: explications_de_vote, libelle: "Explications de vote", ordre: 5, champ: genre_point, valeur: explications_de_vote}
+  - {groupe: questions_au_gouvernement, libelle: "Questions au gouvernement", ordre: 1, champ: code_creneau, valeur: QG}
+  - {groupe: questions_au_gouvernement, libelle: "Questions au gouvernement", ordre: 1, champ: code_creneau, valeur: QPM}
+  - {groupe: questions_orales, libelle: "Questions orales", ordre: 2, champ: code_creneau, valeur: QOSD}
+  - {groupe: textes, libelle: "Textes", ordre: 3, champ: type_sujet, valeur: texte}
+  - {groupe: textes, libelle: "Textes", ordre: 3, champ: type_sujet, valeur: loi_de_finances}
+  # aucun code : les comptes rendus de commission ne sont pas relevés
+  - {groupe: commission, libelle: "Commission", ordre: 6}
+  - {groupe: autres, libelle: "Autres", ordre: 7, champ: type_sujet, valeur: hors_point}
+  - {groupe: autres, libelle: "Autres", ordre: 7, champ: type_sujet, valeur: procedure}
+  # paragraphe d'un créneau hors de toute question : son code est celui du créneau
+  - {groupe: autres, libelle: "Autres", ordre: 7, champ: type_sujet, valeur: creneau}

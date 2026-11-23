@@ -347,7 +347,7 @@ Types prévus et ce qu'ils alimentent :
 | `rattachement_portefeuille` | ministère de tutelle d'un ministre délégué quand la source ne le donne pas : `rattache_a` suivi d'un ou de plusieurs `PO…` (co-tutelle, dans l'ordre de la source), avec le texte qui l'établit (décret de composition au JO, sinon le libellé de l'Assemblée) | 4.4 |
 | `libelle_ministere` | table des 260 libellés libres du JO → ministère normalisé | 3.6 |
 | `adresse_citee` | adresse de fiche de l'ancien site citée par un article publié → sa fiche, désignée par un identifiant stable (`lig:…`, organe `PO…`) ; servie dans le catalogue (décision du 14/11/2026, issue #86) | 4.7 |
-| `regroupement` | table d'un regroupement pour l'affichage (une légende de commissions, des sorts…) : chaque entrée met un code de la source (`champ` = `valeur`) dans une case (`groupe`, `libelle`), dans l'ordre de la légende ; servie à part dans `regroupements.json.gz`, les fiches gardant les codes (décision du 14/11/2026, issue #88) | 4.2 à 4.5 |
+| `regroupement` | table d'un regroupement pour l'affichage (une légende de commissions, des sorts…) : chaque entrée met un code de la source (`champ` = `valeur`) dans une case (`groupe`, `libelle`, `ordre` facultatif de la légende), un code étant rangé par la première entrée qui lui correspond ; servie à part dans `regroupements.json.gz`, les fiches gardant les codes (décision du 14/11/2026, issue #88) | 4.2 à 4.5 |
 | `fin_legislature` | mode de fin (dissolution / terme) avec le décret (lien Légifrance) | 4.5 |
 | `absence_etablie` | « relu, aucun » : source lue en entier, date, ce qu'elle ne couvre pas | 4.7 |
 | `levee_controle` | autoriser une publication refusée, pour **une** anomalie | 6.2 |
