@@ -335,6 +335,7 @@ colonnes:
   - preside
   - interruption
   - sujet_id
+  - genre_point
   - periode
   - fichier
   - ligne
@@ -784,6 +785,7 @@ colonnes:
   - acteur
   - nom
   - source_url
+  - raison_source_url
   - licence
   lignees/amendements-N-N:
   - amendement
@@ -800,6 +802,7 @@ colonnes:
   - acteur
   - nom
   - source_url
+  - raison_source_url
   - licence
   lignees/avec-qui-N:
   - maillon
@@ -841,6 +844,7 @@ colonnes:
   - acteur
   - preside
   - sujet_id
+  - genre_point
   - fichier
   - ligne
   - compte_rendu

@@ -436,3 +436,45 @@ def test_petit_sujets(petit):
     assert _ligne(ctx, "11")[5:] == ("Projet de loi de finances pour 2027", "etabli", "DLRT2")
     assert _ligne(ctx, "12")[5:] == (None, "intitule_non_publie", None)
     assert _ligne(ctx, "13")[5:] == (None, "intitule_non_publie", None)
+
+
+def test_sujet_code_du_creneau_et_genre_du_point(tmp_path):
+    """R-SUJET version 2 (#87) : le créneau d'une question par son code, sinon par l'intitulé du
+    créneau ; les explications de vote par le sous-point ; la motion de censure par l'intitulé du
+    point de niveau 1, jamais pour une question posée dans un créneau."""
+    qosd = [_p(1, "Q1", "TITRE_TEXTE_DISCUSSION", "Questions orales sans débat"),
+            _p(2, "Q2", "QOSD_1_1", "Maintien des lignes ferroviaires")]
+    qpm_titre = [_p(1, "Q3", "TITRE_TEXTE_DISCUSSION", "Questions au Premier ministre"),
+                 _p(2, "Q4", "AUTRE_CODE", "Pouvoir d’achat")]
+    censure = [_p(1, "M1", "TITRE_TEXTE_DISCUSSION", "Motions de censure")]
+    question_censure = [_p(1, "P1", "TITRE_TEXTE_DISCUSSION", "Questions au gouvernement"),
+                        _p(2, "P9", "QG_1_1", "Motions de censure")]
+    explications = [_p(1, "P3", "TITRE_TEXTE_DISCUSSION", "Protection de l’eau potable"),
+                    _p(2, "E1", "DISC_ARTICLES_1_2", "Explications de vote")]
+    explications_titre = [_p(1, "P3", "TITRE_TEXTE_DISCUSSION", "Protection de l’eau potable"),
+                          _p(2, "E2", "AUTRE_INTERTITRE_1_10", "Explications de vote communes")]
+    z2 = tmp_path / "z2"
+    z2.mkdir()
+    ecrire_table(z2, an_comptes_rendus, "intervention", [
+        _par("1", "PA1", "M. Jean Durand", QAG), _par("2", "PA1", "M. Jean Durand", qosd),
+        _par("3", "PA1", "M. Jean Durand", qpm_titre), _par("4", "PA1", "M. Jean Durand", censure),
+        _par("5", "PA1", "M. Jean Durand", question_censure), _par("6", "PA1", "M. Jean Durand", explications),
+        _par("7", "PA1", "M. Jean Durand", explications_titre), _par("8", "PA1", "M. Jean Durand", EAU)])
+    ecrire_table(z2, an_acteurs, "identite_source", [{"uid": "PA1", "civilite": "M.", "prenom": "Jean", "nom": "Durand"}])
+    ecrire_table(z2, an_acteurs, "organe", [])
+    ecrire_table(z2, an_acteurs, "mandat", [])
+    for nom in ("dossier", "acte"):
+        ecrire_table(z2, an_dossiers, nom, [])
+    ecrire_table(z2, an_agenda, "reunion", [])
+    ecrire_table(z2, an_agenda, "point_odj", [])
+    ctx, _ = appliquer(z2, tmp_path / "z3")
+    r = {i: (t, c, g) for i, t, c, g in ctx.x(
+        "SELECT id_syceron, type_sujet, code_creneau, genre_point FROM sujet_intervention")}
+    assert r["1"] == ("question", "QG", None)
+    assert r["2"] == ("question", "QOSD", None)
+    assert r["3"] == ("question", "QPM", None)                       # par l'intitulé du créneau
+    assert r["4"] == ("texte", None, "motion_de_censure")
+    assert r["5"] == ("question", "QG", None)                         # une question, pas une motion
+    assert r["6"] == ("texte", None, "explications_de_vote")
+    assert r["7"] == ("texte", None, "explications_de_vote")           # par l'intitulé
+    assert r["8"] == ("texte", None, None)
