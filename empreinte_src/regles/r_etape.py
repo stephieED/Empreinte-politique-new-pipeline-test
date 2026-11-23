@@ -15,12 +15,18 @@ quelle lecture l'acte a eu lieu. Échelle, de la plus basse à la plus haute :
 | `adopte` | adoption **définitive**, lue dans les conclusions (voir `ADOPTION_DEFINITIVE`) |
 | `promulgue` | acte de promulgation |
 
-La législature d'un acte est celle de son identifiant (`L17-…`) : un texte transmis par le
-Sénat survit à la dissolution et a une ligne par législature où il a avancé."""
+La législature d'un acte est celle où tombe sa date, entre son début et sa fin (table
+`legislature`, R-LEGISLATURES) ; son identifiant (`L17-…`) ne sert que faute de date, ou pour une
+date qui ne tombe dans aucune législature (entre la dissolution et l'ouverture de la suivante).
+Un texte transmis par le Sénat survit à la dissolution et a une ligne par législature où il a
+avancé. Version 3 (décision du 23/11/2026, doc. 5, Q48 « Ranger par la date ») : l'identifiant
+seul rangeait sous la XIVe des actes de 2018 que l'archive close de la XIVe numérote `L14-`
+(rapport du Sénat du 17/01/2018, dossier DLR5L14N35418), et que la page publique du dossier range
+sous la XVe ; 29 textes servis en g20 avaient une étape datée après la fin de leur législature."""
 
 NOM = "R-ETAPE"
-VERSION = 2
-DEPEND = ()
+VERSION = 3
+DEPEND = ("R-LEGISLATURES",)
 SORTIES = ("etape_dossier",)
 DESCRIPTION = (
     "L'étape atteinte par un texte dans une législature (déposé, examiné en commission, discuté en "
@@ -59,12 +65,23 @@ def date_ref(ctx) -> str:
     return ctx.date_reference or datetime.date.today().isoformat()
 
 
+def legislature_acte(ctx, date: str, uid: str) -> str:
+    """Expression SQL : la législature d'un acte, celle où tombe sa date (`date`, texte ISO), entre
+    son début et sa fin ; à défaut (pas de date, date hors de toute législature, table `legislature`
+    absente), celle de son identifiant (`uid`, `L17-…`). Version 3, décision Q48 du 23/11/2026."""
+    par_id = f"TRY_CAST(regexp_extract({uid}, '^L(\\d+)-', 1) AS INTEGER)"
+    if not ctx.existe("legislature"):
+        return par_id
+    return (f"coalesce((SELECT max(g.numero) FROM legislature g WHERE g.debut <= left({date}, 10) "
+            f"AND coalesce(g.fin, '9999-12-31') >= left({date}, 10)), {par_id})")
+
+
 def decisions(ctx) -> str:
     """Décisions de séance datées (au plus tard à la date de référence), avec chambre, lecture et
     issue lue dans la conclusion."""
     return f"""
         SELECT a.dossier, a.uid AS acte, left(a.date, 10) AS date, a.code,
-               TRY_CAST(regexp_extract(a.uid, '^L(\\d+)-', 1) AS INTEGER) AS legislature,
+               {legislature_acte(ctx, "a.date", "a.uid")} AS legislature,
                split_part(a.code, '-', 1) AS lecture,
                CASE WHEN a.code LIKE 'AN%' OR a.code LIKE 'CMP-DEBATS-AN%' THEN 'AN'
                     WHEN a.code LIKE 'SN%' OR a.code LIKE 'CMP-DEBATS-SN%' THEN 'SN' END AS chambre,
@@ -119,7 +136,7 @@ def appliquer(ctx):
     ctx.ecrire("etape_dossier", f"""
         WITH a AS (
             SELECT a.dossier, a.uid AS acte, left(a.date, 10) AS date, a.type_acte, a.conclusion_code,
-                   TRY_CAST(regexp_extract(a.uid, '^L(\\d+)-', 1) AS INTEGER) AS legislature
+                   {legislature_acte(ctx, "a.date", "a.uid")} AS legislature
             FROM an_dossiers__acte a
             WHERE a.date IS NOT NULL AND left(a.date, 10) <= '{ref}'),
         preuve AS (

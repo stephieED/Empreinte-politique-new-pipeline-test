@@ -1047,3 +1047,11 @@ Branche `etape-2-natures-parole`, issue #87.
 | Regroupement `nature_parole` (`references/regroupement/nature_parole.yaml`), 7 cases : questions au gouvernement (QG, QPM), questions orales (QOSD), textes, motion de censure, explications de vote, commission (aucun code : comptes rendus de commission non relevés), autres | issue #87 | — |
 | Forme commune : `ordre` facultatif d'une case (l'ordre de la légende peut différer de l'ordre de rangement) ; le fichier servi donne `champs`, l'ordre dans lequel le code d'une valeur est cherché | une motion de censure doit être rangée avant « Textes » mais vient après dans la légende | 1 (1.3.3) |
 
+
+## R-ETAPE : la législature d'un acte est celle de sa date (23/11/2026)
+
+Branche `etape-2-etape-par-date`, décision du 23/11/2026 (doc. 5, Q48 « Ranger par la date » ; issue #63).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-ETAPE version 3 (v4 si la PR #161 est fusionnée avant) : un acte compte dans la législature où tombe sa date, entre son début et sa fin (table `legislature`, R-LEGISLATURES, désormais une dépendance) ; l'identifiant de l'acte ne sert que faute de date, ou pour une date hors de toute législature (dissolution). Vaut pour l'étape (`etape_dossier`) et pour la législature des décisions (`decisions`, lue par R-SORT-FINAL) | Q48 : l'archive close de la XIVe numérote `L14-` des actes de 2018 ; la relecture A2 des textes (#162) l'a relevé sur DLR5L14N35418, servi pour la XIVe à l'étape « examen en commission » du 17/01/2018. Mesuré sur la g20 (R-ETAPE rejouée sur l'export des faits lus, 12 755 textes servis reproduits à l'identique) : 25 lignes changent d'étape (XIVe 15 et XVe 8, examen en commission → dépôt ; XVIe : 1 dans chaque sens) ; les 5 autres textes datés après la fin de leur législature le sont pendant la dissolution de 2024 et gardent la XVIe ; 11 textes servis apparaissent dans une législature (XVe 10, XVIe 1) où ils n'ont qu'un retrait ou une procédure accélérée, à l'étape « non établie » ; aucune ligne ne disparaît, donc aucune perte pour C1 | 1 (1.6 R-ETAPE) |
