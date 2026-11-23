@@ -102,6 +102,33 @@ EXCLUS_WD = r"(député|sénat|ministre|parlement|surveillance|inspect|économiq
 FONCTION_WD = r"^(maire|adjoint|premier adjoint|présiden|vice-présiden)"
 
 
+def _niveau_wd_sql(t: str) -> str:
+    """Le niveau d'une déclaration P39 (`NIVEAUX_WD`) d'après le texte `t` (poste · ressort · objet,
+    en minuscules) ; NULL si elle ne désigne pas une fonction locale."""
+    return "CASE " + " ".join(
+        "WHEN regexp_matches({}, '{}') THEN '{}'".format(t, motif.replace("'", "''"), niv)
+        for niv, motif in NIVEAUX_WD) + " END"
+
+
+def declarations_wikidata(ctx) -> dict[str, bool]:
+    """{déclaration P39 de la réponse Wikidata en vigueur : son libellé désigne-t-il une fonction
+    locale ?}, selon les motifs de la règle (`NIVEAUX_WD`, `EXCLUS_WD`), sans tenir compte des
+    dates. C1 s'en sert pour expliquer la disparition d'une ligne déclarée par Wikidata (décision
+    Q55 du 23/11/2026, « Perte expliquée dans C1 ») : déclaration absente de la réponse alors que
+    son élément y est encore (supprimée dans Wikidata), ou présente mais plus locale. Vide si la
+    réponse n'a jamais été lue."""
+    if not ctx.existe("wd_fonctions__fonction_wikidata"):
+        return {}
+    return dict(ctx.x(f"""
+        WITH w AS (SELECT declaration, any_value(poste_libelle) AS poste_libelle,
+                          lower(concat_ws(' · ', any_value(poste_libelle), string_agg(DISTINCT juridiction, ' · '),
+                                          string_agg(DISTINCT objet, ' · '))) AS t
+                   FROM wd_fonctions__fonction_wikidata WHERE declaration IS NOT NULL GROUP BY 1)
+        SELECT declaration, coalesce({_niveau_wd_sql("t")} IS NOT NULL
+                                     AND NOT regexp_matches(lower(coalesce(poste_libelle, '')), '{EXCLUS_WD}'), false)
+        FROM w"""))
+
+
 def norm(x: str) -> str:
     return f"upper(regexp_replace(strip_accents(coalesce({x}, '')), '[^A-Za-z]', '', 'g'))"
 
@@ -268,9 +295,7 @@ def appliquer(ctx):
         FROM lm""")
 
     # --- Wikidata P39 : mandats locaux terminés hors du répertoire (Q52).
-    niveau_wd = "CASE " + " ".join(
-        "WHEN regexp_matches(t, '{}') THEN '{}'".format(motif.replace("'", "''"), niv)
-        for niv, motif in NIVEAUX_WD) + " END"
+    niveau_wd = _niveau_wd_sql("t")
     ctx.x(f"""CREATE OR REPLACE TEMP TABLE _ml_wd AS
         WITH w AS (
             SELECT element, declaration, any_value(poste_libelle) AS poste_libelle, min(debut) AS debut,

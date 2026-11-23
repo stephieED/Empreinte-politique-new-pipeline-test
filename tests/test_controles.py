@@ -328,3 +328,58 @@ def test_c1_non_inscrits_reconnus_sans_leur_effectif(tmp_path):
     assert comparer([groupe, ni(11, "2026-11-20")], [groupe, ni(12, "2026-11-21")]) == []
     assert comparer([groupe, ni(11, "2026-11-20")], [groupe]) == ["C1"]
     assert comparer([groupe, ni(11, "2026-11-20")], [groupe, ni(11, "2026-11-21", "Autre")]) == ["C1"]
+
+
+def test_c1_ligne_wikidata_disparue_perte_expliquee_et_nommee_en_a10(tmp_path):
+    """Q55 (23/11/2026, « Perte expliquée dans C1 ») : une ligne de mandat local déclarée par
+    Wikidata (P39) qui disparaît parce que la déclaration est supprimée dans Wikidata, ou que son
+    libellé ne désigne plus une fonction locale, ne bloque pas ; A10 la nomme. Toute autre
+    disparition d'une ligne Wikidata, ou d'une ligne du répertoire, reste une perte."""
+    def ligne(mandat, libelle, debut="2014-04-05", fin="2020-05-22", fiche="candidat/david-lisnard"):
+        return {"fiche": fiche, "section": "entete", "type_fait": "periode_carriere", "id_mandat": mandat,
+                "valeur": json.dumps({"institution": "local", "libelle": libelle, "debut": debut, "fin": fin,
+                                      "source": "wikidata", "mandat": mandat}, ensure_ascii=False)}
+    schema = pa.schema([(c, pa.string()) for c in ("fiche", "section", "type_fait", "valeur", "id_mandat")])
+    pa_, pb = str(tmp_path / "a.parquet"), str(tmp_path / "b.parquet")
+    a = ligne("wikidata:Q3018298-a", "maire de Cannes")
+    e = ligne("wikidata:Q3018298-e", "conseillère générale · Var", "1990-03-01", "1995-03-01")
+    rne = ligne("cm:06029", "Conseiller municipal · Cannes", "2020-05-18", None)
+    pq.write_table(pa.Table.from_pylist([a, e, rne], schema=schema), pa_)
+
+    def comparer(apres, declarations, **k):
+        pq.write_table(pa.Table.from_pylist(apres, schema=schema), pb)
+        c = Controles(str(tmp_path))
+        c.c1_c6_comparer(pa_, pb, declarations_wikidata=declarations, **k)
+        return c
+    # a supprimée dans Wikidata (son élément y est encore), e plus locale : expliquées, nommées.
+    c = comparer([rne], {"Q3018298-b": True, "Q3018298-e": False})
+    b = c.bilan()
+    assert b["publication_autorisee"] and [x["controle"] for x in c.anomalies] == ["A10"]
+    assert not c.anomalies[0]["bloquant"] and b["expliques"]["c1_lignes_wikidata"] == 2
+    assert c.anomalies[0]["exemples"] == [
+        "candidat/david-lisnard : conseillère générale · Var (1990-03-01 – 1995-03-01), déclaration "
+        "Q3018298-e : le libellé ne désigne plus une fonction locale",
+        "candidat/david-lisnard : maire de Cannes (2014-04-05 – 2020-05-22), déclaration Q3018298-a : "
+        "déclaration supprimée dans Wikidata"]
+    assert b["avertissements"] == [c.anomalies[0]["empreinte"]]
+    # Déclaration toujours locale (la ligne disparaît pour une autre raison) : perte.
+    c = comparer([e, rne], {"Q3018298-a": True, "Q3018298-e": True})
+    assert [x["controle"] for x in c.anomalies] == ["C1"] and "maire de Cannes" in c.anomalies[0]["exemples"][0]
+    # Élément absent de la réponse (réponse vide, élément changé) : rien n'explique, perte.
+    c = comparer([e, rne], {"Q999-x": True})
+    assert [x["controle"] for x in c.anomalies] == ["C1"]
+    c = comparer([e, rne], {})
+    assert [x["controle"] for x in c.anomalies] == ["C1"]
+    # Une ligne du répertoire n'est jamais expliquée ainsi.
+    c = comparer([a, e], {"Q3018298-a": True, "Q3018298-e": True})
+    assert [x["controle"] for x in c.anomalies] == ["C1"] and "Conseiller municipal" in c.anomalies[0]["exemples"][0]
+    # Aucune perte : A10 se tait, rien n'est compté.
+    c = comparer([a, e, rne], {"Q3018298-a": True, "Q3018298-e": True})
+    assert c.anomalies == [] and "c1_lignes_wikidata" not in c.bilan()["expliques"]
+
+
+def test_element_wikidata_d_une_declaration():
+    from empreinte_src.controles import _element_wikidata
+    assert _element_wikidata("Q3018298-E1B2") == "Q3018298"
+    assert _element_wikidata("q42$F078E5B3") == "Q42"
+    assert _element_wikidata("sans-element") is None

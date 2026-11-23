@@ -14,7 +14,8 @@ côté), C4 (données interdites), C5 (lecture incomplète présentée comme com
 (une issue par avertissement). A1 fiche hors modèle, A2 vérification croisée sur les pages
 publiques (module `verification`), A3 totaux d'une autre source, A4 double affichage, A5 famille
 à zéro pour tout le monde, A6 couverture insuffisante, A7 entrées non résolues, A8 mandat ouvert
-dans un organe clos. Les textes d'avertissement donnent des **décomptes et des identifiants**,
+dans un organe clos, A9 valeurs vidées et liste des candidats, A10 mandats locaux (homonymes non
+rattachés, lignes déclarées par Wikidata disparues). Les textes d'avertissement donnent des **décomptes et des identifiants**,
 jamais un indice individuel (doc. 2, 2.10) : A6 compte les membres sans prise de parole servie,
 sans les nommer.
 
@@ -55,6 +56,33 @@ PREFIXES_DE_COMPTE = ("nb_", "effectif")
 # compte de candidat par institution, un effectif de maillon par date, une ligne par rôle…
 DISCRIMINANTS_A9 = ("institution", "nature", "date", "legislature", "role", "annee", "commission",
                     "periode", "debut", "famille", "quoi")
+
+
+# C1 : lignes de mandat local déclarées par Wikidata (P39), identifiées `wikidata:<déclaration>`
+# (R-MANDAT-LOCAL, Q52). Leur disparition est expliquée quand la déclaration a été supprimée dans
+# Wikidata ou que son libellé ne désigne plus une fonction locale (décision Q55 du 23/11/2026).
+PREFIXE_MANDAT_WIKIDATA = "wikidata:"
+
+
+def _element_wikidata(declaration: str) -> str | None:
+    """`Q3018298-…` ou `Q3018298$…` → `Q3018298` (l'élément qui porte la déclaration)."""
+    m = re.match(r"([QPL]\d+)[$-]", declaration or "", re.I)
+    return m.group(1).upper() if m else None
+
+
+def _perte_wikidata(id_mandat: str | None, declarations: dict[str, bool]) -> str | None:
+    """La raison qui explique la disparition d'une ligne déclarée par Wikidata, ou None.
+    `declarations` : {déclaration de la réponse Wikidata en vigueur : libellé local ?}
+    (`r_mandat_local.declarations_wikidata`). Une déclaration absente de la réponse n'est
+    « supprimée dans Wikidata » que si son élément y figure encore : sinon la réponse est vide,
+    ou l'élément a changé (une décision), et la perte reste à expliquer."""
+    if not id_mandat or not id_mandat.startswith(PREFIXE_MANDAT_WIKIDATA) or not declarations:
+        return None
+    d = id_mandat[len(PREFIXE_MANDAT_WIKIDATA):]
+    if d in declarations:
+        return None if declarations[d] else "le libellé ne désigne plus une fonction locale"
+    elements = {_element_wikidata(x) for x in declarations}
+    return "déclaration supprimée dans Wikidata" if _element_wikidata(d) in elements - {None} else None
 
 
 def _section_sans_paquet(section: str) -> str:
@@ -261,12 +289,23 @@ class Controles:
     # -- C1 et C6 : comparaison avec la publication précédente ----------------------------
     def c1_c6_comparer(self, faits_avant: str | None, faits_apres: str,
                        uids_changes_a_la_source: set[str] | None = None, seuil_effondrement=0.2,
-                       fiches_retirees: dict[str, str] | None = None):
+                       fiches_retirees: dict[str, str] | None = None,
+                       declarations_wikidata: dict[str, bool] | None = None):
         """`fiches_retirees` : {fiche: raison} des fiches qui ne sont plus publiées pour une raison
         établie (candidature retirée, candidat qui n'est plus dans la liste). Leurs faits perdus
-        sont expliqués ; la fiche retirée cette nuit est nommée dans l'avertissement A9."""
+        sont expliqués ; la fiche retirée cette nuit est nommée dans l'avertissement A9.
+
+        `declarations_wikidata` : {déclaration P39 de la réponse Wikidata en vigueur : libellé
+        local ?} (`r_mandat_local.declarations_wikidata`). Une ligne de mandat local déclarée par
+        Wikidata (`id_mandat` = `wikidata:<déclaration>`) qui disparaît parce que la déclaration a
+        été supprimée dans Wikidata, ou que son libellé ne désigne plus une fonction locale, est
+        une perte expliquée (décision Q55 du 23/11/2026, « Perte expliquée dans C1 ») : elle ne
+        bloque pas, elle est nommée dans l'avertissement A10 et comptée
+        (`expliques.c1_lignes_wikidata`). Une ligne qui disparaît pour une autre raison
+        (déclaration toujours locale, élément absent de la réponse) reste une perte."""
         fiches_retirees = fiches_retirees or {}
         self.fiches_retirees_cette_nuit = {}
+        self.lignes_wikidata_disparues = []
         if not faits_avant or not os.path.exists(faits_avant):
             # Rien à comparer : dit, jamais silencieux (issue #40). Attendu au premier calcul
             # seulement ; ensuite, le signe d'une publication précédente introuvable.
@@ -338,6 +377,25 @@ class Controles:
                 WHERE {' AND '.join(f'(p.i{k} IS NULL OR p.i{k} = b.i{k})' for k in range(n))}""").fetchall()}
             self.bilan_c1_identite_enrichie = len(enrichis)
             perdus = [x for j, x in enumerate(perdus) if j not in enrichis]
+        # Lignes de mandat local déclarées par Wikidata (Q55) : expliquées, nommées en A10.
+        i_mandat = 4 + IDS.index("mandat")
+        if declarations_wikidata:
+            restent = []
+            for x in perdus:
+                raison = _perte_wikidata(x[i_mandat], declarations_wikidata)
+                if raison is None or x[0] in fiches_retirees:
+                    restent.append(x)
+                    continue
+                try:
+                    v = json.loads(x[3])
+                except ValueError:
+                    v = {}
+                v = v if isinstance(v, dict) else {}
+                quoi = v.get("libelle") or v.get("fonction") or "mandat local"
+                quand = " – ".join(str(v.get(k) or "?") for k in ("debut", "fin"))
+                self.lignes_wikidata_disparues.append(
+                    f"{x[0]} : {quoi} ({quand}), déclaration {x[i_mandat][len(PREFIXE_MANDAT_WIKIDATA):]} : {raison}")
+            perdus = restent
         perdus = [x[:4] for x in perdus]
         # Faits sans aucun identifiant (comptes par ministère et par nature, par exemple) : leur
         # identité est leur valeur sans ses comptes ni ses dates, qui changent légitimement.
@@ -369,6 +427,11 @@ class Controles:
         if non_expliques:
             self._signaler("C1", "Faits publiés perdus sans explication",
                            [f"{p[0]} / {p[1]} / {p[2]}: {p[3][:120]}" for p in non_expliques])
+        self._avertir("A10", "Mandats locaux : lignes déclarées par Wikidata disparues (perte expliquée)",
+                      sorted(self.lignes_wikidata_disparues),
+                      detail="Une ligne de mandat local déclarée par Wikidata (P39) disparaît quand la "
+                             "déclaration est supprimée dans Wikidata, ou que son libellé ne désigne plus "
+                             "une fonction locale : C1 la compte comme une perte expliquée (Q55).")
         # C6 : une section qui tombe à zéro ou baisse fortement d'un coup. Une section découpée en
         # paquets (`amendements-2013` → `amendements-2013-1`, `-2`…, quand l'année grossit) est
         # comptée avec ses paquets : sinon son nom d'origine « tombe à 0 » (essai du 13/11/2026,
@@ -883,6 +946,26 @@ class Controles:
                              "recopiée de franceinfo ; Wikipédia ne sert qu'à signaler un écart. "
                              "Un écart se règle par une nouvelle décision, jamais d'office.")
 
+    def a10_elus_ambigus(self) -> None:
+        """A10 — Mandats locaux : élus homonymes non rattachés (décision Q53 du 23/11/2026, « Ne pas
+        rattacher, alerter »). Quand le nom, le prénom et la date de naissance d'un candidat
+        désignent, dans un fichier du Répertoire national des élus où une personne n'a qu'un siège,
+        deux collectivités différentes, R-MANDAT-LOCAL ne rattache aucun des deux élus et l'écrit
+        dans `mandat_local_ambigu`. Cet avertissement les nomme : un candidat et des collectivités,
+        jamais un indice. Il se règle par une décision (`references/elu_local/`), jamais d'office.
+        L'autre volet de A10 (lignes déclarées par Wikidata disparues) est écrit par C1."""
+        if not self._a("mandat_local_ambigu"):
+            return
+        objets = [f"{c or per} : {n} élus de même nom, prénom et naissance ({naiss}) dans le fichier « {f} » "
+                  f"({coll}) ; aucun n'est rattaché"
+                  for per, c, naiss, f, n, coll in self._x("""
+                      SELECT per, candidat, naissance, fichier, collectivites_distinctes, collectivites
+                      FROM mandat_local_ambigu ORDER BY candidat, fichier""")]
+        self._avertir("A10", "Mandats locaux : homonymes non rattachés", objets,
+                      detail="Le Répertoire national des élus n'a pas d'identifiant de personne ; un candidat "
+                             "n'est rattaché que si son nom, son prénom et sa date de naissance désignent un "
+                             "seul élu. Une décision `elu_local` tranche.")
+
     def a8_mandats_ouverts(self):
         if self._a("mandat_ouvert_organe_clos"):
             self._avertir("A8", "Mandats ouverts dans un organe clos", [
@@ -899,6 +982,7 @@ class Controles:
                 # Ce que A3, A5 et A6 ont compté comme expliqué : gardé même quand l'avertissement se
                 # tait, pour que le rapport de la nuit le dise (décisions du 13, du 14 et du 15/11/2026).
                 "expliques": {k: v for k, v in (("c1_identite_enrichie", getattr(self, "bilan_c1_identite_enrichie", None)),
+                                                ("c1_lignes_wikidata", len(getattr(self, "lignes_wikidata_disparues", []))),
                                                 ("a3", getattr(self, "bilan_a3", None)),
                                                 ("a3_lois", getattr(self, "bilan_a3_lois", None)),
                                                 ("a5", getattr(self, "bilan_a5", None)),
