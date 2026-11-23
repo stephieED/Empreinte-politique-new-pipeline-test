@@ -7,10 +7,13 @@ l'Assemblée (R-LOIS ; 17 dossiers de la XIVe, archive arrêtée au 22/03/2018, 
 ses travaux préparatoires (lecteur `jo_actes`, table `travaux_preparatoires`) : pour l'Assemblée,
 des numéros de documents (« Proposition de loi n° 1817 », « Rapport … n° 2810 », « TA n° 290 »).
 
-Un numéro d'un document de l'Assemblée n'est unique que dans sa législature, que le JO ne dit
-pas. Sont candidats, dans la législature de la promulgation et dans la précédente, chacune jugée
+Un numéro d'un document de l'Assemblée n'est unique que dans sa législature, que le JO dit
+rarement. Sont candidats, dans la législature de la promulgation et dans la précédente, chacune jugée
 à part : les documents de l'Assemblée portant ce numéro et du type que nomme la ligne (proposition
-→ `PION`, projet → `PRJL`, rapport → `RAPP`, avis → `AVIS` ; texte adopté → `…BTA<numéro>`). Une
+→ `PION`, projet → `PRJL`, rapport → `RAPP`, avis → `AVIS` ; texte adopté → `…BTA<numéro>`) ; quand
+le JO nomme la législature du numéro (« n° 4348 (quatorzième législature) », version 2, issue #146),
+seule celle-là est candidate (loi 2020-839 : sans cela, le n° 967 de la XVe tombait sous la XIVe
+sur un autre dossier). Une
 législature est retenue si tous ses numéros trouvés mènent au **même** dossier, et au moins deux ;
 la loi est reliée si une seule législature est retenue. Sinon : pas de lien, et la raison
 (`pas_de_travaux_preparatoires`, `aucun_document`, `un_seul_numero`, `dossiers_differents`,
@@ -29,16 +32,16 @@ Une loi est publiée par plusieurs actes du JO (rectificatifs, republications : 
 lois sous la XIVe) : une ligne par numéro de loi, ses travaux préparatoires réunis, l'acte retenu
 étant le premier publié.
 
-Limite : le JO ne publie les travaux préparatoires d'une loi (balise `TP`) qu'à partir de 2015
-(aucune loi avant 2015 n'en porte, la plupart de 2015 non plus) ; une loi plus ancienne n'est reliée que par
-l'Assemblée (R-LOIS).
+Avant 2016, le JO publie les travaux préparatoires d'une loi à la fin du bloc des signataires,
+la balise `TP` restant vide : le lecteur `jo_actes` (version 3, issue #146) les y lit. Sur la g20,
+987 lois reliées sur 1 221 au lieu de 644, 975 sur 975 en accord avec l'Assemblée.
 
 Contrôle de la méthode : pour les lois que l'Assemblée relie elle-même (acte de promulgation,
 R-LOIS), le dossier trouvé doit être le même (couverture `accord_avec_l_assemblee` : 633 sur 633
 sur l'archive globale)."""
 
 NOM = "R-LOI-DOSSIER"
-VERSION = 1
+VERSION = 2
 DEPEND = ("R-LEGISLATURES", "R-LOIS")
 SORTIES = ("loi_dossier_jo",)
 DESCRIPTION = (
@@ -95,7 +98,7 @@ def appliquer(ctx):
             SELECT l.numero_loi, (SELECT max(g.numero) FROM legislature g WHERE g.debut <= l.date_promulgation) AS leg
             FROM lois l),
         tp AS (
-            SELECT DISTINCT a.numero AS numero_loi, t.numero, t.numero_ta,
+            SELECT DISTINCT a.numero AS numero_loi, t.numero, t.numero_ta, t.legislature AS leg_citee,
                    CASE t.nature WHEN 'proposition_de_loi' THEN 'PION' WHEN 'projet_de_loi' THEN 'PRJL'
                                  WHEN 'proposition_de_resolution' THEN 'PNRE' WHEN 'rapport' THEN 'RAPP'
                                  WHEN 'avis' THEN 'AVIS' END AS type_doc
@@ -111,12 +114,13 @@ def appliquer(ctx):
             FROM an_dossiers__document WHERE uid LIKE '%ANR5L%' AND dossier IS NOT NULL),
         -- Un numéro de l'Assemblée est unique dans sa législature : chaque législature candidate
         -- (celle de la promulgation, la précédente) est jugée à part ; le type du document doit
-        -- être celui que nomme la ligne (proposition → PION, projet → PRJL, rapport → RAPP…).
+        -- être celui que nomme la ligne (proposition → PION, projet → PRJL, rapport → RAPP…) ;
+        -- la législature que le JO nomme, s'il en nomme une, est la seule candidate.
         cand AS (
             SELECT tp.numero_loi, d.leg, d.leg = leg.leg AS leg_promulgation, d.type_doc, d.genre,
                    coalesce(tp.numero, 'TA' || tp.numero_ta) AS cle, d.uid, d.dossier
             FROM tp JOIN leg USING (numero_loi)
-            JOIN docs d ON d.leg IN (leg.leg, leg.leg - 1)
+            JOIN docs d ON d.leg IN (leg.leg, leg.leg - 1) AND (tp.leg_citee IS NULL OR d.leg = tp.leg_citee)
               AND ((tp.numero IS NOT NULL AND d.genre = 'B' AND d.num = TRY_CAST(tp.numero AS INTEGER)
                     AND d.type_doc = tp.type_doc)
                 OR (tp.numero IS NULL AND tp.numero_ta IS NOT NULL AND d.genre = 'BTA'

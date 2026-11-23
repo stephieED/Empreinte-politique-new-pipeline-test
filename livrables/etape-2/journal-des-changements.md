@@ -28,6 +28,7 @@ par changement, la plus récente en bas.
 | 14/11/2026 | Q40 : la réponse de Wikidata est gardée sous sa forme canonique (exception à P2) ; la mesure « à mesurer » du 06/11 est faite (annexe `autres-sources.md`, § 10) | 0 (cadrage, P2), 2 (sources), 5 (Q40) |
 | 15/11/2026 | Q33 (suite, issue #35) : une loi du JO est reliée à son dossier par ses travaux préparatoires si au moins deux numéros de l'Assemblée mènent au même dossier ; pour un dossier dont la suite manque aux archives, le seul texte déposé sous la législature de la promulgation suffit (contradiction jugée dans cette législature) | 1 (R-LOI-DOSSIER, R-SORT-FINAL), 5 (Q33) |
 | 15/11/2026 | Q43 (issue #63) : A3 confronte chaque nuit les lois de l'Assemblée à celles du JO ; nommées : les lois du JO absentes de l'Assemblée, sauf celles que R-LOI-DOSSIER relie ou qui précèdent les travaux préparatoires au JO (comptées), et les lois de l'Assemblée absentes du JO | 2 (A3), 5 (Q43) |
+| 23/11/2026 | Q47 (alerte #146) : « option 2 », explication automatique, à la place de la liste de décisions `rattachement_loi` retenue puis abandonnée le même jour ; A3 compte sans les nommer les lois du JO non reliées dont le texte a été engagé sous la législature précédente et dont aucun document de l'Assemblée cité n'existe dans nos archives ; l'explication « avant les travaux au JO » (Q43) est retirée | 2 (A3), 5 (Q47) |
 | 15/11/2026 | Q44 (alerte #148) : C1 tient pour « identité enrichie », et non pour perdu, un fait qui garde tous ses identifiants et en gagne seulement | 2 (C1), 5 (Q44) |
 | 23/11/2026 | Q45 (alerte #118) : une motion de renvoi en commission adoptée (`TSORTMOT01`, motion `TMP03`) laisse le sort « non connu », raison `renvoye_en_commission` | 1 (R-ETAPE, R-SORT-FINAL), 5 (Q45) |
 | 23/11/2026 | Q46 (alerte #118) : une décision publiée sans conclusion (`TSORTFnull`) est « sans conclusion », jamais déduite de la suite | 1 (R-ETAPE, R-SORT-FINAL), 5 (Q46) |
@@ -36,6 +37,7 @@ par changement, la plus récente en bas.
 | 23/11/2026 | Q51 : candidat sans date de naissance : « non relu », « aucun élu de ce nom » ou « homonyme non rattaché » | 1 (R-MANDAT-LOCAL), 5 (Q51) |
 | 23/11/2026 | Q52 : mandats locaux passés déclarés par Wikidata (P39) | 1 (`fonction_wikidata`, R-MANDAT-LOCAL), 2 (point `wd-fonctions-candidats`), 5 (Q52) |
 | 23/11/2026 | Q53 : clé ambiguë, aucun rattachement, avertissement A10 | 1 (R-MANDAT-LOCAL), 2 (A10), 5 (Q53) |
+| 23/11/2026 | Q48 (issue #63) : « Ranger par la date » : R-ETAPE ne retiendra dans une législature que les actes datés entre son début et sa fin, l'identifiant de l'archive ne servant que faute de date (PR à part, pas encore autorisée) | 1 (R-ETAPE), 5 (Q48) |
 | 23/11/2026 | Q55 : C1 compte comme perte expliquée la disparition d'une ligne Wikidata P39 ; A10 rapatrié dans `controles.py` | 2 (C1, A10), 5 (Q55) |
 | 23/11/2026 | Q56 : les lignes Wikidata disparues sont nommées en A11, à part des homonymes (A10) | 2 (A10, A11), 5 (Q56) |
 | 23/11/2026 | Q57 : toute disparition d'une ligne Wikidata est expliquée, la raison dite quand elle est connue | 2 (C1, A11), 5 (Q57) |
@@ -1171,6 +1173,47 @@ identités des 37 fiches publiées de g20) :
 Risque C1 propre à Q52 : une déclaration P39 supprimée dans Wikidata, ou dont le libellé ne dit plus
 une fonction locale, retire sa ligne de la frise, et C1 y verra une perte.
 
+## R-ETAPE : la législature d'un acte est celle de sa date (23/11/2026)
+
+Branche `etape-2-etape-par-date`, décision du 23/11/2026 (doc. 5, Q48 « Ranger par la date » ; issue #63).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-ETAPE version 4 (après la version 3 de la PR #161) : un acte compte dans la législature où tombe sa date, entre son début et sa fin (table `legislature`, R-LEGISLATURES, désormais une dépendance) ; l'identifiant de l'acte ne sert que faute de date, ou pour une date hors de toute législature (dissolution). Vaut pour l'étape (`etape_dossier`) et pour la législature des décisions (`decisions`, lue par R-SORT-FINAL) | Q48 : l'archive close de la XIVe numérote `L14-` des actes de 2018 ; la relecture A2 des textes (#162) l'a relevé sur DLR5L14N35418, servi pour la XIVe à l'étape « examen en commission » du 17/01/2018. Mesuré sur la g20 (R-ETAPE rejouée sur l'export des faits lus, 12 755 textes servis reproduits à l'identique) : 25 lignes changent d'étape (XIVe 15 et XVe 8, examen en commission → dépôt ; XVIe : 1 dans chaque sens) ; les 5 autres textes datés après la fin de leur législature le sont pendant la dissolution de 2024 et gardent la XVIe ; 11 textes servis apparaissent dans une législature (XVe 10, XVIe 1) où ils n'ont qu'un retrait ou une procédure accélérée, à l'étape « non établie » ; aucune ligne ne disparaît, donc aucune perte pour C1 | 1 (1.6 R-ETAPE) |
+| Doc. 5 : Q54, décidée le 23/11/2026, « Selon l'identifiant » : pendant la dissolution, tant qu'aucune législature ne couvre la date d'un acte, l'identifiant de l'archive décide (ce que fait déjà R-ETAPE version 4) | 5 promulgations et actes des 12 et 13/06/2024 restent sous la XVIe | 5 (Q54) |
+
+## Stade et dates des textes relus sur la page publique de leur dossier (23/11/2026)
+
+Branche `etape-2-relecture-textes`, issue #63 (troisième famille : le stade atteint et les dates d'un texte).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| A2 : chaque nuit, 20 textes servis (faits `texte_legislature`, paramètre `verification_textes`) sont tirés au sort ; la page publique de leur dossier (`/dyn/<lég.>/dossiers/<chemin>`) est relue (module `verification_textes`). Comparés : la date de dépôt ; l'étape dans la législature du fait (palier le plus haut des actes de la page de cette législature datés au plus tard à la date de référence) et sa date quand la page l'affiche ; le numéro et la date de la loi. Seul l'inexpliqué est nommé ; expliqués et comptés : `date_non_affichee` (la page ne date pas les réunions), `date_de_promulgation_du_jo` (déjà nommée par A7). Bilan `a2_textes` dans le rapport ; ligne du résumé du calcul | #63 : le stade et les dates d'un texte n'étaient confrontés à rien. Source choisie : la page du dossier, qui couvre tous les stades ; les travaux préparatoires du JO ne portent que sur les lois promulguées depuis 2015, et la date de promulgation servie en vient déjà (R-LOIS v2). Mesuré en local sur la g20 (180 textes, 391 faits) : dépôt 180 vérifiés sur 180 ; étape 173 vérifiés, 6 expliqués, 1 écart ; loi 30 vérifiés, 1 non vérifié (2021-191 : la page ne montre pas de promulgation) | 2 (2.8, A2), 8 |
+| Doc. 5 : Q48, étape d'un texte datée après la fin de sa législature ; décidée le 23/11/2026, « Ranger par la date » (R-ETAPE ne retient dans une législature que les actes datés entre son début et sa fin ; mise en œuvre dans une PR à part) | l'écart relevé (DLR5L14N35418) : l'archive de la XIVe range sous `L14-` un rapport du Sénat de 2018 ; 29 textes servis de la g20 ont une étape datée après la fin de leur législature | 5 (Q48) |
+
+## Les onze lois d'A3 : travaux préparatoires lus dans les signataires (23/11/2026)
+
+Branche `etape-2-a3-onze-lois`, alerte #146 (A3, 11 lois du JO absentes de l'Assemblée et non reliées à un dossier). Mesuré en local sur l'export des faits de la g20, chaîne lecteur → R-LOIS → R-LOI-DOSSIER → A3 rejouée : sans changement, elle redonne exactement les 11 lois de l'alerte et les 644 lois reliées du 15/11.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Lecteur `jo_actes` version 3 : quand le bloc `TP` est vide, les travaux préparatoires sont lus à la fin du bloc des signataires (après « (1) Travaux préparatoires : loi n° … », « (1) Loi n° … ― Travaux préparatoires : », ou à défaut le premier « Sénat : » / « Assemblée nationale : ») ; colonne `bloc` (`TP` / `SIGNATAIRES`) ; « (TA, n° 671) » lu comme un texte adopté | erreur de notre lecture : 2016-113, 2019-127 et 2019-284 étaient nommées « sans travaux préparatoires » alors que le JO les publie, dans les signataires (XML relu dans l'entrepôt). 418 lois sont dans ce cas, la plupart d'avant 2016 ; aucune n'a des travaux aux deux endroits | 1 (1.6 R-LOI-DOSSIER), 2 (A3) : alignés ici |
+| Lecteur `jo_actes` : colonne `legislature`, la législature que le JO nomme (« n° 4348 (quatorzième législature) », « Assemblée nationale (treizième législature) : ») ; R-LOI-DOSSIER version 2 : un numéro dont le JO nomme la législature n'est cherché que dans celle-là | erreur de notre lecture : loi 2020-839, le n° 967 « (quinzième législature) » était cherché aussi sous la XIVe, où il tombe sur un autre dossier (`dossiers_differents`). Elle est maintenant reliée à DLR5L14N35468 (n° 4348 et 4403 de la XIVe), le dossier « suite absente » cité le 15/11 ; R-SORT-FINAL le dit `promulgue` | 1 (1.6 R-LOI-DOSSIER) : aligné ici |
+
+Effet mesuré (g20) : R-LOI-DOSSIER relie 987 lois sur 1 221 au lieu de 644, 975 sur 975 en accord avec l'Assemblée ; aucun lien existant ne change. A3 nomme **59 lois au lieu de 11** : l'explication `avant_les_travaux_au_jo` (49 lois de la XIVe, Q43) reposait sur la même erreur de lecture et ne couvre plus rien.
+
+Cause des 59 (écart réel de la source) : les documents de l'Assemblée que le JO cite pour ces lois ne sont dans aucune archive de l'Assemblée. Vérifié sur les archives brutes (XIVe : un seul fichier, arrêté au 09/03/2018 ; XVe : fichiers par document) : seuls des homonymes d'un autre type ou d'une autre législature y portent ces numéros ; notre lecteur de l'Assemblée lit tous les documents publiés (7 120 sur 7 120 pour la XIVe, 10 506 sur 10 506 pour la XVe). Les 59 lois viennent toutes d'un texte engagé avant le début de la législature de promulgation (première date ou session du Sénat citée par le JO) ; aucune loi engagée dans la même législature ne manque. XIVe (52) : 2012-916 à 919, 2012-946, 954, 955, 1166, 1167, 1188, 1289, 1320, 1361, 1442, 1471, 1474 ; 2013-98, 241, 242, 243, 325, 326, 327, 343, 354, 428, 614, 708, 715, 1114, 1116, 1118 ; 2014-56, 200, 305, 307, 308, 459, 774, 874, 875, 876, 1392 ; 2015-274, 275, 291, 294, 468, 735, 1704, 1705 ; 2016-113. XVe (7) : 2018-1068, 2018-1214 (le JO dit aussi « projet » pour une proposition), 2019-127, 2019-282, 2019-284, 2019-983, 2020-43. Comment les déclarer expliquées : doc. 5, Q47 (tranchée le même jour, ci-dessous).
+
+## Lois du JO hors des archives de l'Assemblée : explication automatique (23/11/2026)
+
+Branche `etape-2-a3-onze-lois`, alerte #146 ; décision de la propriétaire du 23/11/2026, « option 2 » (doc. 5, Q47), à la place d'une décision `rattachement_loi` par loi (59 entrées, retenue puis abandonnée le même jour : ni type de référence ni fichier dans `references/`).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| A3 : une loi du JO absente de l'Assemblée et non reliée est comptée sans être nommée (`expliquees_texte_anterieur_hors_archives`, compteur à part par législature) si 1. son texte a été engagé sous la législature précédente (plus ancienne date des travaux lus au JO : date écrite dans une ligne, début de la session du Sénat citée, début de la législature nommée) et 2. le JO cite au moins un document de l'Assemblée et aucun n'existe dans `an_dossiers__document` avec le type que nomme la ligne et dans la législature voulue (celle que le JO nomme, sinon celle de la date d'adoption du même passage à l'Assemblée, sinon celle de la promulgation ou la précédente) | Q47 : A3 ne nomme que l'inexpliqué (décision du 13 au 15/11) ; ces lois sont des écarts réels de la source | 2 (A3) |
+| A3 : l'explication `avant_les_travaux_au_jo` et son seuil sont retirés | elle reposait sur l'erreur de lecture corrigée plus haut | 2 (A3) |
+
+Mesuré sur la g20 (chaîne rejouée en local) : 59 lois expliquées ainsi (52 de la XIVe, 7 de la XVe), **aucune nommée** ; XIVe 396 présentes, XVe 334 présentes et 12 reliées ; XVIe et XVIIe identiques au JO. 2018-1214 est comprise : le JO cite un « projet » n° 631 qui n'existe pas (le texte est la proposition n° 631, dans le dossier DLR5L14N36253). Contrôle : appliquée aux 1 027 lois présentes ou reliées, la règle n'en expliquerait aucune.
 Suite décidée le même jour (Q55 « Perte expliquée dans C1 », puis Q56 « Un code à part, A11 » et
 Q57 « Oui, toute perte Wikidata »), branche `etape-2-c1-wikidata` (sur `etape-2-mandats-locaux`) :
 
