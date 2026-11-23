@@ -20,11 +20,11 @@ propriétaire. Tout le reste (faits lus, liens, positions, comptes, fiches) est 
 - l'histoire des champs que l'archive courante de l'Assemblée réécrit chaque nuit (siège,
   libellés, positions).
 
-**Le processus** : neuf étapes chaque soir, de E0 à E8 : démarrer, relever, découper et
+**Le processus** : neuf étapes chaque soir, de E0 à E8 : démarrer, relever, dépaqueter et
 versionner, lire, relier et dériver, composer, contrôler, publier, rendre compte.
 L'acquisition est enregistrée avant tout calcul. Sept contrôles bloquent la publication, dont
-les faits perdus sans explication, nommés un par un, et les données interdites ; huit
-autres alertent sans bloquer. La propriétaire peut lever une anomalie précise par une
+les faits perdus sans explication, nommés un par un, et les données interdites ; neuf
+avertissements (A1 à A9) alertent sans bloquer. La propriétaire peut lever une anomalie précise par une
 décision tracée. Les alertes arrivent comme des issues du dépôt privé, une par sujet.
 
 **L'hébergement, sans coût** : Python, DuckDB et Parquet sur GitHub Actions (dépôt public).

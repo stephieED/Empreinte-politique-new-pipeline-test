@@ -47,6 +47,8 @@ défaut peut rester.
 | Q41 (14/11/2026, issue #80). Rattachement des ministres délégués, secrétaires d'État et hauts-commissaires à leur ministère de tutelle : dans les gouvernements publiés (Ayrault II à Lecornu II, g13), 45 portefeuilles restaient « non établis », et non 9 comme l'issue le relevait sur g10. 22 libellés de l'Assemblée n'ont pas de « auprès » (21 dans Ayrault II, Delevoye), 3 nomment un ministère sous un intitulé inexact (Bayrou), 20 désignent plusieurs ministres (« auprès du ministre de l'intérieur et du ministre de la transition écologique »). Comment rattacher une co-tutelle ? | « Tous les ministres » (14/11/2026) : toutes les tutelles nommées sont servies, dans l'ordre du libellé (`ministeres_tutelle`, statut `co_tutelle`) ; l'interface choisit où afficher le portefeuille. Écartés : le premier nommé seulement ; laisser « non établi ». R-COMPOSITION version 2 établit seule 15 co-tutelles ; 30 décisions `rattachement_portefeuille` (14/11/2026) établissent les autres, sourcées par les décrets de composition du 21/06/2012, du 19/03/2013 et du 03/09/2019, ou par le libellé de l'Assemblée (5 co-tutelles mal formées, 3 libellés Bayrou). Reste : 54 portefeuilles non établis dans des gouvernements hors périmètre (Fillon I et II, Ayrault I) | R-COMPOSITION version 2 ; `references/rattachement_portefeuille/` ; section `composition` des gouvernements |
 | Q43 (15/11/2026, issue #63). Les lois servies (actes de promulgation de l'Assemblée) ne sont confrontées à aucune autre source. Le JO, seule source tenue hors de l'Assemblée, publie 448 lois sous la XIVe (Assemblée : 396), 353 sous la XVe (334), 136 et 149 sous la XVIe et la XVIIe (identiques) ; aucune loi de l'Assemblée n'y manque (g14). Quelles lois du JO absentes de l'Assemblée l'avertissement de chaque nuit nomme-t-il ? | « Sauf avant le JO » : expliquées et seulement comptées, les lois reliées par R-LOI-DOSSIER (11) et celles sans travaux préparatoires antérieures à la première loi du périmètre publiée avec les siens (08/12/2015 : 49 de la XIVe) ; nommées, toutes les autres (11 : 3 de la XIVe, 8 de la XVe) et toute loi de l'Assemblée absente du JO ; décomptes par législature dans le détail. Écartés : toutes chaque nuit (liste longue et immobile) ; décomptes seulement | A3 (doc. 2, 2.8) |
 | Q44 (15/11/2026, alerte #148). La nuit du 15/11 est refusée par C1 pour 4 faits « loi citée » des gouvernements Attal, Castex et Philippe II, qui ne sont pas perdus : les actes des lois 2010-837 et 2010-838, arrivés au JO cette nuit-là, identifient la loi citée, et le fait gagne un identifiant (`id_acte`) et un lien Légifrance. C1 reconnaît un fait à tous ses identifiants. Que faire ? | « Identité enrichie » : un fait qui garde tous ses identifiants, inchangés, et en gagne seulement (même fiche, même type, fait nouveau) n'est pas une perte ; il est compté (`expliques.c1_identite_enrichie`). Un identifiant qui change, ou un fait qui se fond dans un fait déjà publié, reste une perte. Écartés : levée ponctuelle (le refus reviendrait à chaque loi ancienne identifiée) ; les deux | C1 (doc. 2, 2.8) |
+| Q45 (23/11/2026, alerte #118). La conclusion `TSORTMOT01` (« Motion adoptée », écrit aussi « Motion adopté(e) ») est portée par 25 décisions, une par dossier (10 de la XIVe, 15 de la XVe ; 24 propositions de loi et une proposition de loi constitutionnelle, en première lecture à l'Assemblée). Le libellé ne dit pas quelle motion ; l'acte de la motion (même uid sans `DEC`) le dit : pour les 25, une motion de renvoi en commission (`typeMotion` `TMP03`). Aucune décision ne suit ; dans 3 dossiers, le texte revient en commission ou en séance sans vote. Quel sort pour le texte ? | « Non connu, raison « renvoyé en commission » » (23/11/2026) : ni adoption ni rejet ; sort « non connu », raison `renvoye_en_commission` (22 dossiers ; les 3 autres gardent leur raison : révision constitutionnelle, actes jusqu'en XVIIe) ; une motion adoptée d'un autre type, ou introuvable, reste non classée et nommée par A7. Écartés : raison `aucune_decision_finale` ; « rejeté » (la source ne dit pas rejet) ; ne rien changer | R-ETAPE version 3 (`RENVOI_EN_COMMISSION`) ; R-SORT-FINAL version 5 ; vocabulaire `raison_sort` (C4) |
+| Q46 (23/11/2026, alerte #118). 11 décisions du Sénat en nouvelle lecture (`SNNLEC-DEBATS-DEC`, XVe-XVIIe) ont pour conclusion `TSORTFnull`, sans libellé. Le sens n'est que dans la suite du dossier (8 fois lecture définitive à l'Assemblée, 3 fois Conseil constitutionnel puis promulgation) ; les 11 dossiers sont promulgués. Qu'en faire ? | « « Sans conclusion », jamais déduite » (23/11/2026) : ni adoption ni rejet, jamais déduite de la suite ; nommée par A7 seulement si elle laisse le sort non connu (dernière décision d'un dossier sans autre preuve, raison `conclusion_non_classee`) ; aucun cas aujourd'hui. A7 écrit « sans libellé ». Écartés : déduire de la suite (contraire à « rien n'est deviné ») ; ne rien changer | R-ETAPE version 3 (`SANS_CONCLUSION`) ; R-SORT-FINAL version 5 (table `conclusion_non_classee`) ; A7 |
 | Q49 (23/11/2026). Mandats locaux : un mandat qui disparaît du Répertoire national des élus (démission, fin, renouvellement des départements et des régions) effaçait sa ligne de la frise, et C1 aurait bloqué la publication. Que montrer ? | **Décidé** : « Fin observée » : la ligne reste ; sa fin est bornée entre la dernière publication relevée qui la portait et la suivante (`fin_nature = observee`, les deux dates dans `fin_raison`), lue dans l'historique des versions que garde l'entrepôt (le fichier figé des sortants n'est pas concerné). Écartés : effacer (levée C1 à chaque fois) ; garder sans fin. Mesuré : 7 464 lignes du fichier municipal sur 511 225 disparues entre les publications du 11/08 et du 20/11/2026, aucune d'un candidat | R-MANDAT-LOCAL v2 ; `cli` (dates des générations) |
 | Q50 (23/11/2026). Mandats locaux : la frise datait une fonction (maire, président…) de son début et perdait le mandat qui la précède (Roussel : conseiller municipal en 2020, maire en 2025). Comment montrer mandat et fonction ? | **Décidé** : « Deux lignes » : une période pour le mandat, datée de son début ; une période pour chaque fonction exercée dans ce mandat, datée de la sienne (`nature_periode`). Une ligne garde l'identifiant qu'elle avait ; le mandat qui partagerait celui de sa fonction prend `:mandat`. Écartés : le mandat seul, la fonction en attribut ; la fonction seule | R-MANDAT-LOCAL v2, R-CARRIERE v5 |
 | Q51 (23/11/2026). Mandats locaux : 11 candidats sans date de naissance connue ; pour 9, aucun élu du répertoire ne porte leur nom ; pour Benoît Mathieu, un élu de ce nom (né le 07/05/1975). Que dit la fiche ? | **Décidé** : « Dire « non relu » » : statut `non_relu`, avec le détail « aucun élu de ce nom » ou « homonyme non rattaché » (le nombre d'élus de ce nom) ; l'homonyme n'est pas rattaché tant qu'il n'y a pas de décision `elu_local`. Écartés : conclure à l'absence (`relu_aucun`) ; garder le détail précédent | R-MANDAT-LOCAL (`mandat_local_recherche`), R-CARRIERE (couverture `local`) |
@@ -112,6 +114,52 @@ défaut peut rester.
   Bayrou ce jour-là.
 - **En attendant** : non attribuées, avec la raison. Une décision `identite` pourrait associer
   un identifiant négatif à un `PA…` après vérification.
+
+### Q58 (23/11/2026). Objet illisible : garder ses faits précédents, ou bloquer ?
+
+- **Constat** : la conception prévoit qu'un objet qu'un lecteur ne sait pas lire garde ses
+  faits précédents, avec la couverture `trou_source` ou `en_cours` (doc. 2, 2.5 et 2.11). Le
+  code de `main` fait autrement depuis le 13/11/2026 (issue #39, module `lecture`) : la
+  version illisible ne donne aucun fait, pas même les lots lus avant l'erreur ; elle est
+  relue à la mise à jour suivante ; ses faits perdus ne sont pas expliqués par le changement
+  de la source, donc C1 refuse la publication tant qu'elle reste illisible (alerte
+  `lecture:illisibles`).
+- **Bloque** : le comportement décrit en 2.11 ; le choix entre une nuit refusée (rien de faux
+  publié, mais plus aucune publication jusqu'à la correction du lecteur ou une levée) et une
+  publication qui garde des faits d'une version dépassée.
+- **En attendant** : le comportement du code (aucun fait, C1 bloque). Les docs 2 et 8 disent
+  les deux, « prévu » et « réalisé ».
+
+### Q59 (23/11/2026). Fenêtre interdite : la coder avant le dépôt public ?
+
+- **Constat** : la décision du 04/11/2026 interdit toute écriture visible sur le dépôt public
+  du lundi au vendredi, de 9 h à 19 h (heure de Paris), hors jours fériés ; un lancement
+  manuel dans la fenêtre doit être refusé (doc. 2, 2.1 point 4, 2.9). Le code de `main` ne
+  la tient pas : le réglage `fenetre_interdite` vaut `false` (« désactivée sur le dépôt
+  d'essai ») et aucun module ne le lit. Les déclenchements planifiés sont à 20 h 30 et
+  23 h 30 UTC, hors fenêtre, mais une tâche planifiée retardée au matin ou un lancement
+  manuel écriraient en journée. L'acquis d'une nuit non écrite attend déjà dans un artefact
+  (14 jours) que la nuit suivante écrit (rattrapage) : c'est le mécanisme que la fenêtre
+  réutiliserait, et non le cache de GitHub Actions (7 jours) que montraient deux schémas.
+- **Bloque** : la bascule vers le dépôt public (migration).
+- **En attendant** : aucune fenêtre ; sans effet tant que le dépôt d'essai n'est pas public.
+
+### Q60 (23/11/2026). Registre des adresses : toutes les fiches, ou les lignées seulement ?
+
+- **Constat** : la spécification inscrit chaque adresse publiée dans un registre en ajout
+  seul, rangé avec le registre des identités (ZI) dans l'entrepôt, avec une page de
+  redirection quand l'objet fusionne ou disparaît (doc. 1, 1.2.2, 1.3.4 ; cahier 6.1). Le
+  code de `main` n'inscrit que les adresses des **lignées** (`registres/lignee_adresse.parquet`) ;
+  une lignée absorbée est marquée `redirection`, sans page de redirection servie. Les
+  adresses des candidats et des gouvernements sont recalculées à chaque mise à jour (R-IDENTITE,
+  R-GOUVERNEMENTS), sans registre. Le cadrage du 14/11/2026 (issue #86) a laissé la forme des
+  adresses libre, sauf douze adresses de l'ancien site citées par des articles, tenues par
+  décision `adresse_citee`. Le registre `registre/adresses.csv` du dépôt public, dessiné par
+  deux schémas, n'existe pas ; ces schémas montrent désormais le registre dans l'entrepôt.
+- **Bloque** : la promesse « une adresse publiée ne change jamais » (doc. 1, 1.0 principe 5 ;
+  recette E13) pour les fiches de candidat et de gouvernement, et les redirections.
+- **En attendant** : registre et redirection marquée pour les lignées seulement ; les autres
+  adresses restent stables tant que leur nom ne change pas.
 
 ## B — À trancher avant d'activer la fonction
 

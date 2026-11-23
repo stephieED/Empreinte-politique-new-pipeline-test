@@ -23,6 +23,7 @@ flowchart LR
         Z0[("Z0 Relevés<br/>chaque accès à une source<br/>quand, réponse, complet ou non")]
         Z1[("Z1 Entrepôt brut<br/>chaque objet source,<br/>version par version")]
         ZD[("ZD Décisions<br/>fichiers YAML commités")]
+        ZI[("ZI Registres d'identité<br/>numéros acquis, ajout seul")]
     end
 
     subgraph REC["RECALCULÉ"]
@@ -34,17 +35,19 @@ flowchart LR
         Z4[("Z4 Publication<br/>JSON des fiches, jeu<br/>téléchargeable, manifeste")]
     end
 
-    Z0 -- "découpe" --> Z1
+    Z0 -- "dépaquetage,<br/>à l'octet près" --> Z1
     Z1 -- "lecteurs" --> Z2
     Z2 -- "règles" --> Z3
     ZD -- "tranche ce que<br/>les règles ne tranchent pas" --> Z3
+    ZI <-- "lu d'abord,<br/>complété en ajout seul" --> Z3
     Z3 -- "composeurs" --> Z4
 ```
 
 | Zone | Ce qu'elle contient | Où elle vit | Si on l'efface |
 | --- | --- | --- | --- |
 | **Z0 Relevés** | le journal des accès aux sources | entrepôt (*releases* du dépôt public) | perte irréparable |
-| **Z1 Entrepôt brut** | chaque objet source, chaque version, filtré des données interdites et gardé sous forme canonique (re-sérialisé), en segments de 90 Mo au plus | entrepôt | perte irréparable |
+| **Z1 Entrepôt brut** | chaque fichier membre des archives reçues, version par version, **à l'octet près** : rien n'est filtré (présences et collaborateurs restent, aucun lecteur ne les lit, 1.3.2) ; seule la réponse de Wikidata est gardée sous forme canonique (doc. 5, Q40) ; en segments de 90 Mo au plus | entrepôt | perte irréparable |
+| **ZI Registres d'identité** | les numéros attribués (`per:…`, `lig:…`) et les adresses des lignées, en ajout seul (1.3.4) | entrepôt | perte irréparable |
 | **ZD Décisions** | identité validée, filiation tranchée, levée de contrôle… | écrites dans `references/` du dépôt privé, recopiées chaque soir dans `references/` du dépôt public | perte irréparable (mais git en garde l'historique) |
 | **Z2 Faits lus** | des tables normalisées, avec provenance | cache de GitHub Actions (accélérateur) | on relit Z1 |
 | **Z3 Graphe relié** | tout ce que les règles calculent | temporaire, pendant la mise à jour | on recalcule |
@@ -163,6 +166,15 @@ chaque adresse publiée y est inscrite avec l'objet qu'elle désigne et sa date 
 publication. Une adresse n'en sort jamais ; si l'objet disparaît ou fusionne, elle devient
 une redirection (page statique de redirection, GitHub Pages n'ayant pas de redirection
 serveur). Les homonymes reçoivent un suffixe d'année de naissance (`/personnes/jean-martin-1962`).
+**Réalisé** (23/11/2026) : seules les **lignées** ont leur adresse inscrite, une fois, dans
+le registre des lignées (`registres/lignee_adresse.parquet` de l'entrepôt : `adresse`, `per`
+= numéro `lig:…`, `depuis` = génération), vérifié en ajout seul par la tâche `ecrire` ; une
+lignée absorbée garde la sienne, marquée `redirection` vers la lignée retenue (table
+`lignee_adresse` de R-LIGNEE), mais aucune page de redirection n'est servie. L'adresse d'un
+candidat (R-IDENTITE : nom, suffixé de l'année de naissance entre homonymes) et celle d'un
+gouvernement (R-GOUVERNEMENTS) sont recalculées à chaque mise à jour, sans registre ; douze adresses de l'ancien site citées par des articles sont tenues par décision
+(`adresse_citee`, 1.3.3 ; la forme des adresses est libre, cadrage du 14/11/2026). Voir doc. 5,
+Q60.
 
 ### En image : les identifiants
 
@@ -182,7 +194,7 @@ flowchart LR
     A2 --> C
     A3 --> C
     C --> P["per:000123<br/>créé, jamais réutilisé"]
-    P --> R["registre/adresses.csv<br/>ajout seul"]
+    P --> R["registre des adresses<br/>ZI, dans l'entrepôt, ajout seul"]
     R --> U["/personnes/francois-ruffin"]
 ```
 
@@ -198,7 +210,8 @@ Règles simples :
 - Un identifiant de source est **vérifié** à la lecture : un `VT…` ne peut pas désigner une
   personne. Un identifiant mal formé part en anomalie de lecture.
 - Un identifiant créé ne **porte aucune information**. C'est pour ça qu'il ne change jamais.
-- L'**adresse publique** est inscrite à part, dans un registre en ajout seul.
+- L'**adresse publique** est inscrite à part, dans un registre en ajout seul, rangé avec le
+  registre des identités dans l'entrepôt (1.3.4 ; réalisé pour les lignées seulement, 1.2.2).
 
 #### Comment une adresse reste stable
 
@@ -215,7 +228,7 @@ flowchart TB
 
 GitHub Pages ne sait pas rediriger côté serveur : la redirection est une petite page
 statique. Le contrôle C2 vérifie qu'aucun lien publié ne vise une adresse absente du
-registre.
+registre (réalisé : C2 vérifie que chaque lien vise une fiche de la candidate).
 
 #### Le cas des prises de parole
 
@@ -371,7 +384,7 @@ change plus (étape 2, correction P1).
 | --- | --- | --- |
 | `attribution` | (source, uid) rattaché à une personne | `per`, `source`, `uid`, `depuis`, `jusqu_au` (vide tant qu'elle vaut), `motif` (`nouvelle_personne`, `rapprochement`, `decision`) |
 | `fusion` | personne absorbée | `per_absorbe`, `per_retenu`, `generation`, `decision` |
-| `adresse` | adresse publique | `adresse`, `objet`, `premiere_publication`, `redirige_vers` |
+| `adresse` | adresse publique | `adresse`, `objet`, `premiere_publication`, `redirige_vers`. **Réalisé** : `lignee_adresse` (`adresse`, `per` = `lig:…`, `depuis`), pour les seules lignées (1.2.2) |
 | `compteur` | type d'identifiant | dernier numéro attribué |
 
 R-IDENTITE lit d'abord ce registre : un (source, uid) déjà attribué garde son `per`, quel que
@@ -762,8 +775,8 @@ Dérivés (Z3) : `intervention_attribuee`, `sujet_intervention`, `question_repon
   repli, `PA0`, identifiant négatif, nom affiché qui ne correspond pas. Dans ces cas, la
   parole est **non attribuée**, avec sa raison.
 - La **présidence de séance** est distinguée du débat (`preside`).
-- Les **présences** n'entrent pas : la table `reunion` n'a pas de colonne pour elles, et elles
-  sont filtrées avant même d'être stockées.
+- Les **présences** n'entrent pas : la table `reunion` n'a pas de colonne pour elles, et aucun
+  lecteur ne les lit ; elles restent dans l'entrepôt comme à la source (1.3.2).
 
 #### En image : gouvernement et Journal officiel
 
@@ -872,6 +885,7 @@ flowchart TB
     S --> C7["relu_aucun<br/>source lue en entier, date, décision"]
     S --> C8["non_relu"]
     S --> C9["hors_perimetre"]
+    S --> C10["partiel<br/>lu sur une partie de la période"]
 ```
 
 - La couverture a une **portée** (corpus, source, population, fiche, section), une
@@ -916,7 +930,7 @@ positions »). La version de chaque règle est inscrite dans le manifeste de pub
 | R-LIEN-SCRUTIN-DOSSIER | routes, dans l'ordre : référence directe (XVIIe), acte qui cite le scrutin, séance du scrutin = réunion d'un acte de discussion ou de décision ; quand la séance mène à plusieurs dossiers, départage par le titre **parmi ces seuls dossiers**. Accord exigé quand plusieurs routes répondent. Mesuré sur la XVIIe (archive du 03/11/2026) : 3 924 scrutins par les deux premières routes, + 4 021 par la séance (2 761 conformes sur 2 762 recoupés), + 1 163 par le départage (587 sur 588), soit 9 108 sur 9 578 ; les 225 votes sur l'ensemble sont tous reliés | pas de lien + alerte « désaccord » ; 401 cas ambigus et 69 sans séance restent non liés |
 | R-DERNIERE-LECTURE | scrutin `ensemble` le plus récent du dossier, sur tout le corpus ; égalité de date → numéro le plus grand. Version 2 (13/11/2026, Q32) : un vote sur l'ensemble plus récent, relié à aucun dossier mais dont ce dossier est candidat, est nommé (`votes_posterieurs_non_relies`) ; le vote retenu reste | position non retenue |
 | R-MATIERE | commission saisie au fond à l'Assemblée, lue dans le dossier ; un dossier saisi au fond au seul Sénat reçoit la matière « saisi au Sénat seulement » (521 dossiers XVIIe, archive du 03/11/2026 ; décision du 04/11/2026, doc. 5, Q19) | « matière non établie » |
-| R-SORT-FINAL / R-ETAPE | conclusion des actes, pas leur code ; « COM » ne prouve pas l'examen. Le **49.3** se lit dans l'acte `DeclarationGouvernement_Type` dont `fam_code = "Art.49.3"` (XVIIe : 16 engagements sur 11 dossiers, archive du 04/11/2026), jamais dans la conclusion, qui ne le dit que 5 fois. Un texte européen est « sorti de la phase préparatoire » d'après le stade atteint publié par Parltrack. Codes de conclusion classés d'après leur libellé ; un code non classé (`TSORTMOT01` « Motion adoptée », `TSORTFnull`) n'est jamais deviné : raison `conclusion_non_classee`, nommé par A7 (13/11/2026, issue #45) | « sort non connu » |
+| R-SORT-FINAL / R-ETAPE | conclusion des actes, pas leur code ; « COM » ne prouve pas l'examen. Le **49.3** se lit dans l'acte `DeclarationGouvernement_Type` dont `fam_code = "Art.49.3"` (XVIIe : 16 engagements sur 11 dossiers, archive du 04/11/2026), jamais dans la conclusion, qui ne le dit que 5 fois. Un texte européen est « sorti de la phase préparatoire » d'après le stade atteint publié par Parltrack. Codes de conclusion classés d'après leur libellé ; un code non classé n'est jamais deviné : raison `conclusion_non_classee`, nommé par A7 (13/11/2026, issue #45). Classement décidé le 23/11/2026 (alerte #118 ; doc. 5, Q45 et Q46) : `TSORTMOT01` « Motion adoptée » se lit avec le type de sa motion (`typeMotion`, acte de même uid sans `DEC`) ; motion de renvoi en commission (`TMP03`, les 25 cas des archives) → ni adoption ni rejet, raison `renvoye_en_commission` ; une autre motion reste non classée. `TSORTFnull` (décision du Sénat en nouvelle lecture publiée sans conclusion, 11 cas) → `sans_conclusion`, jamais déduite de la suite, nommée par A7 seulement si elle laisse le sort non connu | « sort non connu » |
 | R-LOI-DOSSIER | loi ↔ dossier par le numéro de loi de l'acte de promulgation (R-LOIS) ; à défaut (loi promulguée sous la législature suivante, que nulle archive de l'Assemblée ne publie), par les **travaux préparatoires** publiés au JO avec la loi : numéros des documents de l'Assemblée (proposition ou projet, rapport, texte adopté), du type que nomme la ligne, cherchés dans la législature de la promulgation et dans la précédente, chacune jugée à part ; lien retenu si au moins deux numéros mènent au même dossier et aucun ailleurs. Exception (15/11/2026, doc. 5, Q33) : pour un dossier dont la suite manque aux archives, le seul texte déposé sous la législature de la promulgation suffit. Une ligne par loi (rectificatifs réunis). Mesuré sur l'archive globale du JO (g14) : 644 lois reliées sur 1 212, 633 sur 633 en accord avec l'Assemblée ; 11 dossiers reçoivent ainsi leur loi, dont 6 des 17 « suite absente ». Le JO ne publie les travaux préparatoires qu'à partir de 2015 : les 52 lois de 2012 à 2016 absentes des actes de l'Assemblée restent sans dossier | pas de lien, avec sa raison (`pas_de_travaux_preparatoires`, `aucun_document`, `un_seul_numero`, `dossiers_differents`, `deux_legislatures_possibles`) ; le sort reste `suite_absente_des_archives` |
 | R-TEXTE-PORTE | rôle ; projet de loi = initiative gouvernementale, pas acte personnel | — |
 | R-DEPOT-GOUVERNEMENT | un projet de loi est rattaché au gouvernement en fonction à la date de son **premier dépôt** (dans l'une ou l'autre chambre) ; ministère porteur = ministère du mandat MINISTERE cité comme auteur du document de dépôt (cahier 3.1.1), via `fonction_gouvernementale` | « ministère porteur non établi » |
@@ -1467,7 +1481,7 @@ de la règle, sinon C1 bloque.
 
 ```mermaid
 flowchart TB
-    CFG["Configuration :<br/>numéro 18, date d'ouverture,<br/>adresses des archives découvertes<br/>dans le catalogue de l'Assemblée"] --> COL["Collecteurs et découpeurs<br/>les variantes de schéma<br/>sont détectées, pas codées"]
+    CFG["Configuration :<br/>numéro 18, date d'ouverture,<br/>adresses des archives découvertes<br/>dans le catalogue de l'Assemblée"] --> COL["Collecteurs, dépaqueteurs, lecteurs<br/>les variantes de schéma<br/>sont détectées par les lecteurs, pas codées"]
     CLO["Clôture de la XVIIe :<br/>archive figée relevée une dernière fois,<br/>marquée figée ;<br/>décision fin_legislature"] --> COL
     COL --> GRP["Nouveaux groupes<br/>grp:18:PO..."]
     GRP --> FIL{"R-FILIATION"}
@@ -1486,7 +1500,7 @@ gardent leur adresse.
 | --- | --- | --- |
 | Champ ajouté, lecture corrigée | nouvelle version du lecteur ; relecture depuis Z1 | Z0, Z1, décisions |
 | Règle modifiée | nouvelle version ; recalcul complet de Z3 ; méthodologie publiée | Z2 |
-| Source ajoutée | un collecteur, un découpeur, un lecteur ; la couverture déclare son historique | tout le reste |
+| Source ajoutée | un collecteur, un dépaqueteur si le format d'archive est nouveau, un lecteur ; la couverture déclare son historique | tout le reste |
 | Type de fiche ajouté | un composeur et un schéma de fichier | Z0 à Z3 |
 | XVIIIe législature | configuration | le code des lecteurs |
 | Contrat des données servies | version `majeur.mineur` dans chaque fichier ; un ajout est mineur ; un changement incompatible passe le contrat en `2.0`, publié avec le code qui le lit, dans la même publication | les articles datés, qui embarquent leur copie figée |
