@@ -1086,3 +1086,12 @@ Branche `etape-2-candidature-2026-11-23`. La page franceinfo a été télécharg
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
 | Décision `candidature` : nouveau fichier `references/candidature/2026-11-23-franceinfo.yaml` (38 déclarés, 7 retirés, X. Bertrand `non_listee`). Dominique de Villepin (La France humaniste, Q131660) et Serge Tinland (Divers, sans article ni élément Wikidata) entrent comme déclarés ; François Ruffin passe de déclaré à retiré. Le fichier du 13/11 reste, la liste en vigueur est la plus récente | alerte #155 (A9) : Wikipédia disait Villepin déclaré et Ruffin retiré, la liste du 13/11 l'inverse ; la page du 23/11 donne raison à Wikipédia | — |
+
+## Couverture du corpus servie à la racine (23/11/2026)
+
+Branche `etape-2-couverture-corpus`, issue #74 (`besoin-interface`).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Nouveau fichier servi à la racine, `couverture.json.gz`, écrit par `Ecrivain.clore()` : état de chaque point d'accès (`points_acces` : issue du relevé de la nuit, `date_source` — date de la donnée à la source —, dernier relevé complet réussi, panne depuis ; une date inconnue reste vide, avec sa raison), manques fiche par fiche (`manques` : sections et limites dont le statut n'est pas `complet`, avec détail, points d'accès, période couverte, panne) et décomptes par type de fiche, famille et statut (`decomptes`). Assemblé à partir de ce que servent les fiches, rien n'est recalculé | la couverture n'existait que fiche par fiche ; l'interface montre sur une frise ce que couvre le corpus et la liste des manques (issue #74). « À jour au » prend la date de la donnée à la source, jamais la date de passage (cahier des charges, 4.7) | 1 (1.7.2 : `couverture.json.gz` à la racine ; `fraicheur.json.gz` y est prévu) |
+| `Ecrivain` : paramètres `releves_nuit` et `points_acces` ; `cli.py` (construction de l'`Ecrivain` seulement, avec l'accord de la session « New pipeline ») lui passe les relevés de la nuit, la configuration et le dernier relevé réussi de **chaque** point (jusque-là, des seuls points en panne) | les dates de relève de tous les points n'étaient lisibles que dans `cli.py` | 2 (2.7, E5) |

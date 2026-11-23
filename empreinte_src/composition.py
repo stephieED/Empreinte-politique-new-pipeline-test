@@ -24,11 +24,16 @@ Ce que le cadre garantit :
 - **une source en panne se voit** (doc. 2, 2.8, C5 ; commande, scénario 2) : une section dite
   `complet` dont un point d'accès n'a pas pu être relevé cette nuit passe en `panne`, avec la date
   du premier échec ; ses données restent celles du dernier relevé complet, et la publication
-  continue. Le composeur n'a rien à faire : l'Ecrivain reçoit la liste des pannes.
+  continue. Le composeur n'a rien à faire : l'Ecrivain reçoit la liste des pannes ;
+- **la couverture du corpus** est servie à la racine, dans `couverture.json.gz` (issue #74), assemblée
+  à la clôture à partir de ce qui existe déjà, sans rien recalculer : l'état de chaque point d'accès
+  (`etat_points` : relevé de la nuit, date de la donnée à la source, dernier relevé réussi, panne), les
+  manques fiche par fiche (sections et limites dont le statut n'est pas `complet`) et leurs décomptes.
 """
 from __future__ import annotations
 
 import datetime as dt
+import email.utils
 import gzip
 import hashlib
 import json
@@ -37,6 +42,24 @@ import os
 CONTRAT = "1.0"
 IDS = ["acteur", "organe", "mandat", "scrutin", "amendement", "dossier", "document",
        "reunion", "compte_rendu", "question", "acte", "autre"]
+
+
+def _date_source(valeur) -> str | None:
+    """Date de la donnée à la source, en ISO 8601 (UTC) : un en-tête HTTP (`Tue, 18 Nov 2026
+    03:12:00 GMT`) ou une date déjà ISO. None si elle est illisible."""
+    s = str(valeur or "").strip()
+    if not s:
+        return None
+    try:
+        d = email.utils.parsedate_to_datetime(s)
+    except (TypeError, ValueError, IndexError):
+        try:
+            d = dt.datetime.fromisoformat(s.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=dt.timezone.utc)
+    return d.astimezone(dt.timezone.utc).replace(microsecond=0).isoformat()
 
 
 def _json(obj) -> bytes:
@@ -100,6 +123,10 @@ class Fiche:
                                 "titre": self.titre, "entete": info,
                                 "sections": {k: {"brut": v["brut"], "gz": v["gz"], "lignes": v["lignes"]}
                                              for k, v in self.sections.items()}})
+        # Pour la couverture du corpus (`couverture.json.gz`, issue #74) : telle qu'elle est servie.
+        self.ecr.couvertures.append({"fiche": self.id, "type": self.type, "titre": self.titre,
+                                     "sections": self.couverture,
+                                     "limites": self._entete.get("limites") or []})
 
 
 def _schema_faits():
@@ -114,11 +141,16 @@ class Ecrivain:
 
     Avec `chemin_faits`, les faits publiés sont écrits **au fil de l'eau** dans ce Parquet, par lots
     de `lot_faits` lignes : la mémoire ne garde qu'un lot (≈ 2 millions de faits sur le périmètre
-    complet). Sans lui, ils restent dans `faits` (tests) jusqu'à `ecrire_faits_publies`."""
+    complet). Sans lui, ils restent dans `faits` (tests) jusqu'à `ecrire_faits_publies`.
+
+    `releves_nuit` : les relevés de la nuit (`rapport["releves"]` de la collecte) ; `points_acces` :
+    les points d'accès de la configuration (`config/points_acces.yaml`). Tous deux servent l'état
+    des points d'accès (`etat_points`) ; absents, cet état dit qu'ils n'ont pas été transmis."""
 
     def __init__(self, dossier: str, id_publication: str, pannes: dict[str, str] | None = None,
                  chemin_faits: str | None = None, lot_faits: int = 50_000,
-                 releves_reussis: dict[str, str | None] | None = None):
+                 releves_reussis: dict[str, str | None] | None = None,
+                 releves_nuit: list[dict] | None = None, points_acces: list[dict] | None = None):
         self.racine = os.path.join(dossier, "donnees", id_publication)
         self.id_publication = id_publication
         os.makedirs(self.racine, exist_ok=True)
@@ -136,6 +168,106 @@ class Ecrivain:
         # {point d'accès en panne: date du dernier relevé complet réussi, ou None s'il n'y en a
         # jamais eu} ; un point absent : inconnu (issue #33).
         self.reussis = dict(releves_reussis or {})
+        # None : non transmis (distinct d'une liste vide : aucun point relevé cette nuit).
+        self.releves_nuit = None if releves_nuit is None else list(releves_nuit)
+        self.points_acces = None if points_acces is None else list(points_acces)
+        self.couvertures: list[dict] = []     # couverture de chaque fiche fermée (issue #74)
+        self._etat_points: list[dict] | None = None
+
+    def etat_points(self) -> list[dict]:
+        """État de chaque point d'accès, une ligne par point (issue #74, réutilisé par #73), dans
+        l'ordre de la configuration, puis les points connus seulement des relevés ou des pannes :
+
+        - `releve_cette_nuit` : l'issue du relevé de la nuit (`nouveau`, `inchange`, `echec`,
+          `suspect` ; pour un point relevé en plusieurs fois, la pire), vide s'il n'a pas été relevé ;
+        - `date_source` : la date de la donnée à la source (en-tête `Last-Modified` du relevé de la
+          nuit réussi), la référence de « à jour au » (cahier des charges, 4.7) ; vide avec sa
+          raison (`raison_date_source`) quand on ne la connaît pas, **jamais remplacée par la date
+          de notre passage** ;
+        - `dernier_releve_reussi` : la date de notre dernier relevé complet réussi, vide avec sa
+          raison (`raison_dernier_releve`) ;
+        - `panne_depuis` : la date du premier échec depuis le dernier relevé réussi, si le point est
+          en panne cette nuit."""
+        if self._etat_points is not None:
+            return self._etat_points
+        cfg = {p["id"]: p for p in (self.points_acces or []) if p.get("id")}
+        par_point: dict[str, list[dict]] = {}
+        for r in self.releves_nuit or []:
+            par_point.setdefault(r.get("point_acces"), []).append(r)
+        ids = list(cfg) + sorted((set(par_point) | set(self.pannes) | set(self.reussis)) - set(cfg) - {None})
+        gravite = {"echec": 3, "suspect": 2, "nouveau": 1, "inchange": 0}
+        lignes = []
+        for p in ids:
+            c, rs = cfg.get(p, {}), par_point.get(p, [])
+            issue = max((r.get("issue") for r in rs), key=lambda i: gravite.get(i, 4), default=None)
+            date_source, raison = None, None
+            if self.releves_nuit is None:
+                raison = "relevés de la nuit non transmis"
+            elif not rs:
+                raison = "point non relevé cette nuit"
+            elif issue not in ("nouveau", "inchange"):
+                raison = f"relevé de cette nuit en échec ({issue})"
+            else:
+                brutes = [r.get("date_source") for r in rs
+                          if r.get("issue") in ("nouveau", "inchange") and r.get("date_source")]
+                dates = [d for d in map(_date_source, brutes) if d]
+                if dates:
+                    date_source = max(dates)
+                elif brutes:
+                    raison = "date donnée par la source illisible : " + str(brutes[0])
+                else:
+                    raison = "la source ne donne pas de date"
+            if p not in self.reussis:
+                reussi, raison_reussi = None, "dernier relevé réussi non transmis"
+            elif not self.reussis[p]:
+                reussi, raison_reussi = None, "aucun relevé complet n'a encore abouti"
+            else:
+                reussi, raison_reussi = self.reussis[p], None
+            lignes.append({"point_acces": p, "source": c.get("source") or (rs[0].get("source") if rs else None),
+                           "type": c.get("type"), "legislature": c.get("legislature"),
+                           "depuis": c.get("depuis"), "releve_cette_nuit": issue,
+                           "date_source": date_source, "raison_date_source": raison,
+                           "dernier_releve_reussi": reussi, "raison_dernier_releve": raison_reussi,
+                           "panne_depuis": self.pannes.get(p) if p in self.pannes else None})
+        self._etat_points = lignes
+        return lignes
+
+    def _couverture_corpus(self) -> dict:
+        """Contenu de `couverture.json.gz` (issue #74) : l'état des points d'accès, les manques fiche
+        par fiche et leurs décomptes, tels que les fiches les servent (rien n'est recalculé)."""
+        cols_points = ["point_acces", "source", "type", "legislature", "depuis", "releve_cette_nuit",
+                       "date_source", "raison_date_source", "dernier_releve_reussi",
+                       "raison_dernier_releve", "panne_depuis"]
+        cols_manques = ["fiche", "type", "titre", "origine", "nom", "statut", "statut_sans_panne",
+                        "detail", "points_acces", "du", "au", "panne_depuis"]
+        manques, decomptes = [], {}
+        for f in sorted(self.couvertures, key=lambda f: f["fiche"]):
+            elements = [("section", c.get("section"), c) for c in f["sections"]]
+            for l in f["limites"]:
+                if isinstance(l, dict):
+                    elements.append(("limite", l.get("famille") or l.get("sujet"), l))
+                else:                               # une limite écrite comme une phrase
+                    elements.append(("limite", None, {"detail": str(l)}))
+            for origine, nom, c in elements:
+                statut = c.get("statut")
+                famille = c.get("famille") or (nom if origine == "limite" else None)
+                cle = (f["type"], origine, famille, statut)
+                decomptes[cle] = decomptes.get(cle, 0) + 1
+                if statut == "complet":
+                    continue
+                periode = c.get("periode_couverte") if isinstance(c.get("periode_couverte"), dict) else {}
+                manques.append([f["fiche"], f["type"], f["titre"], origine, nom, statut,
+                                c.get("statut_sans_panne"), c.get("detail"),
+                                sorted(c.get("points_acces") or []), periode.get("du"),
+                                periode.get("au"), c.get("panne_depuis")])
+        return {"contrat": CONTRAT, "publication": self.id_publication, "genere_le": self.genere_le,
+                "points_acces": {"colonnes": cols_points,
+                                 "lignes": [[p[k] for k in cols_points] for p in self.etat_points()]},
+                "manques": {"colonnes": cols_manques, "lignes": manques},
+                # nombre de sections ou de limites par type de fiche, famille et statut
+                "decomptes": {"colonnes": ["type", "origine", "famille", "statut", "nb"],
+                              "lignes": [list(k) + [n] for k, n in sorted(
+                                  decomptes.items(), key=lambda kv: tuple(str(x) for x in kv[0]))]}}
 
     def marquer_panne(self, couverture: dict | None) -> dict | None:
         """Une couverture « complet » dont une source est en panne devient « panne », datée."""
@@ -221,8 +353,8 @@ class Ecrivain:
         self.faits = []
 
     def clore(self) -> dict:
-        """Ferme les fiches encore ouvertes, écrit le catalogue des fiches (`catalogue.json.gz`) et
-        le manifeste de la publication (`manifeste.json` : chaque fichier avec ses poids et son
+        """Ferme les fiches encore ouvertes, écrit le catalogue des fiches (`catalogue.json.gz`), la
+        couverture du corpus (`couverture.json.gz`, issue #74) et le manifeste de la publication (`manifeste.json` : chaque fichier avec ses poids et son
         empreinte, chaque fiche). Rend le manifeste."""
         for f in self._ouvertes:
             f.fermer()
@@ -242,6 +374,7 @@ class Ecrivain:
             catalogue["adresses_citees"] = {"colonnes": ["adresse", "lien", "raison", "decision"],
                                             "lignes": lignes}
         self.ecrire("catalogue.json.gz", catalogue)
+        self.ecrire("couverture.json.gz", self._couverture_corpus())
         manifeste = {"contrat": CONTRAT, "publication": self.id_publication,
                      "genere_le": self.genere_le,
                      "fichiers": dict(sorted(self.fichiers.items())), "fiches": self.fiches}

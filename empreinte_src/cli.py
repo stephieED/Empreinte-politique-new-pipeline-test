@@ -145,7 +145,9 @@ def cmd_calculer(a):
               for r in rapport.get("releves", []) if r.get("issue") in ("echec", "suspect")}
     # Faits publiés écrits au fil de l'eau (mémoire : ≈ 2 millions sur le périmètre complet).
     ecr = Ecrivain(site, f"g{gen:06d}", pannes=pannes,
-                   releves_reussis={p: _dernier_reussi(e, p) for p in pannes},
+                   releves_reussis={p["id"]: _dernier_reussi(e, p["id"]) for p in cfg["points_acces"]},
+                   releves_nuit=rapport.get("releves", []),
+                   points_acces=cfg["points_acces"],
                    chemin_faits=os.path.join(a.sortie, "export", "faits-publies.parquet"))
     with mesures.etape("E5") as m:
         for c in composeurs():
