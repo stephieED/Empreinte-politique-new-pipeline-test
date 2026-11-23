@@ -54,6 +54,8 @@ défaut peut rester.
 | Q51 (23/11/2026). Mandats locaux : 11 candidats sans date de naissance connue ; pour 9, aucun élu du répertoire ne porte leur nom ; pour Benoît Mathieu, un élu de ce nom (né le 07/05/1975). Que dit la fiche ? | **Décidé** : « Dire « non relu » » : statut `non_relu`, avec le détail « aucun élu de ce nom » ou « homonyme non rattaché » (le nombre d'élus de ce nom) ; l'homonyme n'est pas rattaché tant qu'il n'y a pas de décision `elu_local`. Écartés : conclure à l'absence (`relu_aucun`) ; garder le détail précédent | R-MANDAT-LOCAL (`mandat_local_recherche`), R-CARRIERE (couverture `local`) |
 | Q52 (23/11/2026). Mandats locaux antérieurs à 2020 ou terminés hors des municipales, que le répertoire ne publie pas : au moins 16 candidats sur 33 qui ont un élément Wikidata (mesure du 23/11/2026). Faut-il une autre source ? | **Décidé** : « Ajouter Wikidata P39 maintenant » (l'option recommandée était de garder la borne historique pour la série) : les déclarations P39 locales, terminées (début et fin déclarés), qui ne chevauchent aucune période du répertoire de même niveau et de même nature, entrent dans la frise comme « déclarées par Wikidata » (`declare_par`, `fin_nature = declaree`), source et adresse de l'élément nommées sur chaque ligne. Écartés : borne historique ; liste non datée du Sénat | point `wd-fonctions-candidats`, lecteur `wd_fonctions`, R-MANDAT-LOCAL v2 |
 | Q53 (23/11/2026). Mandats locaux : le nom, le prénom et la date de naissance d'un candidat peuvent désigner deux élus nés le même jour (20 clés sur 509 463 dans le fichier municipal du 20/11/2026). Que faire ? | **Décidé** : « Ne pas rattacher, alerter » : quand la clé désigne deux collectivités dans un fichier où une personne n'a qu'un siège, aucun des deux élus n'est rattaché (`ambigu_non_rattache`, servi `non_relu`), et l'avertissement A10 les nomme ; une décision `elu_local` tranche. Écarté : tout rattacher | R-MANDAT-LOCAL (`mandat_local_ambigu`), A10 (`controles_mandats_locaux`) |
+| Q54 (23/11/2026, issue #63, suite de Q48). R-ETAPE range un acte dans la législature où tombe sa date (Q48). Entre la dissolution du 09/06/2024 et l'ouverture de la XVIIe le 01/07/2024, aucune législature ne couvre la date : 5 textes servis en g20 ont un acte daté de ces semaines (promulgations du 13/06/2024 notamment). Quelle législature pour un tel acte ? | « Selon l'identifiant » (23/11/2026) : tant qu'aucune législature ne couvre la date, l'identifiant de l'archive (`L16-…`) décide ; les promulgations du 13/06/2024 restent sous la XVIe | R-ETAPE (`legislature_acte`) |
+| Q48 (23/11/2026, issue #63). Étape d'un texte datée après la fin de sa législature : l'archive close de la XIVe range sous `L14-` des actes de 2018 (rapport du Sénat du 17/01/2018 sur le dossier DLR5L14N35418, accord Chili–Bolivie), que la page publique du dossier range sous la XVe ; R-ETAPE prend la législature d'un acte dans son identifiant. Dans la g20, 29 textes servis ont une étape datée après la fin de leur législature (XIVe 15, XVe 8, XVIe 6 ; relecture A2 des textes, mesure locale du 23/11/2026). Faut-il ranger les actes par leur date ou par leur identifiant ? | « Ranger par la date » (23/11/2026) : R-ETAPE ne retient dans une législature que les actes datés entre son début et sa fin ; l'identifiant de l'archive ne sert que faute de date. Écarté : garder l'identifiant de l'archive (A2 nommant l'écart quand le texte est tiré). Mise en œuvre : PR à part, pas encore autorisée | R-ETAPE (à venir) ; A2 (doc. 2, 2.8) |
 
 ---
 
@@ -111,6 +113,52 @@ défaut peut rester.
   Bayrou ce jour-là.
 - **En attendant** : non attribuées, avec la raison. Une décision `identite` pourrait associer
   un identifiant négatif à un `PA…` après vérification.
+
+### Q58 (23/11/2026). Objet illisible : garder ses faits précédents, ou bloquer ?
+
+- **Constat** : la conception prévoit qu'un objet qu'un lecteur ne sait pas lire garde ses
+  faits précédents, avec la couverture `trou_source` ou `en_cours` (doc. 2, 2.5 et 2.11). Le
+  code de `main` fait autrement depuis le 13/11/2026 (issue #39, module `lecture`) : la
+  version illisible ne donne aucun fait, pas même les lots lus avant l'erreur ; elle est
+  relue à la mise à jour suivante ; ses faits perdus ne sont pas expliqués par le changement
+  de la source, donc C1 refuse la publication tant qu'elle reste illisible (alerte
+  `lecture:illisibles`).
+- **Bloque** : le comportement décrit en 2.11 ; le choix entre une nuit refusée (rien de faux
+  publié, mais plus aucune publication jusqu'à la correction du lecteur ou une levée) et une
+  publication qui garde des faits d'une version dépassée.
+- **En attendant** : le comportement du code (aucun fait, C1 bloque). Les docs 2 et 8 disent
+  les deux, « prévu » et « réalisé ».
+
+### Q59 (23/11/2026). Fenêtre interdite : la coder avant le dépôt public ?
+
+- **Constat** : la décision du 04/11/2026 interdit toute écriture visible sur le dépôt public
+  du lundi au vendredi, de 9 h à 19 h (heure de Paris), hors jours fériés ; un lancement
+  manuel dans la fenêtre doit être refusé (doc. 2, 2.1 point 4, 2.9). Le code de `main` ne
+  la tient pas : le réglage `fenetre_interdite` vaut `false` (« désactivée sur le dépôt
+  d'essai ») et aucun module ne le lit. Les déclenchements planifiés sont à 20 h 30 et
+  23 h 30 UTC, hors fenêtre, mais une tâche planifiée retardée au matin ou un lancement
+  manuel écriraient en journée. L'acquis d'une nuit non écrite attend déjà dans un artefact
+  (14 jours) que la nuit suivante écrit (rattrapage) : c'est le mécanisme que la fenêtre
+  réutiliserait, et non le cache de GitHub Actions (7 jours) que montraient deux schémas.
+- **Bloque** : la bascule vers le dépôt public (migration).
+- **En attendant** : aucune fenêtre ; sans effet tant que le dépôt d'essai n'est pas public.
+
+### Q60 (23/11/2026). Registre des adresses : toutes les fiches, ou les lignées seulement ?
+
+- **Constat** : la spécification inscrit chaque adresse publiée dans un registre en ajout
+  seul, rangé avec le registre des identités (ZI) dans l'entrepôt, avec une page de
+  redirection quand l'objet fusionne ou disparaît (doc. 1, 1.2.2, 1.3.4 ; cahier 6.1). Le
+  code de `main` n'inscrit que les adresses des **lignées** (`registres/lignee_adresse.parquet`) ;
+  une lignée absorbée est marquée `redirection`, sans page de redirection servie. Les
+  adresses des candidats et des gouvernements sont recalculées à chaque mise à jour (R-IDENTITE,
+  R-GOUVERNEMENTS), sans registre. Le cadrage du 14/11/2026 (issue #86) a laissé la forme des
+  adresses libre, sauf douze adresses de l'ancien site citées par des articles, tenues par
+  décision `adresse_citee`. Le registre `registre/adresses.csv` du dépôt public, dessiné par
+  deux schémas, n'existe pas ; ces schémas montrent désormais le registre dans l'entrepôt.
+- **Bloque** : la promesse « une adresse publiée ne change jamais » (doc. 1, 1.0 principe 5 ;
+  recette E13) pour les fiches de candidat et de gouvernement, et les redirections.
+- **En attendant** : registre et redirection marquée pour les lignées seulement ; les autres
+  adresses restent stables tant que leur nom ne change pas.
 
 ## B — À trancher avant d'activer la fonction
 

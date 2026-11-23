@@ -6,6 +6,9 @@ section de la spécification qu'il illustre, sous un intertitre « En image ». 
 section du document 2 n'ont pas changé ; en cas d'écart entre un schéma et la spécification,
 c'est la spécification qui fait foi.
 
+Les six écarts entre schémas et spécification relevés à la fusion (PR #104) ont été
+corrigés le 23/11/2026 d'après le code de `main` ; voir le journal de l'étape 2.
+
 | Ancienne section | Où elle est maintenant |
 | --- | --- |
 | Vocabulaire (« Quatre mots reviennent partout ») et 6.1 Le processus en une image | doc. 2, [Le processus en une image](2-processus-collecte-publication.md#le-processus-en-une-image), en tête du document |

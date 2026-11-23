@@ -36,6 +36,7 @@ par changement, la plus récente en bas.
 | 23/11/2026 | Q51 : candidat sans date de naissance : « non relu », « aucun élu de ce nom » ou « homonyme non rattaché » | 1 (R-MANDAT-LOCAL), 5 (Q51) |
 | 23/11/2026 | Q52 : mandats locaux passés déclarés par Wikidata (P39) | 1 (`fonction_wikidata`, R-MANDAT-LOCAL), 2 (point `wd-fonctions-candidats`), 5 (Q52) |
 | 23/11/2026 | Q53 : clé ambiguë, aucun rattachement, avertissement A10 | 1 (R-MANDAT-LOCAL), 2 (A10), 5 (Q53) |
+| 23/11/2026 | Q48 (issue #63) : « Ranger par la date » : R-ETAPE ne retiendra dans une législature que les actes datés entre son début et sa fin, l'identifiant de l'archive ne servant que faute de date (PR à part, pas encore autorisée) | 1 (R-ETAPE), 5 (Q48) |
 
 ## Corrections demandées par la commande de réalisation
 
@@ -50,13 +51,24 @@ par changement, la plus récente en bas.
 - Documents 3, 4, 6, 7 et 8 : ils parlent encore de « découpage » et de « filtrage avant
   stockage » (P2) et ne mentionnent ni le registre des identités (P1) ni les tâches du
   workflow (P3). À aligner avec les chiffres mesurés pendant l'étape 2, en fin d'étape.
+  Fait le 23/11/2026 pour le vocabulaire (P2) et les tâches (P3) des docs 0, 1, 2, 3 et 8 ;
+  les docs 6 et 7 sont des notes de renvoi ; le doc. 4 est remplacé par le rapport de mesures.
 
 ## Écarts entre la conception et le code (à résorber)
 
 | Date | Écart | Prévu |
 | --- | --- | --- |
-| 06/11/2026 | La reprise par la nuit suivante d'un acquis non écrit (tâche `ecrire` perdue) n'est pas encore codée : l'artefact reste 14 jours, mais rien ne le relit | tranche 2, avec le droit `actions: read` pour la seule tâche `preparer` |
-| 06/11/2026 | `concurrency` sans l'option `queue: max` (syntaxe non vérifiée) : une exécution en attente peut être remplacée par une plus récente | à vérifier dans la documentation de GitHub |
+| 06/11/2026 | La reprise par la nuit suivante d'un acquis non écrit (tâche `ecrire` perdue) n'est pas encore codée : l'artefact reste 14 jours, mais rien ne le relit | tranche 2, avec le droit `actions: read` pour la seule tâche `preparer`. **Fait** (module `rattrapage` ; `preparer` et `collecter` ont `actions: read`) |
+| 06/11/2026 | `concurrency` sans l'option `queue: max` (syntaxe non vérifiée) : une exécution en attente peut être remplacée par une plus récente | à vérifier dans la documentation de GitHub. Toujours ouvert au 23/11/2026 ; doc. 2 (2.1) et doc. 8 (E19, N61, T37) le disent pourtant « couvert » |
+| 23/11/2026 | Fenêtre interdite (9 h–19 h, jours ouvrés) non codée : `fenetre_interdite: false`, lu par aucun module | doc. 5, Q59 ; avant le dépôt public |
+| 23/11/2026 | Horaires : déclenchements à 20 h 30 et 23 h 30 **UTC** ; doc. 2 (2.3) et doc. 8 (E15) disent 19 h 30 et 21 h 30 heure de Paris (clé `timezone`) et un troisième déclenchement le week-end | doc. 2, 2.3 à aligner, ou le workflow |
+| 23/11/2026 | Version exécutée : la branche par défaut ; ni étiquette `publiable` ni `code-publie`, ni import du dépôt privé (doc. 2, 2.1 point 3, 2.12 ; doc. 3, J20) | migration |
+| 23/11/2026 | Lancement manuel : modes `quotidien`, `complet`, `essai` et liste de points d'accès ; pas de mode `recalcul`, ni d'options « personnes » et « publier » ; l'essai calcule tout, sans limite aux personnes ; ni `empreinte essai --hors-ligne`, ni `instantane`, ni `audit`, ni `sauvegarde` (doc. 2, 2.8.3, 2.12 ; doc. 5, Q16) | — |
+| 23/11/2026 | E7–E8 : le code écrit les *releases* `entrepot` (une seule, pas une par année), `archives-brutes`, `export` et `publication` ; Pages sert la documentation et la page minimale. Pas de magasin des publications, de `registre/publications.jsonl`, de `donnees-derniere`, d'édition mensuelle, d'empreinte racine sur data.gouv.fr ; le rapport est un artefact `rapport` (90 jours), pas un actif de la *release* `rapports` (doc. 2, 2.9, 2.10, 2.14) | migration |
+| 23/11/2026 | Sources : aucun point d'accès pour les finances, la Drees, l'Unédic ni EuroVoc, que doc. 2 (2.2, 2.3) dit relevés | — |
+| 23/11/2026 | Registre des règles (doc. 1, 1.6, non modifié ici : PR ouvertes) : 17 règles du code n'y ont pas de ligne (R-49-3, R-ACTIVITE-PE, R-CANDIDATURES, R-DEPUTES, R-FONCTIONS, R-GOUVERNEMENTS, R-LEGISLATURES, R-LIGNEE, R-LOI-CITEE, R-MANDAT-LOCAL, R-ORDRE-DU-JOUR, R-PAROLE-PERSONNE, R-PAROLES-GOUVERNEMENT, R-QUESTION-PERSONNE, R-VOTE-PE, R-VOTE-PERSONNE ; R-LOIS n'est citée que dans la ligne de R-LOI-DOSSIER) ; R-COUVERTURE, R-RATIO et R-EXERCICE n'existent pas dans le code ; R-TERME-LEGAL est dans R-LEGISLATURES v2 ; R-ARBITRAGE-ARCHIVES, R-BANC, R-NOMINATIF, R-POSITION-GROUPE, R-SORT-AMENDEMENT et R-MESURE-NOMINATIVE sont des parties d'autres modules, sans version propre | doc. 1, 1.6, après les PR #160 à #165 |
+| 23/11/2026 | C2 vérifie qu'un lien vise une fiche de la candidate, pas une adresse du registre ; C4 vérifie les clés et colonnes interdites, le 49.3 en position de vote et la forme contre le schéma commité, mais ni l'ordre neutre des listes, ni les textes portés servis avant examen (tenus par R-TEXTE-PORTE), ni les licences (calculées par la composition) ; C5 ne vérifie que « complet » avec une source en panne, pas le 0 servi sans `complet` ni `relu_aucun` ; un avertissement `C1-C6` dit l'absence de publication précédente (#40), non documenté | doc. 2, 2.8.1 |
+| 23/11/2026 | Adresses : fiches servies sous `candidat/<adresse>` (`candidats/<adresse>/`), pas `/personnes/…` (doc. 1, 1.2.2) ; registre pour les lignées seulement | doc. 5, Q60 |
 
 ## Tranche 2 (06/11/2026) : lecture et export
 
@@ -1092,6 +1104,27 @@ Branche `etape-2-candidature-2026-11-23`. La page franceinfo a été télécharg
 | --- | --- | --- |
 | Décision `candidature` : nouveau fichier `references/candidature/2026-11-23-franceinfo.yaml` (38 déclarés, 7 retirés, X. Bertrand `non_listee`). Dominique de Villepin (La France humaniste, Q131660) et Serge Tinland (Divers, sans article ni élément Wikidata) entrent comme déclarés ; François Ruffin passe de déclaré à retiré. Le fichier du 13/11 reste, la liste en vigueur est la plus récente | alerte #155 (A9) : Wikipédia disait Villepin déclaré et Ruffin retiré, la liste du 13/11 l'inverse ; la page du 23/11 donne raison à Wikipédia | — |
 
+## Livrables alignés sur le code : les six écarts des illustrations (23/11/2026)
+
+Branche `etape-2-docs-alignes`. À la fusion des docs 6 et 7 dans les docs 2 et 1 (13/11/2026,
+PR #104), six écarts entre les schémas et la spécification ont été relevés sans être
+tranchés. Chacun est corrigé d'après le code de `main` (4084a9c) ; quand le code s'écarte de
+l'intention écrite de la propriétaire, le document dit « prévu » et « réalisé » et la
+question est posée (doc. 5, Q58 à Q60). Aucun code modifié.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| 1. Filtrage : rien n'est filtré avant stockage ; présences et collaborateurs restent dans l'entrepôt, jamais lus (lecteurs `an_agenda`, `an_acteurs`, liste blanche de `senat_export`) ; seule la réponse de Wikidata est gardée sous forme canonique (Q40) | `depaquetage.py` (octets exacts) ; décision du 06/11/2026 | 1 (vue d'ensemble, 1.5.4), 2 (2.0, 2.2 Sénat, 2.15), 8 (règle 3, P21, P47, P57, limites) — fait |
+| 2. Vocabulaire : « dépaqueter », « dépaqueteur » ; les variantes de schéma sont l'affaire des lecteurs | P2 ; module `depaquetage` | 0, 1 (vue d'ensemble, 1.8), 2, 8 — fait |
+| 3. Qui écrit : cinq tâches ; `collecter` remet l'acquis en artefact, seule `ecrire` écrit l'entrepôt, même si le calcul échoue ; `alerter` écrit les issues ; `collecter` fait E1–E2 et `calculer` E3–E6 (2.15 disait E1–E3 et E4–E6) ; la collecte s'arrête à 270 min pour déposer son acquis | `mise-a-jour.yml`, test `test_workflow.py` | 2 (vue d'ensemble, 2.0, soirée normale, 2.11, 2.15), 3 (J15), 8 (E21) — fait |
+| 4. Acquis en attente : un artefact `acquis-gNNNNNN` gardé 14 jours, que la nuit suivante écrit (module `rattrapage`), pas le cache Actions (7 jours) ; la fenêtre interdite elle-même n'est pas codée | `rattrapage.py` ; `fenetre_interdite` lu par aucun module | 2 (2.1, fenêtre horaire, 2.4, 2.9, 2.15), 8 (N63) — fait ; question Q59 |
+| 5. Objet illisible : la version illisible ne donne aucun fait et C1 bloque (#39), là où le schéma gardait les faits précédents ; « prévu » et « réalisé » côte à côte | `lecture.py`, `cli.py` (`uids_illisibles`) | 2 (2.5, 2.11) — fait ; question Q58 |
+| 6. Registre des adresses : dans l'entrepôt (ZI), pas `registre/adresses.csv` du dépôt public ; réalisé pour les lignées seules (`lignee_adresse.parquet`), sans page de redirection | `identites.py`, `r_lignee.py`, `cli.py ecrire` | 1 (1.2.2, 1.3.4, schéma des identifiants), 2 (2.15), 8 (ancienne adresse, E13) — fait ; question Q60 |
+| Écarts mineurs de la PR #104 : statut `partiel` dans le schéma de la couverture ; zone ZI dans le modèle en une image ; A9 dans 2.8.2, le doc. 8 et les décomptes (« A1 à A9 », neuf avertissements) | `config/schema_fichiers.yaml`, `controles.py` | 0, 1, 2, 8 — fait |
+
+Les autres écarts relevés entre les docs et le code sont dans « Écarts entre la conception et
+le code (à résorber) », en tête de ce journal. Le registre des règles (doc. 1, 1.6) et les
+lignes A1 à A8 de 2.8.2 ne sont pas modifiés : les PR #160 à #165 les touchent.
 ## Périodes de mandat de député confrontées à Sycomore (23/11/2026)
 
 Branche `etape-2-relecture-mandats`, issue #63 (troisième famille : les périodes de mandat de député).
@@ -1135,6 +1168,24 @@ identités des 37 fiches publiées de g20) :
 
 Risque C1 propre à Q52 : une déclaration P39 supprimée dans Wikidata, ou dont le libellé ne dit plus
 une fonction locale, retire sa ligne de la frise, et C1 y verra une perte.
+
+## R-ETAPE : la législature d'un acte est celle de sa date (23/11/2026)
+
+Branche `etape-2-etape-par-date`, décision du 23/11/2026 (doc. 5, Q48 « Ranger par la date » ; issue #63).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-ETAPE version 4 (après la version 3 de la PR #161) : un acte compte dans la législature où tombe sa date, entre son début et sa fin (table `legislature`, R-LEGISLATURES, désormais une dépendance) ; l'identifiant de l'acte ne sert que faute de date, ou pour une date hors de toute législature (dissolution). Vaut pour l'étape (`etape_dossier`) et pour la législature des décisions (`decisions`, lue par R-SORT-FINAL) | Q48 : l'archive close de la XIVe numérote `L14-` des actes de 2018 ; la relecture A2 des textes (#162) l'a relevé sur DLR5L14N35418, servi pour la XIVe à l'étape « examen en commission » du 17/01/2018. Mesuré sur la g20 (R-ETAPE rejouée sur l'export des faits lus, 12 755 textes servis reproduits à l'identique) : 25 lignes changent d'étape (XIVe 15 et XVe 8, examen en commission → dépôt ; XVIe : 1 dans chaque sens) ; les 5 autres textes datés après la fin de leur législature le sont pendant la dissolution de 2024 et gardent la XVIe ; 11 textes servis apparaissent dans une législature (XVe 10, XVIe 1) où ils n'ont qu'un retrait ou une procédure accélérée, à l'étape « non établie » ; aucune ligne ne disparaît, donc aucune perte pour C1 | 1 (1.6 R-ETAPE) |
+| Doc. 5 : Q54, décidée le 23/11/2026, « Selon l'identifiant » : pendant la dissolution, tant qu'aucune législature ne couvre la date d'un acte, l'identifiant de l'archive décide (ce que fait déjà R-ETAPE version 4) | 5 promulgations et actes des 12 et 13/06/2024 restent sous la XVIe | 5 (Q54) |
+
+## Stade et dates des textes relus sur la page publique de leur dossier (23/11/2026)
+
+Branche `etape-2-relecture-textes`, issue #63 (troisième famille : le stade atteint et les dates d'un texte).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| A2 : chaque nuit, 20 textes servis (faits `texte_legislature`, paramètre `verification_textes`) sont tirés au sort ; la page publique de leur dossier (`/dyn/<lég.>/dossiers/<chemin>`) est relue (module `verification_textes`). Comparés : la date de dépôt ; l'étape dans la législature du fait (palier le plus haut des actes de la page de cette législature datés au plus tard à la date de référence) et sa date quand la page l'affiche ; le numéro et la date de la loi. Seul l'inexpliqué est nommé ; expliqués et comptés : `date_non_affichee` (la page ne date pas les réunions), `date_de_promulgation_du_jo` (déjà nommée par A7). Bilan `a2_textes` dans le rapport ; ligne du résumé du calcul | #63 : le stade et les dates d'un texte n'étaient confrontés à rien. Source choisie : la page du dossier, qui couvre tous les stades ; les travaux préparatoires du JO ne portent que sur les lois promulguées depuis 2015, et la date de promulgation servie en vient déjà (R-LOIS v2). Mesuré en local sur la g20 (180 textes, 391 faits) : dépôt 180 vérifiés sur 180 ; étape 173 vérifiés, 6 expliqués, 1 écart ; loi 30 vérifiés, 1 non vérifié (2021-191 : la page ne montre pas de promulgation) | 2 (2.8, A2), 8 |
+| Doc. 5 : Q48, étape d'un texte datée après la fin de sa législature ; décidée le 23/11/2026, « Ranger par la date » (R-ETAPE ne retient dans une législature que les actes datés entre son début et sa fin ; mise en œuvre dans une PR à part) | l'écart relevé (DLR5L14N35418) : l'archive de la XIVe range sous `L14-` un rapport du Sénat de 2018 ; 29 textes servis de la g20 ont une étape datée après la fin de leur législature | 5 (Q48) |
 
 ## Type de déposant des amendements d'une lignée (23/11/2026)
 
