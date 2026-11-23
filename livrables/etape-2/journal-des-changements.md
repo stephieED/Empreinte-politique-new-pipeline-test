@@ -1071,3 +1071,11 @@ Branche `etape-2-candidature-2026-11-23`. La page franceinfo a été télécharg
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
 | Décision `candidature` : nouveau fichier `references/candidature/2026-11-23-franceinfo.yaml` (38 déclarés, 7 retirés, X. Bertrand `non_listee`). Dominique de Villepin (La France humaniste, Q131660) et Serge Tinland (Divers, sans article ni élément Wikidata) entrent comme déclarés ; François Ruffin passe de déclaré à retiré. Le fichier du 13/11 reste, la liste en vigueur est la plus récente | alerte #155 (A9) : Wikipédia disait Villepin déclaré et Ruffin retiré, la liste du 13/11 l'inverse ; la page du 23/11 donne raison à Wikipédia | — |
+
+## Adresse publique de la page d'un groupe à l'Assemblée (23/11/2026)
+
+Branche `etape-2-adresse-groupe`, issue #78.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Composeur `lignee` : `source_url` de chaque maillon de la frise (`fiche.json.gz`, `maillons`) = la page Assemblée du dernier organe du maillon, `https://www2.assemblee-nationale.fr/instances/fiche/OMC_<organe>` (règle `adresse_groupe_an`), quand la source n'en donne pas ; construite pour un organe lu dans l'archive seulement. Aucune colonne ni aucun identifiant de fait ne change | besoin de l'interface (#78) : un lien « Selon l'Assemblée nationale ↗ » sous la posture d'un groupe ; l'archive AMO30 ne donne aucune adresse (`prov_url` vide). Motif vérifié le 23/11/2026 sur le site de l'Assemblée pour neuf groupes de la XIVe à la XVIIe (pages au nom du groupe, closes ou en cours) ; un identifiant inconnu répond par une page vide, d'où la restriction aux organes connus | 1 (1.7.2, fiche lignée) |
