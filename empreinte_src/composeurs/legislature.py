@@ -51,7 +51,15 @@ COLS_TEXTES = ["dossier", "titre", "date_depot", "texte_depose", "chambre_depot"
                "commission", "commission_libelle", "type_commission", "raison_matiere", "etape",
                "date_etape", "raison_etape", "sort", "date_sort", "raison_sort",
                "sort_pendant_la_legislature", "par_49_3", "adopte_par_49_3", "numero_loi",
-               "date_promulgation", "url_loi", "source_url", "source_point", "licence"]
+               "date_promulgation", "url_loi",
+               # #71 : vote solennel dans la législature (R-NATURE-SCRUTIN, R-LIEN-SCRUTIN-DOSSIER) ;
+               # initiateur nominatif : premier auteur du texte déposé (R-TEXTE-PORTE), son groupe à
+               # la date du dépôt (R-APPARTENANCE) ; un projet de loi : le gouvernement, jamais un
+               # acte personnel du ministre (cahier 4.6), rôle `initiative_gouvernementale`.
+               "vote_solennel", "scrutins_solennels", "initiateur_role", "initiateur_acteur",
+               "initiateur_nom", "initiateur_groupe", "initiateur_groupe_sigle",
+               "initiateur_gouvernement", "nb_auteurs",
+               "source_url", "source_point", "licence"]
 
 ETAPES = ("depot", "examen_commission", "seance", "adopte", "promulgue", "non_etablie")
 
@@ -580,7 +588,29 @@ def _section_textes(ctx, f, leg, au, lic) -> list[dict]:
         return []
     numero = leg["numero"]
     fin = leg["fin"] or au
-    lignes = _lignes(ctx, """
+    # Vote solennel (#71) : un scrutin solennel de la législature relié au dossier.
+    if ctx.existe("lien_scrutin_dossier") and ctx.existe("scrutin_nature"):
+        sol = f"""(SELECT l.dossier, list(DISTINCT l.scrutin ORDER BY l.scrutin) AS scrutins
+                   FROM lien_scrutin_dossier l JOIN scrutin_nature n USING (scrutin)
+                   WHERE n.solennel AND CAST(n.legislature AS INTEGER) = {int(numero)} GROUP BY 1)"""
+    else:
+        sol = "(SELECT NULL::VARCHAR AS dossier, NULL::VARCHAR[] AS scrutins WHERE false)"
+    # Initiateur nominatif (#71) : premier auteur du texte déposé, ou initiative gouvernementale.
+    if ctx.existe("texte_porte"):
+        ini = """(SELECT document, count(*) FILTER (role = 'auteur') AS nb_auteurs,
+                         arg_min(acteur, coalesce(rang, 999999)) AS acteur,
+                         arg_min(role, coalesce(rang, 999999)) AS role,
+                         any_value(gouvernement) FILTER (role = 'initiative_gouvernementale') AS gouvernement
+                  FROM texte_porte WHERE role IN ('auteur', 'initiative_gouvernementale') GROUP BY 1)"""
+    else:
+        ini = ("(SELECT NULL::VARCHAR AS document, NULL::BIGINT AS nb_auteurs, NULL::VARCHAR AS acteur, "
+               "NULL::VARCHAR AS role, NULL::VARCHAR AS gouvernement WHERE false)")
+    grp = ("""(SELECT a.acteur, a.groupe, a.debut, coalesce(a.fin, '9999-12-31') AS fin, g.sigle
+               FROM appartenance a LEFT JOIN (SELECT organe, any_value(sigle) AS sigle FROM groupe GROUP BY 1) g
+                    ON g.organe = a.groupe)""" if ctx.existe("appartenance") and ctx.existe("groupe")
+           else "(SELECT NULL::VARCHAR AS acteur, NULL::VARCHAR AS groupe, NULL::VARCHAR AS debut, "
+                "NULL::VARCHAR AS fin, NULL::VARCHAR AS sigle WHERE false)")
+    lignes = _lignes(ctx, f"""
         WITH depot AS (
             SELECT dossier, arg_min(texte_associe, coalesce(date, '9999') || uid) AS texte_depose,
                    min(left(date, 10)) AS date_depot,
@@ -603,16 +633,33 @@ def _section_textes(ctx, f, leg, au, lic) -> list[dict]:
                CASE WHEN e.date_sort IS NULL THEN NULL
                     ELSE e.date_sort >= ? AND e.date_sort <= ? END AS sort_pendant_la_legislature,
                e.par_49_3, e.adopte_par_49_3, e.numero_loi, e.date_promulgation, e.url_loi,
+               sol.scrutins IS NOT NULL AS vote_solennel, sol.scrutins AS scrutins_solennels,
+               ini.role AS initiateur_role, ini.acteur AS initiateur_acteur,
+               (SELECT any_value(g.groupe) FROM {grp} g WHERE g.acteur = ini.acteur AND ini.role = 'auteur'
+                  AND g.debut <= p.date_depot AND g.fin >= p.date_depot) AS initiateur_groupe,
+               (SELECT any_value(g.sigle) FROM {grp} g WHERE g.acteur = ini.acteur AND ini.role = 'auteur'
+                  AND g.debut <= p.date_depot AND g.fin >= p.date_depot) AS initiateur_groupe_sigle,
+               ini.gouvernement AS initiateur_gouvernement, ini.nb_auteurs,
                e.source_url, d.prov_point AS source_point
         FROM etat_dossier e
         JOIN depot p ON p.dossier = e.dossier
+        LEFT JOIN {sol} sol ON sol.dossier = e.dossier
+        LEFT JOIN {ini} ini ON ini.document = p.texte_depose
         LEFT JOIN an_dossiers__dossier d ON d.uid = e.dossier
         LEFT JOIN matiere m ON m.dossier = e.dossier
         LEFT JOIN an_acteurs__organe o ON o.uid = m.commission
         WHERE e.legislature = ?
         ORDER BY p.date_depot NULLS LAST, e.dossier""", [leg["debut"], fin, numero])
+    # Nom de l'initiateur : prénom et nom de l'archive des acteurs (une ligne par acteur).
+    noms = {}
+    if ctx.existe("an_acteurs__identite_source") and any(l["initiateur_acteur"] for l in lignes):
+        noms = {u: {"nom": " ".join(x for x in (pr, no) if x) or None} for u, pr, no in ctx.x(
+            "SELECT uid, any_value(prenom), any_value(nom) FROM an_acteurs__identite_source "
+            "WHERE uid IN (SELECT unnest(?::VARCHAR[])) GROUP BY uid",
+            [sorted({l["initiateur_acteur"] for l in lignes if l["initiateur_acteur"]})])}
     for l in lignes:
         l["licence"] = lic.get(l["source_point"])
+        l["initiateur_nom"] = (noms.get(l["initiateur_acteur"]) or {}).get("nom")
     ecartes = _lignes(ctx, """
         SELECT d.procedure_libelle, count(*) AS dossiers FROM etat_dossier e
         JOIN an_dossiers__dossier d ON d.uid = e.dossier
