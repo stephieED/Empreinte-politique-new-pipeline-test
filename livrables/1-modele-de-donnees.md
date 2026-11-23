@@ -1361,7 +1361,7 @@ flowchart LR
 
 | Section | Objets et règles | Fichier |
 | --- | --- | --- |
-| En-tête, En bref (maillons, effectif jour par jour, banc déclaré) | `lignee`, `groupe`, `filiation`, `appartenance`, `position_declaree` (avec `divergente`) — R-FILIATION, R-CONTINUITE-GROUPE, R-BANC | `fiche.json` |
+| En-tête, En bref (maillons, effectif jour par jour, banc déclaré) | `lignee`, `groupe`, `filiation`, `appartenance`, `position_declaree` (avec `divergente`) — R-FILIATION, R-CONTINUITE-GROUPE, R-BANC ; `source_url` de chaque maillon : la page Assemblée du dernier organe du maillon (`https://www2.assemblee-nationale.fr/instances/fiche/OMC_<organe>`, construite pour un organe lu dans l'archive, #78) | `fiche.json` |
 | Qui sont-ils (arrivées, départs, passages) | `appartenance`, `population` (drapeau candidat) | `membres.json` |
 | Sur quoi ils ont pris la parole | paroles des membres **pendant leur appartenance** | `paroles.json` |
 | Ce qu'ils ont proposé | `texte_porte`, `amendement_canonique` des membres pendant leur appartenance ; signatures à part | `proposes.json` |
