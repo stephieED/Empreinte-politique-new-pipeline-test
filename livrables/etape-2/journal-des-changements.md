@@ -1231,3 +1231,11 @@ Branche `etape-2-textes-solennel-initiateur`, issue #71.
 | --- | --- | --- |
 | Fiche législature, textes (`textes`, `textes-deposes-N`) : `vote_solennel` et `scrutins_solennels`, les scrutins solennels de la législature (R-NATURE-SCRUTIN, code `SPS`/`SSG`) reliés au dossier (R-LIEN-SCRUTIN-DOSSIER) ; schéma C4 mis à jour | l'interface marque, dans la liste des textes d'une législature, ceux qui ont eu un vote solennel (#71) | 1 (1.7.2) |
 | Même section : `initiateur_role`, `initiateur_acteur`, `initiateur_nom`, `initiateur_groupe`, `initiateur_groupe_sigle`, `initiateur_gouvernement`, `nb_auteurs`. L'initiateur est le premier auteur du texte déposé (R-TEXTE-PORTE, rang de la source), avec son groupe à la date du dépôt (R-APPARTENANCE) ; pour un projet de loi, le rôle est `initiative_gouvernementale` et le gouvernement du dépôt est donné, sans groupe | l'interface donne le nom, la qualité et le groupe de l'initiateur (#71) ; un projet de loi n'est jamais un acte personnel du ministre (cahier 4.6) | 1 (1.7.2) |
+
+## Adresse publique de la page d'un groupe à l'Assemblée (23/11/2026)
+
+Branche `etape-2-adresse-groupe`, issue #78.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Composeur `lignee` : `source_url` de chaque maillon de la frise (`fiche.json.gz`, `maillons`) = la page Assemblée du dernier organe du maillon, `https://www2.assemblee-nationale.fr/instances/fiche/OMC_<organe>` (règle `adresse_groupe_an`), quand la source n'en donne pas ; construite pour un organe lu dans l'archive seulement. Aucune colonne ni aucun identifiant de fait ne change | besoin de l'interface (#78) : un lien « Selon l'Assemblée nationale ↗ » sous la posture d'un groupe ; l'archive AMO30 ne donne aucune adresse (`prov_url` vide). Motif vérifié le 23/11/2026 sur le site de l'Assemblée pour neuf groupes de la XIVe à la XVIIe (pages au nom du groupe, closes ou en cours) ; un identifiant inconnu répond par une page vide, d'où la restriction aux organes connus | 1 (1.7.2, fiche lignée) |
