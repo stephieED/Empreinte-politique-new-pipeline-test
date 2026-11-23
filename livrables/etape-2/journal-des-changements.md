@@ -1222,3 +1222,12 @@ Q57 « Oui, toute perte Wikidata »), branche `etape-2-c1-wikidata` (sur `etape-
 | C1 : une ligne perdue dont `id_mandat` est `wikidata:<déclaration>` est toujours expliquée (sauf sur une fiche retirée, déjà expliquée et nommée en A9) ; comptée (`expliques.c1_lignes_wikidata`) et nommée en A11 avec sa raison : « déclaration supprimée dans Wikidata » (absente de la réponse, son élément présent), « le libellé ne désigne plus une fonction locale », « élément absent de la réponse Wikidata », « réponse Wikidata non lue ou vide », sinon « raison non établie : déclaration toujours présente et locale ». `cli` passe à C1 l'état des déclarations (`r_mandat_local.declarations_wikidata`, mêmes motifs que la règle, factorisés dans `_niveau_wd_sql`) | Q55, Q57 : le risque C1 relevé ci-dessus | 2 (C1) |
 | Avertissement A11, à part de A10 | Q56 | 2 (A11) |
 | A10 (homonymes, Q53) rapatrié dans `controles.py` (`Controles.a10_elus_ambigus`), même comportement ; module `controles_mandats_locaux` supprimé | le module à part ne servait qu'à ne pas toucher `controles.py` pendant #161 ; demandé avec Q55 | 2 (A10) |
+
+## Vote solennel et initiateur nominatif des textes d'une législature (23/11/2026)
+
+Branche `etape-2-textes-solennel-initiateur`, issue #71.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Fiche législature, textes (`textes`, `textes-deposes-N`) : `vote_solennel` et `scrutins_solennels`, les scrutins solennels de la législature (R-NATURE-SCRUTIN, code `SPS`/`SSG`) reliés au dossier (R-LIEN-SCRUTIN-DOSSIER) ; schéma C4 mis à jour | l'interface marque, dans la liste des textes d'une législature, ceux qui ont eu un vote solennel (#71) | 1 (1.7.2) |
+| Même section : `initiateur_role`, `initiateur_acteur`, `initiateur_nom`, `initiateur_groupe`, `initiateur_groupe_sigle`, `initiateur_gouvernement`, `nb_auteurs`. L'initiateur est le premier auteur du texte déposé (R-TEXTE-PORTE, rang de la source), avec son groupe à la date du dépôt (R-APPARTENANCE) ; pour un projet de loi, le rôle est `initiative_gouvernementale` et le gouvernement du dépôt est donné, sans groupe | l'interface donne le nom, la qualité et le groupe de l'initiateur (#71) ; un projet de loi n'est jamais un acte personnel du ministre (cahier 4.6) | 1 (1.7.2) |
