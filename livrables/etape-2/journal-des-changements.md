@@ -1062,3 +1062,12 @@ Cause vérifiée sur les faits publiés de la g20 et ceux de la nuit du 22/11 (r
 Essai 45190042750, sur l'entrepôt de la nuit du 22/11, comparé à la g20 : **publication autorisée**. 72 fiches, 2 971 077 faits publiés ; A2 : votes 40/40, signataires 20/20 ; calcul 10 min 36 s, pic 6,4 Go.
 
 Après la fusion de #144, #151 et #152 dans `main`, essai 45193620673 (branche à jour de `main`, même entrepôt, comparé à la g20) : **publication autorisée**, aucune anomalie C1 ; 72 fiches, 2 971 066 faits publiés ; A2 : votes 40/40, signataires 20/20 ; calcul 12 min 32 s, pic 6,4 Go. Avertissements : A3 (lois, connu) et A9 (5 276 liens `amendement_lignee.source_url` vidés, attendu par #152). Faits sans identifiant de l'essai : mêmes types que dans la g20 (1 961 `actes_compte`, 3 lignes « Non-inscrits » ; plus les 11 095 `parole_sujet`, reconnus à leur contenu), aucun n'est perdu.
+
+
+## Liste des candidats : lecture franceinfo du 23/11/2026 (alerte #155)
+
+Branche `etape-2-candidature-2026-11-23`. La page franceinfo a été téléchargée par la propriétaire, qui a autorisé l'agent à la lire une fois ; elle n'est pas collectée (option « A » du 13/11/2026).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Décision `candidature` : nouveau fichier `references/candidature/2026-11-23-franceinfo.yaml` (38 déclarés, 7 retirés, X. Bertrand `non_listee`). Dominique de Villepin (La France humaniste, Q131660) et Serge Tinland (Divers, sans article ni élément Wikidata) entrent comme déclarés ; François Ruffin passe de déclaré à retiré. Le fichier du 13/11 reste, la liste en vigueur est la plus récente | alerte #155 (A9) : Wikipédia disait Villepin déclaré et Ruffin retiré, la liste du 13/11 l'inverse ; la page du 23/11 donne raison à Wikipédia | — |
