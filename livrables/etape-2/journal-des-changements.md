@@ -31,6 +31,11 @@ par changement, la plus récente en bas.
 | 15/11/2026 | Q44 (alerte #148) : C1 tient pour « identité enrichie », et non pour perdu, un fait qui garde tous ses identifiants et en gagne seulement | 2 (C1), 5 (Q44) |
 | 23/11/2026 | Q45 (alerte #118) : une motion de renvoi en commission adoptée (`TSORTMOT01`, motion `TMP03`) laisse le sort « non connu », raison `renvoye_en_commission` | 1 (R-ETAPE, R-SORT-FINAL), 5 (Q45) |
 | 23/11/2026 | Q46 (alerte #118) : une décision publiée sans conclusion (`TSORTFnull`) est « sans conclusion », jamais déduite de la suite | 1 (R-ETAPE, R-SORT-FINAL), 5 (Q46) |
+| 23/11/2026 | Q49 : un mandat local disparu du répertoire garde sa ligne, fin observée entre deux relevés | 1 (R-MANDAT-LOCAL), 2 (RNE), 5 (Q49) |
+| 23/11/2026 | Q50 : mandat et fonction locaux, deux lignes | 1 (R-MANDAT-LOCAL, R-CARRIERE), 5 (Q50) |
+| 23/11/2026 | Q51 : candidat sans date de naissance : « non relu », « aucun élu de ce nom » ou « homonyme non rattaché » | 1 (R-MANDAT-LOCAL), 5 (Q51) |
+| 23/11/2026 | Q52 : mandats locaux passés déclarés par Wikidata (P39) | 1 (`fonction_wikidata`, R-MANDAT-LOCAL), 2 (point `wd-fonctions-candidats`), 5 (Q52) |
+| 23/11/2026 | Q53 : clé ambiguë, aucun rattachement, avertissement A10 | 1 (R-MANDAT-LOCAL), 2 (A10), 5 (Q53) |
 
 ## Corrections demandées par la commande de réalisation
 
@@ -1094,3 +1099,39 @@ Branche `etape-2-relecture-mandats`, issue #63 (troisième famille : les périod
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
 | A2, mandats : chaque nuit, toutes les périodes de mandat de député servies dans les carrières des candidats (faits `periode_carriere`, Assemblée, en fonction, depuis le 19/06/2002 ; segments d'un même mandat réunis) sont comparées, début et fin, à la fiche Sycomore de la personne (identifiant déclaré par Wikidata, P1045, comme R-CARRIERE). Sont nommés : une borne différente, une période servie qu'aucun mandat de Sycomore ne recouvre, un mandat de Sycomore depuis le 19/06/2002 absent de la carrière servie. Sans identifiant Sycomore ou sans fiche relevée : « non vérifié ». Comptés sans être nommés : les suspensions (Sycomore ne les publie pas ; leurs bornes sont celles de mandats comparés) et les périodes d'avant 2002 (lues dans Sycomore même). Bilan `a2_mandats` dans le rapport, ligne du résumé du calcul | #63 : les périodes de mandat n'étaient confrontées à rien. Sycomore est une page publique de l'Assemblée, base historique distincte de l'archive des acteurs, déjà relevée chaque nuit pour les candidats (point `sycomore-fiches`, faits seulement, Q36) : **aucune page lue en plus**, et pas de tirage, car la population est petite (33 périodes en g20). Mesuré en local sur la g20 : 33 périodes comparées, 33 vérifiées, 0 écart, 0 non vérifiée ; 6 suspensions et 2 périodes d'avant 2002 comptées. Échantillon élargi aux 16 personnes dont Sycomore donne un mandat depuis 2002 (dont 6 sans fiche publiée), contre l'archive des acteurs : 51 lignes, 50 identiques ; 1 écart, le mandat de Xavier Bertrand de la XIIe législature (19/06/2002 – 30/04/2004), absent de l'archive des acteurs (trou de la source ; sans effet aujourd'hui, Xavier Bertrand n'ayant pas de fiche publiée) | 2 (2.8, A2), 8 |
+
+## Mandats locaux : fins observées, mandat et fonction, Wikidata, homonymes (23/11/2026)
+
+Branche `etape-2-mandats-locaux` (sur `main` = `12bc5d4`). Instruction du 23/11/2026
+(`passations/2026-11-23-instruction-mandats-locaux-rne.md`), puis décisions de la propriétaire du
+même jour, « Mandats locaux A à E » : Q49 à Q53.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-MANDAT-LOCAL v2 : fin observée d'une ligne disparue d'un fichier trimestriel, entre le dernier relevé qui la portait et le premier qui ne la porte plus (vue `rne_elus__mandat_local__hist` ; dates des générations passées au contexte par `cli`) | Q49 : la ligne restait effacée, et C1 aurait bloqué la publication | 1, 2 |
+| Deux lignes par mandat exercé avec une fonction (`nature_periode` : `mandat`, `fonction`) ; une ligne garde son identifiant (`<fichier>:<code>`), le mandat qui partagerait celui de sa fonction prend `:mandat` | Q50 ; aucune identité servie ne change (C1) | 1 |
+| Table `mandat_local_recherche` : `rattache`, `aucun_mandat`, `aucun_elu_de_ce_nom`, `homonyme_non_rattache`, `ambigu_non_rattache` ; R-CARRIERE v5 en tire le statut (`non_etabli`, servi `non_relu`) et le détail de la couverture `local` | Q51 | 1 |
+| Point `wd-fonctions-candidats` (`collecte_wd_fonctions`, une requête SPARQL, forme canonique), lecteur `wd_fonctions` (`fonction_wikidata`) ; R-MANDAT-LOCAL retient les déclarations P39 locales terminées, hors des périodes du répertoire de même niveau et de même nature (tolérance 7 jours), `declare_par = wikidata`, `fin_nature = declaree`, identifiant `wikidata:<déclaration>` | Q52 | 1, 2 |
+| Garde-fou d'homonymie : une clé qui désigne deux collectivités dans un fichier à siège unique ne rattache personne (`mandat_local_ambigu`) ; avertissement A10 (`controles_mandats_locaux`, appelé par `cli` après A9) | Q53 | 2 |
+| Composeur candidat : colonnes `nature_periode`, `fin_nature`, `declare_par` dans `en_bref.carriere` ; licence CC0 des lignes Wikidata ; la couverture `local` cite les points `rne-*` et `wd-fonctions-candidats` (elle servait `points_acces: []`) | défaut relevé par l'instruction | — |
+| `config/schema_fichiers.yaml` : vocabulaires `nature_periode`, `fin_nature`, `declare_par` (l'en-tête des fiches n'est pas comparé colonne à colonne par C4) | C4 | — |
+
+Mesure sur les entrées de g20 (23/11/2026, entrepôt minimal reconstitué : les 11 fichiers du
+20/11, plus le fichier municipal du 11/08 en génération précédente ; réponse P39 du 23/11 ;
+identités des 37 fiches publiées de g20) :
+
+- 68 lignes locales pour les fiches publiées (29 servies en g20) : 45 du répertoire (29 mandats, 16
+  fonctions) et 23 déclarées par Wikidata. Ces 23 lignes vont à 11 candidats, dont 5 qui n'avaient
+  aucune ligne locale : Le Pen, Mélenchon, Lassalle, Asselineau, Arthaud. Philippot n'en gagne
+  pas, car Wikidata ne déclare pas la fin de son mandat régional ;
+- fins : 14 déduites, 0 observée (aucune ligne de candidat n'a disparu entre le 11/08 et le 20/11 ;
+  7 464 lignes municipales sur 511 225 ont disparu dans tout le répertoire) ;
+- `non_relu` : 10 candidats (9 « aucun élu de ce nom », Benoît Mathieu « homonyme non
+  rattaché ») ; 0 clé ambiguë ;
+- **C1** : les 29 identités `local` servies en g20 (fiche, `mandat`) se retrouvent toutes ;
+  aucune perte ;
+- R-MANDAT-LOCAL 1,95 s, avec deux versions du fichier municipal dans l'historique (0,3 à 0,4 s
+  avant) ; pic du processus de mesure 1,1 Go.
+
+Risque C1 propre à Q52 : une déclaration P39 supprimée dans Wikidata, ou dont le libellé ne dit plus
+une fonction locale, retire sa ligne de la frise, et C1 y verra une perte.
