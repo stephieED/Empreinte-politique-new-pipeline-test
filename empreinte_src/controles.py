@@ -12,9 +12,9 @@ côté), C4 (données interdites), C5 (lecture incomplète présentée comme com
 
 **Avertissements** (doc. 2, 2.8.2) : la publication est maintenue, la propriétaire est avertie
 (une issue par avertissement). A1 fiche hors modèle, A2 vérification croisée sur les pages
-publiques (module `verification`), A3 totaux d'une autre source, A4 double affichage, A5 famille
-à zéro pour tout le monde, A6 couverture insuffisante, A7 entrées non résolues, A8 mandat ouvert
-dans un organe clos. Les textes d'avertissement donnent des **décomptes et des identifiants**,
+publiques (module `verification` ; mandats de député : fiches Sycomore relevées), A3 totaux d'une
+autre source, A4 double affichage, A5 famille à zéro pour tout le monde, A6 couverture
+insuffisante, A7 entrées non résolues, A8 mandat ouvert dans un organe clos. Les textes d'avertissement donnent des **décomptes et des identifiants**,
 jamais un indice individuel (doc. 2, 2.10) : A6 compte les membres sans prise de parole servie,
 sans les nommer.
 
@@ -561,6 +561,28 @@ class Controles:
                           r["non_verifies"][:5], detail=self.bilan_a2_amendements)
         return r
 
+    def a2_mandats(self):
+        """Périodes de mandat de député servies contre les fiches Sycomore relevées la même nuit
+        (issue #63, `verification.verifier_mandats`) : toutes, sans tirage ni page lue en plus. Un
+        écart est nommé ; une période sans fiche Sycomore est comptée « non vérifiée » ; les
+        suspensions (que Sycomore ne publie pas) et les périodes d'avant 2002 (lues dans Sycomore
+        même) sont comptées, jamais nommées."""
+        from .verification import verifier_mandats
+        if not self._a("candidat"):
+            return None
+        if not self._a("sycomore__mandat_sycomore"):        # relevé absent : rien à comparer
+            self.con.execute("""CREATE OR REPLACE TEMP TABLE sycomore__mandat_sycomore (identifiant VARCHAR,
+                chambre VARCHAR, debut VARCHAR, fin VARCHAR, legislature VARCHAR)""")
+            self._vues.add("sycomore__mandat_sycomore")
+        r = verifier_mandats(self.con, self._a("sycomore__identifiant_sycomore"))
+        self.bilan_a2_mandats = {k: (v if not isinstance(v, list) else len(v)) for k, v in r.items()}
+        self._avertir("A2", "Périodes de mandat de député différentes de Sycomore", r["ecarts"],
+                      detail=self.bilan_a2_mandats)
+        if r["faits"] and len(r["non_verifies"]) == r["faits"]:
+            self._avertir("A2", "Vérification des mandats impossible : aucune fiche Sycomore relevée",
+                          r["non_verifies"][:5], detail=self.bilan_a2_mandats)
+        return r
+
     # Fenêtre d'une transition (A3) : entrées et sorties du groupe à moins de tant de jours du scrutin.
     A3_FENETRE_TRANSITION = 7
 
@@ -847,7 +869,9 @@ class Controles:
         if self._a("conclusion_non_classee"):
             # Codes de conclusion non classés (R-ETAPE) : le sort de ces dossiers reste « non connu »
             # au lieu d'être deviné ; la liste dit lesquels (issue #45).
-            objets += [f"conclusion {c} (« {l} ») non classée : {n} décisions, {d} dossiers "
+            # Une conclusion sans libellé (TSORTFnull) est dite telle, pas « None » (#118).
+            objets += [f"conclusion {c} ({'« ' + l + ' »' if l else 'sans libellé'}) non classée : "
+                       f"{n} décisions, {d} dossiers "
                        f"({k} dont c'est la dernière décision), dont {', '.join(ex)}"
                        for c, l, n, d, ex, k in self._x(
                            "SELECT conclusion_code, conclusion_libelle, decisions, dossiers, exemples, "
@@ -896,6 +920,7 @@ class Controles:
                 "avertissements": [a["empreinte"] for a in self.anomalies if a["controle"].startswith("A")],
                 "c3": getattr(self, "bilan_c3", None), "a2": getattr(self, "bilan_a2", None),
                 "a2_amendements": getattr(self, "bilan_a2_amendements", None),
+                "a2_mandats": getattr(self, "bilan_a2_mandats", None),
                 # Ce que A3, A5 et A6 ont compté comme expliqué : gardé même quand l'avertissement se
                 # tait, pour que le rapport de la nuit le dise (décisions du 13, du 14 et du 15/11/2026).
                 "expliques": {k: v for k, v in (("c1_identite_enrichie", getattr(self, "bilan_c1_identite_enrichie", None)),

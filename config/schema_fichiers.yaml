@@ -24,6 +24,7 @@ vocabulaires:
   - suite_absente_des_archives
   - aucune_decision_en_seance
   - conclusion_non_classee
+  - renvoye_en_commission
   - aucune_decision_finale
   etape_atteinte:
   - depot
@@ -61,6 +62,18 @@ vocabulaires:
   - pour
   - contre
   - abstention
+  # Frise des candidats, institution « local » (décisions Q49 à Q52 du 23/11/2026). Colonnes de
+  # l'en-tête (`en_bref.carriere`), que C4 ne compare pas colonne à colonne (l'en-tête n'est pas
+  # une section) : déclarées ici pour qu'une section qui les servirait soit vérifiée.
+  nature_periode:
+  - mandat
+  - fonction
+  fin_nature:
+  - deduite
+  - observee
+  - declaree
+  declare_par:
+  - wikidata
   partage:
   - aucun_exprime
   - une_seule_voix
