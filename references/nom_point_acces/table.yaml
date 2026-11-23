@@ -1,0 +1,68 @@
+# Issue #73 : le nom affiché de chaque point d'accès, qui termine les bulles d'aide de l'interface
+# (« {Source} ↗ · à jour au {date} »). Servi dans `sources.json.gz` (composeur `sources`), avec
+# l'adresse, la licence et les dates du point.
+#
+# Un nom est un choix éditorial, proposé par l'agent le 23/11/2026 et validé en fusionnant :
+# court, sans jargon, « Organisme — ce qu'on y lit ». Un point de `config/points_acces.yaml`
+# absent de cette table est servi sans nom, avec sa raison (jamais un nom deviné) ; un nom pour
+# un point inconnu de la configuration est servi à part (`noms_sans_point`).
+type: nom_point_acces
+date: 2026-11-23
+decisions:
+  - {point_acces: an-amo30-l17, nom: "Assemblée nationale — députés, mandats et organes de la XVIIe"}
+  - {point_acces: an-scrutins-l17, nom: "Assemblée nationale — scrutins de la XVIIe"}
+  - {point_acces: an-dossiers-l17, nom: "Assemblée nationale — dossiers législatifs de la XVIIe"}
+  - {point_acces: an-amendements-l17, nom: "Assemblée nationale — amendements de la XVIIe"}
+  - {point_acces: an-syceron-l17, nom: "Assemblée nationale — comptes rendus des séances de la XVIIe"}
+  - {point_acces: an-agenda-l17, nom: "Assemblée nationale — agenda des réunions de la XVIIe"}
+  - {point_acces: an-questions-ecrites-l17, nom: "Assemblée nationale — questions écrites de la XVIIe"}
+  - {point_acces: an-questions-gouvernement-l17, nom: "Assemblée nationale — questions au gouvernement de la XVIIe"}
+  - {point_acces: an-questions-orales-l17, nom: "Assemblée nationale — questions orales sans débat de la XVIIe"}
+  - {point_acces: an-amo30-l16, nom: "Assemblée nationale — députés, mandats et organes de la XVIe"}
+  - {point_acces: an-scrutins-l16, nom: "Assemblée nationale — scrutins de la XVIe"}
+  - {point_acces: an-dossiers-l16, nom: "Assemblée nationale — dossiers législatifs de la XVIe"}
+  - {point_acces: an-amendements-l16, nom: "Assemblée nationale — amendements de la XVIe"}
+  - {point_acces: an-syceron-l16, nom: "Assemblée nationale — comptes rendus des séances de la XVIe"}
+  - {point_acces: an-agenda-l16, nom: "Assemblée nationale — agenda des réunions de la XVIe"}
+  - {point_acces: an-questions-ecrites-l16, nom: "Assemblée nationale — questions écrites de la XVIe"}
+  - {point_acces: an-questions-gouvernement-l16, nom: "Assemblée nationale — questions au gouvernement de la XVIe"}
+  - {point_acces: an-questions-orales-l16, nom: "Assemblée nationale — questions orales sans débat de la XVIe"}
+  - {point_acces: an-amo30-l15, nom: "Assemblée nationale — députés, mandats et organes de la XVe"}
+  - {point_acces: an-scrutins-l15, nom: "Assemblée nationale — scrutins de la XVe"}
+  - {point_acces: an-dossiers-l15, nom: "Assemblée nationale — dossiers législatifs de la XVe"}
+  - {point_acces: an-amendements-l15, nom: "Assemblée nationale — amendements de la XVe"}
+  - {point_acces: an-syceron-l15, nom: "Assemblée nationale — comptes rendus des séances de la XVe"}
+  - {point_acces: an-agenda-l15, nom: "Assemblée nationale — agenda des réunions de la XVe"}
+  - {point_acces: an-questions-ecrites-l15, nom: "Assemblée nationale — questions écrites de la XVe"}
+  - {point_acces: an-questions-gouvernement-l15, nom: "Assemblée nationale — questions au gouvernement de la XVe"}
+  - {point_acces: an-questions-orales-l15, nom: "Assemblée nationale — questions orales sans débat de la XVe"}
+  - {point_acces: an-amo20-l14, nom: "Assemblée nationale — députés, mandats et organes de la XIVe"}
+  - {point_acces: an-scrutins-l14, nom: "Assemblée nationale — scrutins de la XIVe"}
+  - {point_acces: an-dossiers-l14, nom: "Assemblée nationale — dossiers législatifs de la XIVe"}
+  - {point_acces: an-amendements-l14, nom: "Assemblée nationale — amendements de la XIVe"}
+  - {point_acces: an-agenda-l14, nom: "Assemblée nationale — agenda des réunions de la XIVe"}
+  - {point_acces: an-questions-ecrites-l14, nom: "Assemblée nationale — questions écrites de la XIVe"}
+  - {point_acces: an-questions-gouvernement-l14, nom: "Assemblée nationale — questions au gouvernement de la XIVe"}
+  - {point_acces: an-questions-orales-l14, nom: "Assemblée nationale — questions orales sans débat de la XIVe"}
+  - {point_acces: senat-export, nom: "Sénat — sénateurs et leurs mandats"}
+  - {point_acces: jo-livraisons, nom: "Journal officiel — publications quotidiennes"}
+  - {point_acces: jo-global, nom: "Journal officiel — archive complète"}
+  - {point_acces: wp-candidatures-2027, nom: "Wikipédia — candidatures à la présidentielle 2027"}
+  - {point_acces: wd-identifiants-parlementaires, nom: "Wikidata — identifiants des parlementaires"}
+  - {point_acces: wd-fonctions-candidats, nom: "Wikidata — fonctions déclarées des candidats"}
+  - {point_acces: pe-eurodeputes, nom: "Parlement européen — députés européens"}
+  - {point_acces: pe-votes, nom: "Parlement européen — votes en séance plénière depuis 2019"}
+  - {point_acces: rne-cm, nom: "Répertoire national des élus — conseillers municipaux"}
+  - {point_acces: rne-maires, nom: "Répertoire national des élus — maires"}
+  - {point_acces: rne-epci, nom: "Répertoire national des élus — conseillers communautaires"}
+  - {point_acces: rne-cd, nom: "Répertoire national des élus — conseillers départementaux"}
+  - {point_acces: rne-cr, nom: "Répertoire national des élus — conseillers régionaux"}
+  - {point_acces: rne-ca, nom: "Répertoire national des élus — conseillers d'arrondissement"}
+  - {point_acces: rne-ma, nom: "Répertoire national des élus — élus des collectivités à statut particulier"}
+  - {point_acces: rne-consfde, nom: "Répertoire national des élus — conseillers des Français de l'étranger"}
+  - {point_acces: rne-afe, nom: "Répertoire national des élus — Assemblée des Français de l'étranger"}
+  - {point_acces: rne-sortants-cm, nom: "Répertoire national des élus — conseillers municipaux sortants (2020-2026)"}
+  - {point_acces: rne-sortants-maires, nom: "Répertoire national des élus — maires sortants (2020-2026)"}
+  - {point_acces: parltrack-activites, nom: "Parltrack — activités des députés européens"}
+  - {point_acces: parltrack-votes, nom: "Parltrack — votes du Parlement européen (2004-2026)"}
+  - {point_acces: sycomore-fiches, nom: "Assemblée nationale — anciens députés (Sycomore)"}

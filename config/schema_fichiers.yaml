@@ -94,6 +94,9 @@ vocabulaires:
   - cosignataire
   - rapporteur
   - initiative_gouvernementale
+  type_auteur:
+  - depute
+  - rapporteur
   type_sujet:
   - texte
   - loi_de_finances
@@ -801,6 +804,8 @@ colonnes:
   - commission_libelle
   - annee
   - nb_amendements
+  - nb_amendements_depute
+  - nb_amendements_rapporteur
   - nb_dossiers_distincts
   - nb_irrecevables_40
   - nb_irrecevables_45
@@ -820,6 +825,7 @@ colonnes:
   - article_designation
   - acteur
   - nom
+  - type_auteur
   - source_url
   - raison_source_url
   - licence
@@ -837,6 +843,7 @@ colonnes:
   - article_designation
   - acteur
   - nom
+  - type_auteur
   - source_url
   - raison_source_url
   - licence
