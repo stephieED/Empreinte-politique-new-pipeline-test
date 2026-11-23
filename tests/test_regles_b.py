@@ -629,6 +629,33 @@ def test_suite_absente_reliee_par_le_journal_officiel(tmp_path):
     assert s["SB"]["sort"] == "non_connu"
 
 
+
+def test_legislature_nommee_par_le_journal_officiel(tmp_path):
+    """Issue #146 (loi 2020-839) : le JO nomme la législature d'un numéro (« n° 967 (quinzième
+    législature) »). Seule celle-là est candidate : sans cela, le n° 967 tombait sous la
+    législature précédente sur un autre dossier, et la loi n'était reliée à rien."""
+    from empreinte_src.lecteurs import an_dossiers as lec_dossiers, jo_actes
+    dossiers = [_dos("SA", "Texte de la XVIe poursuivi sous la XVIIe"), _dos("SY", "Homonyme de la XVIe")]
+    z2 = _z2(tmp_path / "z2", dossiers=dossiers)
+    _ecrire(z2, lec_dossiers, "document", [
+        {"uid": "PIONANR5L16B0123", "dossier": "SA"}, {"uid": "RAPPANR5L16B0456", "dossier": "SA"},
+        {"uid": "PIONANR5L16B0789", "dossier": "SY"}])
+    _ecrire(z2, jo_actes, "acte_reglementaire", [
+        {"uid": "jorf:A", "nature": "LOI", "numero": "2025-200", "date_signature": "2025-03-01"},
+        {"uid": "jorf:B", "nature": "LOI", "numero": "2025-201", "date_signature": "2025-03-02"}])
+    tp = lambda acte, nature, numero, leg=None: {"acte": acte, "chambre": "AN", "nature": nature,
+                                                 "numero": numero, "legislature": leg}
+    _ecrire(z2, jo_actes, "travaux_preparatoires", [
+        tp("jorf:A", "proposition_de_loi", "123", 16), tp("jorf:A", "rapport", "456"),
+        tp("jorf:A", "proposition_de_loi", "789", 17),
+        # Même travaux, sans législature nommée : le n° 789 de la XVIe contredit le lien.
+        tp("jorf:B", "proposition_de_loi", "123"), tp("jorf:B", "rapport", "456"),
+        tp("jorf:B", "proposition_de_loi", "789")])
+    ctx, b = _relier(z2, tmp_path / "z3")
+    j = {x["numero_loi"]: x for x in _lignes(ctx, "SELECT * FROM loi_dossier_jo")}
+    assert (j["2025-200"]["dossier"], j["2025-200"]["preuve"]) == ("SA", "plusieurs_numeros")
+    assert (j["2025-201"]["dossier"], j["2025-201"]["raison"]) == (None, "dossiers_differents")
+
 def test_date_de_promulgation_lue_au_journal_officiel(tmp_path):
     """Loi 2021-191 (14/11/2026) : l'acte de promulgation de l'Assemblée est daté du 0021-02-24 ;
     le JO date la loi du 22/02/2021. La date du JO fait foi ; celle de l'Assemblée est gardée."""

@@ -178,6 +178,17 @@ def ctx(tmp_path):
                        matiere("D-SEN", "senat_seulement"), matiere("D-OLD", "non_etablie"),
                        matiere("D-RAP", "non_etablie"), matiere("D-49", "non_etablie")])
     vue(c, "etape_dossier", [{"dossier": "D-PLF", "legislature": 17, "regle": "R-ETAPE@1"}])
+    # #71 : vote solennel (VT3, solennel, relié à D-PLF) et initiateur du texte déposé
+    vue(c, "lien_scrutin_dossier", [{"scrutin": "VT3", "dossier": "D-PLF", "regle": "R-LIEN-SCRUTIN-DOSSIER@1"},
+                                    {"scrutin": "VT4", "dossier": "D-SEN", "regle": "R-LIEN-SCRUTIN-DOSSIER@1"}])
+    tp = lambda acteur, document, role, rang, gouv=None: {
+        "acteur": acteur, "dossier": None, "document": document, "role": role, "rang": rang,
+        "gouvernement": gouv, "regle": "R-TEXTE-PORTE@1"}
+    vue(c, "texte_porte", [tp("PA4", "PRJLANR5L17B1906", "initiative_gouvernementale", 1, "PO873634"),
+                           tp("PA3", "PIONANR5L17B0100", "auteur", 2), tp("PA1", "PIONANR5L17B0100", "auteur", 1),
+                           tp("PA2", "PIONANR5L17B0100", "cosignataire", None)])
+    vue(c, "appartenance", [{"acteur": "PA1", "groupe": "PO845401", "debut": "2024-07-18", "fin": None,
+                             "regle": "R-APPARTENANCE@1"}])
     odj = lambda date, ru, rang, objet, dossier, statut="confirmee": {
         "date": date, "reunion": ru, "rang": rang, "objet": objet, "dossier": dossier,
         "dossiers": [dossier] if dossier else [], "statut_seance": statut, "statut_point": "confirme",
@@ -287,8 +298,17 @@ def test_textes_et_commissions(ctx, tmp_path):
     assert ls["D-SEN"]["commission_libelle"] == "Saisi au Sénat seulement"
     assert ls["D-OLD"]["commission"] is None and ls["D-OLD"]["matiere_statut"] == "non_etablie"
     assert ls["D-OLD"]["sort_pendant_la_legislature"] is True
+    # #71 : vote solennel dans la législature ; un scrutin non solennel ne compte pas
+    assert ls["D-PLF"]["vote_solennel"] is True and ls["D-PLF"]["scrutins_solennels"] == ["VT3"]
+    assert ls["D-SEN"]["vote_solennel"] is False and ls["D-SEN"]["scrutins_solennels"] is None
+    # projet de loi : initiative gouvernementale, le gouvernement ; aucun groupe
+    assert (ls["D-PLF"]["initiateur_role"], ls["D-PLF"]["initiateur_gouvernement"],
+            ls["D-PLF"]["initiateur_groupe"]) == ("initiative_gouvernementale", "PO873634", None)
     d = lignes(lire("textes-deposes-2024"))
     assert [x["dossier"] for x in d] == ["D-PPL"] and d[0]["initiateur"] == "deputes"
+    # proposition : le premier auteur (rang 1), son nom et son groupe à la date du dépôt
+    assert (d[0]["initiateur_role"], d[0]["initiateur_acteur"], d[0]["initiateur_nom"]) == ("auteur", "PA1", "Anne Zola")
+    assert (d[0]["initiateur_groupe"], d[0]["initiateur_groupe_sigle"], d[0]["nb_auteurs"]) == ("PO845401", "RN", 2)
     c = lignes(lire("commissions"))
     assert {(x["commission_libelle"], x["etape"]): x["dossiers"] for x in c} == {
         ("Commission des finances", "promulgue"): 1, ("Commission des lois", "depot"): 1,
