@@ -1,6 +1,7 @@
 """Contrôles C3 (données laissées de côté), C7 (personne attendue écartée en silence), règle
 R-PERIMETRE, et avertissements A1 à A8 (doc. 2, 2.8), sur de petites tables à la forme exacte des
 sorties des règles et de l'export des faits publiés."""
+import json
 import os
 
 import duckdb
@@ -558,3 +559,98 @@ def test_a2_mandats_contre_sycomore(tmp_path):
         r = c.a2_mandats()
         assert (r["faits"], r["verifies"], r["ecarts"], len(r["non_verifies"])) == (3, 0, [], 3)
         assert [a for a in _an(c, "A2") if a["titre"].startswith("Vérification des mandats impossible")]
+
+
+# Page de dossier de l'Assemblée, réduite à ses motifs (DLR5L16N48925, relevée le 23/11/2026).
+PAGE_DOSSIER = """
+<div data-id="L16-VD216427DI / Bloc de style '21'"></div>
+<div data-id="L16-VD216427DI (DepotInitiative / -DEPOT)"><span>Dépôt à l&#039;Assemblée nationale</span>
+<span>Vendredi 17 novembre 2023</span></div>
+<div data-id="L16-AN1-48925 (Etape / AN1)"><span>Première lecture</span><span>Vendredi 17 novembre 2023</span>
+ <div data-id="L16-VD216427DI (DepotInitiative / -DEPOT)"></div>
+ <div data-id="L16-AN1-COM-48925 (Etape / -COM)"><div data-id="L16-VD216428CF (Etape / -COM-FOND)">
+  <div data-id="L16-VD216428CFS (SaisieComFond / -COM-FOND-SAISIE)"></div>
+  <span>Acte(s) de réunion : L16-VD216429R33493 - L16-VD216429R33494</span>
+  <div data-id="L16-VD216534 (DepotRapport / -COM-FOND-RAPPORT)"><span>Rapport</span><span>Mardi 21 novembre 2023</span></div>
+ </div></div>
+ <div data-id="L16-AN1-DEBATS-48925 (Etape / -DEBATS)"><span>Discussion</span><span>Jeudi 23 novembre 2023</span>
+  <button title="Acte(s) de réunion : L16-VD216453S46932">x</button><span>Acte(s) de réunion : L16-VD216453S46932</span>
+  <div data-id="L16-VD216587DEC (Decision / -DEBATS-DEC)"><span>Texte adopté ✅</span><span>Jeudi 23 novembre 2023</span></div>
+ </div>
+</div>
+<div data-id="L16-SN1-48925 (Etape / SN1)"><span>Jeudi 23 novembre 2023</span>
+ <div data-id="L16-VD216596DIN (DepotInitiativeNavette / -DEPOT)"></div></div>
+<div data-id="L16-PROM-48925 (Etape / PROM)"><span>Promulgation de la loi</span><span>Mardi 26 décembre 2023</span>
+ <div data-id="L16-VD217259PL (Promulgation / PROM-PUB)">
+ <span>Loi n°2023-1252  du mardi 26 décembre 2023 visant à prolonger…</span></div></div>
+"""
+
+
+def test_a2_lire_page_de_dossier():
+    from empreinte_src.verification_textes import lire_dossier
+    p = lire_dossier(PAGE_DOSSIER)
+    actes = {a["uid"]: (a["type"], a["date"], a["palier"]) for a in p["actes"]}
+    assert actes["L16-VD216427DI"] == ("DepotInitiative", "2023-11-17", 1)     # première date lue gardée
+    assert actes["L16-VD216428CFS"] == ("SaisieComFond", None, None)          # une saisine ne prouve rien
+    assert actes["L16-VD216534"] == ("DepotRapport", "2023-11-21", 2)
+    assert actes["L16-VD216587DEC"] == ("Decision", "2023-11-23", 3)
+    assert actes["L16-PROM-48925"] == ("Etape", "2023-12-26", 4)
+    assert actes["L16-VD216596DIN"] == ("DepotInitiativeNavette", None, 1)
+    assert [(r["uid"], r["palier"]) for r in p["reunions"]] == [
+        ("L16-VD216429R33493", 2), ("L16-VD216429R33494", 2), ("L16-VD216453S46932", 3)]
+    assert p["lois"] == [("2023-1252", "2023-12-26")]
+    assert lire_dossier("<html>Page introuvable</html>") is None
+
+
+def _texte(**k):
+    v = {"dossier": "DLR5L16N48925", "date_depot": "2023-11-17", "etape": "promulgue",
+         "date_etape": "2023-12-26", "numero_loi": "2023-1252", "date_promulgation": "2023-12-26",
+         "source_url": "https://www.assemblee-nationale.fr/dyn/16/dossiers/tickets"}
+    v.update(k)
+    return v
+
+
+def test_a2_textes_comparer_ne_nomme_que_l_inexplique():
+    from empreinte_src.verification_textes import comparer, lire_dossier
+    p = lire_dossier(PAGE_DOSSIER)
+    issues = lambda v, au="2026-11-20", loi=None: [(f, i) for f, i, _ in comparer(v, 16, p, au, loi)]
+    assert issues(_texte()) == [("depot", "verifie"), ("etape", "verifie"), ("loi", "verifie")]
+    # Au 24/11/2023, la séance est le plus haut palier atteint ; la promulgation n'est pas encore là.
+    assert issues(_texte(etape="adopte", date_etape="2023-11-23", numero_loi=None), au="2023-11-24") == \
+        [("depot", "verifie"), ("etape", "verifie")]
+    # Étape servie trop basse : la page montre la séance et la promulgation.
+    r = comparer(_texte(etape="examen_commission", date_etape="2023-11-21", numero_loi=None), 16, p, "2026-11-20")
+    assert r[1][:2] == ("etape", "ecart") and "page promulgation" in r[1][2]
+    # Étape « examen en commission » datée d'une réunion : la page ne date pas les réunions.
+    assert issues(_texte(etape="examen_commission", date_etape="2023-11-22", numero_loi=None),
+                  au="2023-11-22")[1] == ("etape", "date_non_affichee")
+    # Date de dépôt différente : écart nommé.
+    r = comparer(_texte(date_depot="2023-11-16"), 16, p, "2026-11-20")
+    assert r[0] == ("depot", "ecart", "dépôt : nous 2023-11-16, page 2023-11-17")
+    # Date de la loi : celle du JO, que l'acte de l'Assemblée dément (A7 la nomme déjà) : expliquée.
+    jo = {"source_date_promulgation": "journal_officiel", "date_assemblee": "2023-12-26"}
+    assert issues(_texte(date_promulgation="2023-12-27"), loi=jo)[2] == ("loi", "date_de_promulgation_du_jo")
+    assert issues(_texte(date_promulgation="2023-12-27"))[2] == ("loi", "ecart")
+    # Étape d'une législature dont la page ne montre aucun acte : non vérifiée.
+    assert [(f, i) for f, i, _ in comparer(_texte(), 17, p, "2026-11-20")][1] == ("etape", "non_verifie")
+
+
+def test_a2_textes_tirage_et_avertissement(tmp_path):
+    v = json.dumps(_texte(etape="seance", date_etape="2023-11-23", numero_loi=None))
+    faits = [dict(_fait("legislature/16", "textes", v, dossier="DLR5L16N48925"), type_fait="texte_legislature",
+                  source_url="https://www.assemblee-nationale.fr/dyn/16/dossiers/tickets")]
+    c = _ctrl(tmp_path, faits=faits)
+    r = c.a2_textes(1, lambda url: PAGE_DOSSIER, "2026-11-20", nb_textes=5)
+    assert (r["tires"], r["faits"], r["verifies"], len(r["non_verifies"])) == (1, 2, 1, 0)
+    assert r["ecarts"] == ["DLR5L16N48925 (legislature/16) étape : nous « seance » (2023-11-23), page "
+                           "promulgation (L16-PROM-48925 du 2023-12-26, L16-VD217259PL) — "
+                           "https://www.assemblee-nationale.fr/dyn/16/dossiers/tickets"]
+    a2 = [a for a in _an(c, "A2") if a["titre"].startswith("Stade ou dates")][0]
+    assert a2["bloquant"] is False and c.bilan()["a2_textes"]["ecarts"] == 1
+
+    def panne(url):
+        raise TimeoutError
+    c = _ctrl(tmp_path, faits=faits)
+    r = c.a2_textes(1, panne, "2026-11-20", nb_textes=5)
+    assert r["ecarts"] == [] and len(r["non_verifies"]) == 2
+    assert [a for a in _an(c, "A2") if a["titre"].startswith("Vérification des textes impossible")]

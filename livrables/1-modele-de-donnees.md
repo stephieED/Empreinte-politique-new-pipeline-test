@@ -23,6 +23,7 @@ flowchart LR
         Z0[("Z0 Relevés<br/>chaque accès à une source<br/>quand, réponse, complet ou non")]
         Z1[("Z1 Entrepôt brut<br/>chaque objet source,<br/>version par version")]
         ZD[("ZD Décisions<br/>fichiers YAML commités")]
+        ZI[("ZI Registres d'identité<br/>numéros acquis, ajout seul")]
     end
 
     subgraph REC["RECALCULÉ"]
@@ -34,17 +35,19 @@ flowchart LR
         Z4[("Z4 Publication<br/>JSON des fiches, jeu<br/>téléchargeable, manifeste")]
     end
 
-    Z0 -- "découpe" --> Z1
+    Z0 -- "dépaquetage,<br/>à l'octet près" --> Z1
     Z1 -- "lecteurs" --> Z2
     Z2 -- "règles" --> Z3
     ZD -- "tranche ce que<br/>les règles ne tranchent pas" --> Z3
+    ZI <-- "lu d'abord,<br/>complété en ajout seul" --> Z3
     Z3 -- "composeurs" --> Z4
 ```
 
 | Zone | Ce qu'elle contient | Où elle vit | Si on l'efface |
 | --- | --- | --- | --- |
 | **Z0 Relevés** | le journal des accès aux sources | entrepôt (*releases* du dépôt public) | perte irréparable |
-| **Z1 Entrepôt brut** | chaque objet source, chaque version, filtré des données interdites et gardé sous forme canonique (re-sérialisé), en segments de 90 Mo au plus | entrepôt | perte irréparable |
+| **Z1 Entrepôt brut** | chaque fichier membre des archives reçues, version par version, **à l'octet près** : rien n'est filtré (présences et collaborateurs restent, aucun lecteur ne les lit, 1.3.2) ; seule la réponse de Wikidata est gardée sous forme canonique (doc. 5, Q40) ; en segments de 90 Mo au plus | entrepôt | perte irréparable |
+| **ZI Registres d'identité** | les numéros attribués (`per:…`, `lig:…`) et les adresses des lignées, en ajout seul (1.3.4) | entrepôt | perte irréparable |
 | **ZD Décisions** | identité validée, filiation tranchée, levée de contrôle… | écrites dans `references/` du dépôt privé, recopiées chaque soir dans `references/` du dépôt public | perte irréparable (mais git en garde l'historique) |
 | **Z2 Faits lus** | des tables normalisées, avec provenance | cache de GitHub Actions (accélérateur) | on relit Z1 |
 | **Z3 Graphe relié** | tout ce que les règles calculent | temporaire, pendant la mise à jour | on recalcule |
@@ -163,6 +166,15 @@ chaque adresse publiée y est inscrite avec l'objet qu'elle désigne et sa date 
 publication. Une adresse n'en sort jamais ; si l'objet disparaît ou fusionne, elle devient
 une redirection (page statique de redirection, GitHub Pages n'ayant pas de redirection
 serveur). Les homonymes reçoivent un suffixe d'année de naissance (`/personnes/jean-martin-1962`).
+**Réalisé** (23/11/2026) : seules les **lignées** ont leur adresse inscrite, une fois, dans
+le registre des lignées (`registres/lignee_adresse.parquet` de l'entrepôt : `adresse`, `per`
+= numéro `lig:…`, `depuis` = génération), vérifié en ajout seul par la tâche `ecrire` ; une
+lignée absorbée garde la sienne, marquée `redirection` vers la lignée retenue (table
+`lignee_adresse` de R-LIGNEE), mais aucune page de redirection n'est servie. L'adresse d'un
+candidat (R-IDENTITE : nom, suffixé de l'année de naissance entre homonymes) et celle d'un
+gouvernement (R-GOUVERNEMENTS) sont recalculées à chaque mise à jour, sans registre ; douze adresses de l'ancien site citées par des articles sont tenues par décision
+(`adresse_citee`, 1.3.3 ; la forme des adresses est libre, cadrage du 14/11/2026). Voir doc. 5,
+Q60.
 
 ### En image : les identifiants
 
@@ -182,7 +194,7 @@ flowchart LR
     A2 --> C
     A3 --> C
     C --> P["per:000123<br/>créé, jamais réutilisé"]
-    P --> R["registre/adresses.csv<br/>ajout seul"]
+    P --> R["registre des adresses<br/>ZI, dans l'entrepôt, ajout seul"]
     R --> U["/personnes/francois-ruffin"]
 ```
 
@@ -198,7 +210,8 @@ Règles simples :
 - Un identifiant de source est **vérifié** à la lecture : un `VT…` ne peut pas désigner une
   personne. Un identifiant mal formé part en anomalie de lecture.
 - Un identifiant créé ne **porte aucune information**. C'est pour ça qu'il ne change jamais.
-- L'**adresse publique** est inscrite à part, dans un registre en ajout seul.
+- L'**adresse publique** est inscrite à part, dans un registre en ajout seul, rangé avec le
+  registre des identités dans l'entrepôt (1.3.4 ; réalisé pour les lignées seulement, 1.2.2).
 
 #### Comment une adresse reste stable
 
@@ -215,7 +228,7 @@ flowchart TB
 
 GitHub Pages ne sait pas rediriger côté serveur : la redirection est une petite page
 statique. Le contrôle C2 vérifie qu'aucun lien publié ne vise une adresse absente du
-registre.
+registre (réalisé : C2 vérifie que chaque lien vise une fiche de la candidate).
 
 #### Le cas des prises de parole
 
@@ -371,7 +384,7 @@ change plus (étape 2, correction P1).
 | --- | --- | --- |
 | `attribution` | (source, uid) rattaché à une personne | `per`, `source`, `uid`, `depuis`, `jusqu_au` (vide tant qu'elle vaut), `motif` (`nouvelle_personne`, `rapprochement`, `decision`) |
 | `fusion` | personne absorbée | `per_absorbe`, `per_retenu`, `generation`, `decision` |
-| `adresse` | adresse publique | `adresse`, `objet`, `premiere_publication`, `redirige_vers` |
+| `adresse` | adresse publique | `adresse`, `objet`, `premiere_publication`, `redirige_vers`. **Réalisé** : `lignee_adresse` (`adresse`, `per` = `lig:…`, `depuis`), pour les seules lignées (1.2.2) |
 | `compteur` | type d'identifiant | dernier numéro attribué |
 
 R-IDENTITE lit d'abord ce registre : un (source, uid) déjà attribué garde son `per`, quel que
@@ -462,7 +475,8 @@ Les tables sont groupées par domaine. Les colonnes listées sont les principale
 | --- | --- | --- |
 | `montant_budget` | (exercice, nature, ministère/programme/impôt, type) | montant, unité, type (LFI, LFR, exécution), ministère (`null` + raison pour l'exécution 2023-2025, publiée sans ministère), source et date d'édition (les révisions silencieuses deviennent des versions) ; une source au format large (une colonne par mois) est remise en long, une ligne par série et par mois |
 | `montant_protection_sociale` | idem | + `provisoire` (dernière année d'une édition Drees ou Unédic) |
-| `mandat_local` | uid synthétique (RNE n'a pas d'identifiant) | nom, prénom, date de naissance, mandat, collectivité, début ; **pas de date de fin** (la source n'en a pas) ; dédoublonné par (nom, prénom, naissance, collectivité, fonction, début) quand un même mandat figure dans deux fichiers ; mandats de député, sénateur, eurodéputé non lus (déjà lus aux sources parlementaires) |
+| `fonction_wikidata` | déclaration P39 de Wikidata (`Q…$…`) | élément, poste (élément et libellé), début, fin, ressort, objet, pour les éléments de la liste des candidats ; R-MANDAT-LOCAL n'en retient que les mandats locaux terminés hors du répertoire (Q52) |
+| `mandat_local` | uid synthétique (RNE n'a pas d'identifiant) | nom, prénom, date de naissance, mandat, collectivité, début ; **pas de date de fin** (la source n'en a pas : fin déduite pour les sortants de 2020, Q35, ou observée entre deux publications, Q49) ; dédoublonné par (nom, prénom, naissance, collectivité, fonction, début) quand un même mandat figure dans deux fichiers ; mandats de député, sénateur, eurodéputé non lus (déjà lus aux sources parlementaires) |
 | `candidature` (Wikipédia) | (élection, personne source Wikipédia) | statut (`declaree`/`retiree`), date de déclaration (ou `null` + « non connue »), références citées par Wikipédia, révision Wikipédia lue. Depuis le 13/11/2026, ce n'est plus la liste des candidats (décision `candidature`, d'après franceinfo) : la date de déclaration en est reprise, et un écart avec la liste est signalé (avertissement A9) |
 | `source`, `point_acces`, `licence` | — | catalogue des sources (ce qu'elles apportent, depuis quand, licence, pièges connus), **points d'accès non retenus compris**, avec leur raison (texte des articles, cahier 3.1.8 : aucun besoin de la partie 4 ; points d'accès de 3.12) ; licence lue jeu par jeu dans le catalogue de la source quand elle varie (data.economie.gouv.fr) : alimente la page des sources |
 
@@ -761,8 +775,8 @@ Dérivés (Z3) : `intervention_attribuee`, `sujet_intervention`, `question_repon
   repli, `PA0`, identifiant négatif, nom affiché qui ne correspond pas. Dans ces cas, la
   parole est **non attribuée**, avec sa raison.
 - La **présidence de séance** est distinguée du débat (`preside`).
-- Les **présences** n'entrent pas : la table `reunion` n'a pas de colonne pour elles, et elles
-  sont filtrées avant même d'être stockées.
+- Les **présences** n'entrent pas : la table `reunion` n'a pas de colonne pour elles, et aucun
+  lecteur ne les lit ; elles restent dans l'entrepôt comme à la source (1.3.2).
 
 #### En image : gouvernement et Journal officiel
 
@@ -871,6 +885,7 @@ flowchart TB
     S --> C7["relu_aucun<br/>source lue en entier, date, décision"]
     S --> C8["non_relu"]
     S --> C9["hors_perimetre"]
+    S --> C10["partiel<br/>lu sur une partie de la période"]
 ```
 
 - La couverture a une **portée** (corpus, source, population, fiche, section), une
@@ -903,7 +918,8 @@ positions »). La version de chaque règle est inscrite dans le manifeste de pub
 | R-IDENTITE | **lit d'abord le registre des identités** (1.3.4) : une attribution existante ne change jamais. Puis rapproche les identités nouvelles : identifiant déclaré (Wikidata, `PA` dans une autre archive) ; sinon nom normalisé **et** date de naissance ; jamais le nom seul. Une date de naissance aberrante (avant 1900, ou sentinelle `1900-01-01` ; le RNE donne aussi 1072-03-05, relevé le 04/11/2026) ne sert pas au rapprochement | `a_relire` → file de relecture ; aucune fiche publiée tant qu'une identité de candidat n'est pas validée |
 | R-PERIMETRE | calcule les populations attendues à partir des sources ; une sortie exige une raison ; écarte le Congrès (1.2.1) | personne attendue non incluse → anomalie bloquante (C7) |
 | R-APPARTENANCE | appartenance à un groupe lue dans les seuls mandats GP (dates, suspension, reprise datée par `datePriseFonction`) ; **jamais** datée par l'organe que porte un scrutin (le groupe socialiste XVIe y alterne `PO800496` et `PO830170` en va-et-vient, mesuré le 04/11/2026) ni par une ligne `PO0` | « appartenance non établie » |
-| R-CARRIERE | périodes de mandat et de fonction, toutes institutions. Priorités : sur une période couverte par AMO (depuis le 19/06/2002), les dates d'AMO l'emportent sur celles de Sycomore (qui diffèrent de quelques jours) ; Sycomore ne sert qu'avant ; le libellé d'un groupe du Sénat est celui, **daté**, de l'export du Sénat, jamais le libellé actuel d'AMO. Fonctions classées par famille (présidence, bureau, questure, rapport, membre…) par une table (type d'organe, qualité) → famille, publiée. À l'affichage, les périodes d'un même organe, d'une même qualité et d'une même législature séparées de N jours au plus (permutations de commission : trous de 1 à 3 jours, AMO30 du 03/11/2026) sont fusionnées, avec la durée réelle cumulée ; les périodes restent intactes dans les données | « période absente de la source » |
+| R-MANDAT-LOCAL | mandats locaux d'un candidat (v2, décisions Q49 à Q53 du 23/11/2026). Rattachement par prénom et nom d'un seul tenant et date de naissance exacte, sinon décision `elu_local` (Q34) ; une clé qui désigne deux collectivités dans un fichier à siège unique ne rattache personne et alimente A10 (Q53). Deux lignes par mandat exercé avec une fonction : le mandat (début du mandat) et la fonction (début de la fonction) (Q50). Fins : déduite au 15/03/2026 pour les sortants municipaux (Q35), observée entre deux relevés pour un mandat disparu d'un fichier trimestriel (Q49). Mandats locaux terminés que le répertoire ne couvre pas : déclarations P39 de Wikidata, inscrites `declare_par = wikidata` (Q52). Ce qu'on dit d'un candidat non rattaché : `mandat_local_recherche` (`aucun_elu_de_ce_nom`, `homonyme_non_rattache`, `ambigu_non_rattache` → `non_relu`, Q51) | « non relu » avec sa raison |
+| R-CARRIERE | périodes de mandat et de fonction, toutes institutions (v5 : colonnes `nature_periode`, `fin_nature`, `declare_par` pour l'institution `local`). Priorités : sur une période couverte par AMO (depuis le 19/06/2002), les dates d'AMO l'emportent sur celles de Sycomore (qui diffèrent de quelques jours) ; Sycomore ne sert qu'avant ; le libellé d'un groupe du Sénat est celui, **daté**, de l'export du Sénat, jamais le libellé actuel d'AMO. Fonctions classées par famille (présidence, bureau, questure, rapport, membre…) par une table (type d'organe, qualité) → famille, publiée. À l'affichage, les périodes d'un même organe, d'une même qualité et d'une même législature séparées de N jours au plus (permutations de commission : trous de 1 à 3 jours, AMO30 du 03/11/2026) sont fusionnées, avec la durée réelle cumulée ; les périodes restent intactes dans les données | « période absente de la source » |
 | R-CONTINUITE-GROUPE | relie deux organes GP d'une même législature | décision `continuite_groupe` |
 | R-FILIATION | 4.3 : moyenne harmonique ≥ 60 % et ≥ 5 communs ; fusions (plusieurs prédécesseurs) et scissions | `a_trancher` → décision |
 | R-ARBITRAGE-ARCHIVES | pour une législature close : siège et position déclarée lus dans l'archive figée **si elle est postérieure à la clôture** ; dates de fin et corrections lues dans l'archive la plus récente ; XIVe : siège lu dans le **seul** fichier des places (état du 20/06/2017), les sièges de l'AMO20 XIVe (mars 2018) étant ceux de 2018. Un mandat présent dans une archive figée mais effacé de la courante (relevé complet) est : une **correction** si la courante porte un remplaçant (même personne, même organe, période qui recouvre l'ancienne) — l'ancien mandat est retiré, le remplaçant affiché, le rapport annonce « corrigé par la source » ; un **retrait à la source** sinon — le mandat disparaît du site, le rapport le nomme (décision du 04/11/2026, doc. 5, Q4) | — |
@@ -918,6 +934,7 @@ positions »). La version de chaque règle est inscrite dans le manifeste de pub
 | R-LOI-DOSSIER | loi ↔ dossier par le numéro de loi de l'acte de promulgation (R-LOIS) ; à défaut (loi promulguée sous la législature suivante, que nulle archive de l'Assemblée ne publie), par les **travaux préparatoires** publiés au JO avec la loi : numéros des documents de l'Assemblée (proposition ou projet, rapport, texte adopté), du type que nomme la ligne, cherchés dans la législature de la promulgation et dans la précédente, chacune jugée à part, ou dans la seule législature que le JO nomme (« n° 4348 (quatorzième législature) », version 2, issue #146) ; lien retenu si au moins deux numéros mènent au même dossier et aucun ailleurs. Exception (15/11/2026, doc. 5, Q33) : pour un dossier dont la suite manque aux archives, le seul texte déposé sous la législature de la promulgation suffit. Une ligne par loi (rectificatifs réunis). Avant 2016, le JO publie les travaux préparatoires dans le bloc des signataires (lecteur `jo_actes` version 3, issue #146). Mesuré sur la g20 : 987 lois reliées sur 1 221, 975 sur 975 en accord avec l'Assemblée ; 12 dossiers reçoivent ainsi leur loi (2020-839 comprise). 59 lois absentes des actes de l'Assemblée restent sans dossier : les documents cités ne sont dans aucune archive de l'Assemblée ; A3 les compte sans les nommer (explication automatique, doc. 2, A3 ; doc. 5, Q47) | pas de lien, avec sa raison (`pas_de_travaux_preparatoires`, `aucun_document`, `un_seul_numero`, `dossiers_differents`, `deux_legislatures_possibles`) ; le sort reste `suite_absente_des_archives` |
 | R-TEXTE-PORTE | rôle ; projet de loi = initiative gouvernementale, pas acte personnel | — |
 | R-DEPOT-GOUVERNEMENT | un projet de loi est rattaché au gouvernement en fonction à la date de son **premier dépôt** (dans l'une ou l'autre chambre) ; ministère porteur = ministère du mandat MINISTERE cité comme auteur du document de dépôt (cahier 3.1.1), via `fonction_gouvernementale` | « ministère porteur non établi » |
+| R-ETAPE (législature d'un acte) | version 4 (décision du 23/11/2026, doc. 5, Q48 « Ranger par la date ») : un acte compte dans la législature où tombe sa **date**, entre son début et sa fin (R-LEGISLATURES) ; son identifiant (`L14-…`) ne sert que faute de date, ou pour une date qui ne tombe dans aucune législature (entre la dissolution du 09/06/2024 et l'ouverture de la XVIIe le 01/07/2024 : promulgations du 13/06/2024, rangées sous la XVIe ; doc. 5, Q54 « Selon l'identifiant »). Cas qui l'a fait décider : l'archive close de la XIVe numérote `L14-` des actes de 2018 (rapport du Sénat du 17/01/2018, DLR5L14N35418). Mesuré sur la g20 : 24 des 29 textes servis dont l'étape était datée après la fin de leur législature changent d'étape (XIVe 15, XVe 8, XVIe 1), les 5 autres sont datés pendant la dissolution ; 1 texte de la XVIe gagne une étape ; 11 textes apparaissent dans une législature où ils n'ont qu'un retrait ou une procédure accélérée (étape « non établie ») ; aucun ne disparaît | identifiant de l'acte |
 | R-AMENDEMENT | copies dédoublonnées par la clé (`examenRef`, `numeroLong`) : 346 paires `B`/`BTC` dans l'archive XVIIe du 03/11/2026 (143 766 amendements pour 144 112 uid). La copie retenue est celle dont le texte égale celui de l'examen (la `BTC`, aussi la plus récente par `chronotag`) ; l'autre uid reste un **alias** (il a une adresse publique). Un amendement compte une fois ; si deux copies divergeaient, la liste de signatures retenue est celle de la copie retenue, et A4 le signale. Adresse publique : `/dyn/<lég.>/amendements/<uid>` de la XVe à la XVIIe ; XIVe : ancien site (`document_uri`, `.asp`), sans lien pour un amendement sans date de publication qui n'est pas irrecevable (`raison_source_url = page_non_publiee_par_l_assemblee`, 5 551) — version 4, 16/11/2026 | — |
 | R-SORT-AMENDEMENT | table (état, sous-état, contexte) → sort, publiée en annexe de la méthodologie | « sort non établi » |
 | R-POSITION-GROUPE | décomptes des membres à la date ; position majoritaire **publiée par la source** | « position du groupe non établie » |
@@ -1465,7 +1482,7 @@ de la règle, sinon C1 bloque.
 
 ```mermaid
 flowchart TB
-    CFG["Configuration :<br/>numéro 18, date d'ouverture,<br/>adresses des archives découvertes<br/>dans le catalogue de l'Assemblée"] --> COL["Collecteurs et découpeurs<br/>les variantes de schéma<br/>sont détectées, pas codées"]
+    CFG["Configuration :<br/>numéro 18, date d'ouverture,<br/>adresses des archives découvertes<br/>dans le catalogue de l'Assemblée"] --> COL["Collecteurs, dépaqueteurs, lecteurs<br/>les variantes de schéma<br/>sont détectées par les lecteurs, pas codées"]
     CLO["Clôture de la XVIIe :<br/>archive figée relevée une dernière fois,<br/>marquée figée ;<br/>décision fin_legislature"] --> COL
     COL --> GRP["Nouveaux groupes<br/>grp:18:PO..."]
     GRP --> FIL{"R-FILIATION"}
@@ -1484,7 +1501,7 @@ gardent leur adresse.
 | --- | --- | --- |
 | Champ ajouté, lecture corrigée | nouvelle version du lecteur ; relecture depuis Z1 | Z0, Z1, décisions |
 | Règle modifiée | nouvelle version ; recalcul complet de Z3 ; méthodologie publiée | Z2 |
-| Source ajoutée | un collecteur, un découpeur, un lecteur ; la couverture déclare son historique | tout le reste |
+| Source ajoutée | un collecteur, un dépaqueteur si le format d'archive est nouveau, un lecteur ; la couverture déclare son historique | tout le reste |
 | Type de fiche ajouté | un composeur et un schéma de fichier | Z0 à Z3 |
 | XVIIIe législature | configuration | le code des lecteurs |
 | Contrat des données servies | version `majeur.mineur` dans chaque fichier ; un ajout est mineur ; un changement incompatible passe le contrat en `2.0`, publié avec le code qui le lit, dans la même publication | les articles datés, qui embarquent leur copie figée |
