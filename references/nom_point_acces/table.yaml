@@ -49,6 +49,7 @@ decisions:
   - {point_acces: jo-global, nom: "Journal officiel — archive complète"}
   - {point_acces: wp-candidatures-2027, nom: "Wikipédia — candidatures à la présidentielle 2027"}
   - {point_acces: wd-identifiants-parlementaires, nom: "Wikidata — identifiants des parlementaires"}
+  - {point_acces: wd-fonctions-candidats, nom: "Wikidata — fonctions déclarées des candidats"}
   - {point_acces: pe-eurodeputes, nom: "Parlement européen — députés européens"}
   - {point_acces: pe-votes, nom: "Parlement européen — votes en séance plénière depuis 2019"}
   - {point_acces: rne-cm, nom: "Répertoire national des élus — conseillers municipaux"}
