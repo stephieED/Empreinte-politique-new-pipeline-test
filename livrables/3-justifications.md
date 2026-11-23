@@ -235,9 +235,12 @@ document 4.
   6.0, 5.5 (« une source en panne ne fait pas échouer la publication des autres »).
 - **Écarté : une chaîne monolithique** « télécharger tout, calculer, publier » : une erreur à
   la fin fait tout perdre ; une source en panne bloque tout.
-- **Pourquoi** : E1–E2 sont par source, isolées, persistées au fil de l'eau ; E3 est
-  mémorisé par (empreinte, lecteur) ; E4–E5 sont rejouables. Une interruption coûte au plus
-  le travail de la source en cours.
+- **Pourquoi** : E1–E2 sont par source et isolées ; leur acquis est remis en artefact à la
+  seule tâche qui écrit, `ecrire`, qui le dépose dans l'entrepôt même si le calcul échoue
+  (étape 2, correction P3), ou à la nuit suivante si `ecrire` n'a pas lieu (doc. 2, 2.4) ; E3
+  est mémorisé par (empreinte, lecteur) ; E4–E5 sont rejouables. Une interruption coûte au
+  plus la collecte de la nuit en cours, que la collecte borne à 270 min pour déposer son
+  acquis à temps.
 
 ### J16 — Contrôles bloquants à empreinte, levée ciblée
 
