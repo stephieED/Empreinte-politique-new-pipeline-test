@@ -47,6 +47,8 @@ défaut peut rester.
 | Q41 (14/11/2026, issue #80). Rattachement des ministres délégués, secrétaires d'État et hauts-commissaires à leur ministère de tutelle : dans les gouvernements publiés (Ayrault II à Lecornu II, g13), 45 portefeuilles restaient « non établis », et non 9 comme l'issue le relevait sur g10. 22 libellés de l'Assemblée n'ont pas de « auprès » (21 dans Ayrault II, Delevoye), 3 nomment un ministère sous un intitulé inexact (Bayrou), 20 désignent plusieurs ministres (« auprès du ministre de l'intérieur et du ministre de la transition écologique »). Comment rattacher une co-tutelle ? | « Tous les ministres » (14/11/2026) : toutes les tutelles nommées sont servies, dans l'ordre du libellé (`ministeres_tutelle`, statut `co_tutelle`) ; l'interface choisit où afficher le portefeuille. Écartés : le premier nommé seulement ; laisser « non établi ». R-COMPOSITION version 2 établit seule 15 co-tutelles ; 30 décisions `rattachement_portefeuille` (14/11/2026) établissent les autres, sourcées par les décrets de composition du 21/06/2012, du 19/03/2013 et du 03/09/2019, ou par le libellé de l'Assemblée (5 co-tutelles mal formées, 3 libellés Bayrou). Reste : 54 portefeuilles non établis dans des gouvernements hors périmètre (Fillon I et II, Ayrault I) | R-COMPOSITION version 2 ; `references/rattachement_portefeuille/` ; section `composition` des gouvernements |
 | Q43 (15/11/2026, issue #63). Les lois servies (actes de promulgation de l'Assemblée) ne sont confrontées à aucune autre source. Le JO, seule source tenue hors de l'Assemblée, publie 448 lois sous la XIVe (Assemblée : 396), 353 sous la XVe (334), 136 et 149 sous la XVIe et la XVIIe (identiques) ; aucune loi de l'Assemblée n'y manque (g14). Quelles lois du JO absentes de l'Assemblée l'avertissement de chaque nuit nomme-t-il ? | « Sauf avant le JO » : expliquées et seulement comptées, les lois reliées par R-LOI-DOSSIER (11) et celles sans travaux préparatoires antérieures à la première loi du périmètre publiée avec les siens (08/12/2015 : 49 de la XIVe) ; nommées, toutes les autres (11 : 3 de la XIVe, 8 de la XVe) et toute loi de l'Assemblée absente du JO ; décomptes par législature dans le détail. Écartés : toutes chaque nuit (liste longue et immobile) ; décomptes seulement | A3 (doc. 2, 2.8) |
 | Q44 (15/11/2026, alerte #148). La nuit du 15/11 est refusée par C1 pour 4 faits « loi citée » des gouvernements Attal, Castex et Philippe II, qui ne sont pas perdus : les actes des lois 2010-837 et 2010-838, arrivés au JO cette nuit-là, identifient la loi citée, et le fait gagne un identifiant (`id_acte`) et un lien Légifrance. C1 reconnaît un fait à tous ses identifiants. Que faire ? | « Identité enrichie » : un fait qui garde tous ses identifiants, inchangés, et en gagne seulement (même fiche, même type, fait nouveau) n'est pas une perte ; il est compté (`expliques.c1_identite_enrichie`). Un identifiant qui change, ou un fait qui se fond dans un fait déjà publié, reste une perte. Écartés : levée ponctuelle (le refus reviendrait à chaque loi ancienne identifiée) ; les deux | C1 (doc. 2, 2.8) |
+| Q45 (23/11/2026, alerte #118). La conclusion `TSORTMOT01` (« Motion adoptée », écrit aussi « Motion adopté(e) ») est portée par 25 décisions, une par dossier (10 de la XIVe, 15 de la XVe ; 24 propositions de loi et une proposition de loi constitutionnelle, en première lecture à l'Assemblée). Le libellé ne dit pas quelle motion ; l'acte de la motion (même uid sans `DEC`) le dit : pour les 25, une motion de renvoi en commission (`typeMotion` `TMP03`). Aucune décision ne suit ; dans 3 dossiers, le texte revient en commission ou en séance sans vote. Quel sort pour le texte ? | « Non connu, raison « renvoyé en commission » » (23/11/2026) : ni adoption ni rejet ; sort « non connu », raison `renvoye_en_commission` (22 dossiers ; les 3 autres gardent leur raison : révision constitutionnelle, actes jusqu'en XVIIe) ; une motion adoptée d'un autre type, ou introuvable, reste non classée et nommée par A7. Écartés : raison `aucune_decision_finale` ; « rejeté » (la source ne dit pas rejet) ; ne rien changer | R-ETAPE version 3 (`RENVOI_EN_COMMISSION`) ; R-SORT-FINAL version 5 ; vocabulaire `raison_sort` (C4) |
+| Q46 (23/11/2026, alerte #118). 11 décisions du Sénat en nouvelle lecture (`SNNLEC-DEBATS-DEC`, XVe-XVIIe) ont pour conclusion `TSORTFnull`, sans libellé. Le sens n'est que dans la suite du dossier (8 fois lecture définitive à l'Assemblée, 3 fois Conseil constitutionnel puis promulgation) ; les 11 dossiers sont promulgués. Qu'en faire ? | « « Sans conclusion », jamais déduite » (23/11/2026) : ni adoption ni rejet, jamais déduite de la suite ; nommée par A7 seulement si elle laisse le sort non connu (dernière décision d'un dossier sans autre preuve, raison `conclusion_non_classee`) ; aucun cas aujourd'hui. A7 écrit « sans libellé ». Écartés : déduire de la suite (contraire à « rien n'est deviné ») ; ne rien changer | R-ETAPE version 3 (`SANS_CONCLUSION`) ; R-SORT-FINAL version 5 (table `conclusion_non_classee`) ; A7 |
 
 ---
 
@@ -149,47 +151,6 @@ défaut peut rester.
 - **En attendant** : ces mandats n'entrent pas dans la composition et sont signalés (A8) ; la
   propriétaire peut, par décision, les borner à la fin du gouvernement ou les faire signaler à
   la source.
-
-### Q45. Une motion de renvoi en commission adoptée : quel sort pour le texte ?
-
-- **Constat** (alerte #118 ; archives des dossiers XIVe-XVIIe du 04/11/2026, relu le 23/11/2026) :
-  la conclusion `TSORTMOT01` (« Motion adoptée », écrit aussi « Motion adopté(e) ») est portée par
-  25 décisions, une par dossier (10 de la XIVe, 15 de la XVe) : 24 propositions de loi et une
-  proposition de loi constitutionnelle, toutes en première lecture à l'Assemblée. Le libellé ne
-  dit pas quelle motion, mais l'acte de la motion, juste avant (même uid sans `DEC`), le dit :
-  pour les 25, une **motion de renvoi en commission** (`typeMotion` `TMP03`). Le journal du
-  13/11 disait le contraire (« la source ne dit pas laquelle ») : la motion était cherchée sur la
-  décision, pas sur l'acte voisin. Dans aucun des 25 dossiers une décision ne suit ; dans 3, le
-  texte revient en commission ou en séance sans vote (exemple : `DLR5L14N29698`, amnistie des faits commis lors de mouvements sociaux, renvoi le
-  29/04/2013, séance le 16/05/2013).
-- **Bloque** : la raison du sort de 22 de ces dossiers (« non connu », raison
-  `conclusion_non_classee` ; les 3 autres ont déjà une autre raison : `DLR5L15N37128`, révision
-  constitutionnelle ; `DLR5L14N29698` et `DLR5L14N35595`, actes jusqu'en XVIIe) et
-  l'avertissement A7, qui les nomme chaque nuit.
-- **Options** : (1) « renvoi en commission » : ni adoption ni rejet ; sort « non connu », raison
-  nouvelle `renvoye_en_commission` ; une motion adoptée d'un autre type resterait non classée ;
-  (2) la même lecture, mais raison `aucune_decision_finale` (pas de raison nouvelle) ;
-  (3) « rejeté » : le texte est en pratique abandonné, mais la source ne dit pas rejet ;
-  (4) ne rien changer.
-- **En attendant** : classement proposé (1) par la PR de l'alerte #118, en brouillon tant que la
-  propriétaire ne l'a pas validé ; `main` garde le défaut (non classé, nommé par A7).
-
-### Q46. Une décision publiée sans conclusion (`TSORTFnull`)
-
-- **Constat** (mêmes archives) : 11 décisions du Sénat en nouvelle lecture (`SNNLEC-DEBATS-DEC`),
-  XVe à XVIIe, ont pour conclusion `TSORTFnull`, sans libellé. Le sens n'est que dans la suite du
-  dossier : 8 fois, l'Assemblée est saisie en lecture définitive (le Sénat n'a donc pas adopté le
-  texte conforme) ; 3 fois, le texte part au Conseil constitutionnel puis est promulgué (le Sénat
-  l'a donc adopté) : `DLR5L15N42346`, `DLR5L15N42350` (lois de financement de la sécurité sociale,
-  2022), `DLR5L17N50588` (loi de financement de la sécurité sociale pour 2025). Les 11 dossiers
-  sont promulgués : le sort n'en dépend pas, l'avertissement A7 les nomme quand même.
-- **Bloque** : rien de publié ; un avertissement A7 permanent.
-- **Options** : (1) « sans conclusion » : ni adoption ni rejet, jamais déduit de la suite ; nommé
-  par A7 seulement s'il laisse le sort non connu (dernière décision d'un dossier sans autre
-  preuve) ; (2) déduire de la suite (lecture définitive à l'Assemblée → non conforme ; Conseil
-  constitutionnel ou promulgation → adoption définitive) : contraire à « rien n'est deviné » ;
-  (3) ne rien changer.
-- **En attendant** : classement proposé (1) par la même PR, à valider ; `main` garde le défaut.
 
 ---
 

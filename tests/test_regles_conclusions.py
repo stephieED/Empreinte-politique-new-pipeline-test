@@ -1,6 +1,6 @@
 """R-ETAPE (version 2) : codes de conclusion classés d'après leur libellé ; ceux qui restent sont
 nommés (issue #45). Codes et libellés de l'archive des dossiers (entrepôt g10, 13/11/2026).
-Version 3 (alerte #118, classement à valider : doc. 5, Q45 et Q46) : TSORTMOT01 lu avec le type
+Version 3 (alerte #118, décidé le 23/11/2026 : doc. 5, Q45 et Q46) : TSORTMOT01 lu avec le type
 de sa motion (renvoi en commission), TSORTFnull « sans conclusion »."""
 from empreinte_src.lecteurs import an_dossiers
 from empreinte_src.liaison import Contexte

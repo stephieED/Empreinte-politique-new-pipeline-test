@@ -13,7 +13,7 @@ code), dans l'ordre :
 | `rejete` | rejet qui clôt le dossier : lecture définitive rejetée ; résolution rejetée ; proposition de loi rejetée en première lecture par la chambre où elle a été déposée |
 | `non_connu` | aucune de ces preuves (navette en cours, texte non examiné, révision constitutionnelle…) |
 
-Raison `renvoye_en_commission` (version 5, alerte #118, classement à valider : doc. 5, Q45) : la
+Raison `renvoye_en_commission` (version 5, alerte #118, décidé le 23/11/2026 : doc. 5, Q45) : la
 dernière décision du dossier est l'adoption d'une motion de renvoi en commission (R-ETAPE,
 `renvoi_en_commission`) ; le texte n'est ni adopté ni rejeté, et aucune décision ne suit (il peut
 être revenu en commission ou en séance sans être voté). Une décision publiée sans conclusion

@@ -29,6 +29,8 @@ par changement, la plus récente en bas.
 | 15/11/2026 | Q33 (suite, issue #35) : une loi du JO est reliée à son dossier par ses travaux préparatoires si au moins deux numéros de l'Assemblée mènent au même dossier ; pour un dossier dont la suite manque aux archives, le seul texte déposé sous la législature de la promulgation suffit (contradiction jugée dans cette législature) | 1 (R-LOI-DOSSIER, R-SORT-FINAL), 5 (Q33) |
 | 15/11/2026 | Q43 (issue #63) : A3 confronte chaque nuit les lois de l'Assemblée à celles du JO ; nommées : les lois du JO absentes de l'Assemblée, sauf celles que R-LOI-DOSSIER relie ou qui précèdent les travaux préparatoires au JO (comptées), et les lois de l'Assemblée absentes du JO | 2 (A3), 5 (Q43) |
 | 15/11/2026 | Q44 (alerte #148) : C1 tient pour « identité enrichie », et non pour perdu, un fait qui garde tous ses identifiants et en gagne seulement | 2 (C1), 5 (Q44) |
+| 23/11/2026 | Q45 (alerte #118) : une motion de renvoi en commission adoptée (`TSORTMOT01`, motion `TMP03`) laisse le sort « non connu », raison `renvoye_en_commission` | 1 (R-ETAPE, R-SORT-FINAL), 5 (Q45) |
+| 23/11/2026 | Q46 (alerte #118) : une décision publiée sans conclusion (`TSORTFnull`) est « sans conclusion », jamais déduite de la suite | 1 (R-ETAPE, R-SORT-FINAL), 5 (Q46) |
 
 ## Corrections demandées par la commande de réalisation
 
@@ -1037,10 +1039,10 @@ Branche `etape-2-natures-parole`, issue #87.
 | Forme commune : `ordre` facultatif d'une case (l'ordre de la légende peut différer de l'ordre de rangement) ; le fichier servi donne `champs`, l'ordre dans lequel le code d'une valeur est cherché | une motion de censure doit être rangée avant « Textes » mais vient après dans la légende | 1 (1.3.3) |
 
 
-## Conclusions non classées : classement proposé (23/11/2026)
+## Conclusions non classées : classement décidé (23/11/2026)
 
-Branche `etape-2-a7-conclusions`, alerte #118 (avertissement A7). **Classement proposé, à valider
-par la propriétaire** (doc. 5, Q45 et Q46) : la PR reste en brouillon tant qu'il ne l'est pas.
+Branche `etape-2-a7-conclusions`, alerte #118 (avertissement A7). Classement proposé, puis
+**décidé par la propriétaire le 23/11/2026** (doc. 5, Q45 et Q46).
 Relu sur les archives des dossiers XIVe-XVIIe du 04/11/2026 (`travail/sources`), en local.
 
 | Changement | Pourquoi | Documents à aligner |

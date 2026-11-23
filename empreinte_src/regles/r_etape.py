@@ -46,8 +46,7 @@ ADOPTION_CONFORME = "('TSORTF01', 'TSORTF03', 'TSORTF14')"
 # chambre clôt la navette (pas la nouvelle lecture, où chaque chambre vote son propre texte).
 NAVETTE = "('AN1', 'SN1', 'AN2', 'SN2', 'AN3', 'SN3')"
 REJET = "('TSORTF07', 'TSORTF13', 'TSORTF24')"
-# Version 3 (alerte #118, classement proposé le 23/11/2026, à valider par la propriétaire : doc. 5,
-# Q45 et Q46). Ni adoption ni rejet du texte :
+# Version 3 (alerte #118, décidé par la propriétaire le 23/11/2026 : doc. 5, Q45 et Q46). Ni adoption ni rejet du texte :
 # - `renvoi_en_commission` : conclusion TSORTMOT01 « Motion adoptée » d'une décision dont la motion
 #   (l'acte `MotionProcedure_Type` de même uid, sans le suffixe `DEC`) est une motion de renvoi en
 #   commission (`typeMotion` TMP03). Toutes les décisions TSORTMOT01 des archives XIVe-XVIIe du

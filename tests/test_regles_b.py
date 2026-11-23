@@ -508,7 +508,7 @@ def test_sort_final_lu_dans_les_conclusions(tmp_path):
 
 
 def test_sort_renvoi_en_commission_et_decision_sans_conclusion(tmp_path):
-    """Alerte #118 (classement à valider : doc. 5, Q45 et Q46). Une motion de renvoi en commission
+    """Alerte #118 (décidé le 23/11/2026 : doc. 5, Q45 et Q46). Une motion de renvoi en commission
     adoptée (TSORTMOT01, motion TMP03) n'est ni une adoption ni un rejet : raison
     `renvoye_en_commission`, plus nommée par A7. Une décision sans conclusion (TSORTFnull) n'est
     nommée que là où elle est la dernière décision."""
