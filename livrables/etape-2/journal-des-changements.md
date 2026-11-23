@@ -29,6 +29,8 @@ par changement, la plus récente en bas.
 | 15/11/2026 | Q33 (suite, issue #35) : une loi du JO est reliée à son dossier par ses travaux préparatoires si au moins deux numéros de l'Assemblée mènent au même dossier ; pour un dossier dont la suite manque aux archives, le seul texte déposé sous la législature de la promulgation suffit (contradiction jugée dans cette législature) | 1 (R-LOI-DOSSIER, R-SORT-FINAL), 5 (Q33) |
 | 15/11/2026 | Q43 (issue #63) : A3 confronte chaque nuit les lois de l'Assemblée à celles du JO ; nommées : les lois du JO absentes de l'Assemblée, sauf celles que R-LOI-DOSSIER relie ou qui précèdent les travaux préparatoires au JO (comptées), et les lois de l'Assemblée absentes du JO | 2 (A3), 5 (Q43) |
 | 15/11/2026 | Q44 (alerte #148) : C1 tient pour « identité enrichie », et non pour perdu, un fait qui garde tous ses identifiants et en gagne seulement | 2 (C1), 5 (Q44) |
+| 23/11/2026 | Q45 (alerte #118) : une motion de renvoi en commission adoptée (`TSORTMOT01`, motion `TMP03`) laisse le sort « non connu », raison `renvoye_en_commission` | 1 (R-ETAPE, R-SORT-FINAL), 5 (Q45) |
+| 23/11/2026 | Q46 (alerte #118) : une décision publiée sans conclusion (`TSORTFnull`) est « sans conclusion », jamais déduite de la suite | 1 (R-ETAPE, R-SORT-FINAL), 5 (Q46) |
 
 ## Corrections demandées par la commande de réalisation
 
@@ -1063,6 +1065,19 @@ Essai 45190042750, sur l'entrepôt de la nuit du 22/11, comparé à la g20 : **p
 
 Après la fusion de #144, #151 et #152 dans `main`, essai 45193620673 (branche à jour de `main`, même entrepôt, comparé à la g20) : **publication autorisée**, aucune anomalie C1 ; 72 fiches, 2 971 066 faits publiés ; A2 : votes 40/40, signataires 20/20 ; calcul 12 min 32 s, pic 6,4 Go. Avertissements : A3 (lois, connu) et A9 (5 276 liens `amendement_lignee.source_url` vidés, attendu par #152). Faits sans identifiant de l'essai : mêmes types que dans la g20 (1 961 `actes_compte`, 3 lignes « Non-inscrits » ; plus les 11 095 `parole_sujet`, reconnus à leur contenu), aucun n'est perdu.
 
+## Conclusions non classées : classement décidé (23/11/2026)
+
+Branche `etape-2-a7-conclusions`, alerte #118 (avertissement A7). Classement proposé, puis
+**décidé par la propriétaire le 23/11/2026** (doc. 5, Q45 et Q46).
+Relu sur les archives des dossiers XIVe-XVIIe du 04/11/2026 (`travail/sources`), en local.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-ETAPE version 3 : `TSORTMOT01` « Motion adoptée » se lit avec le type de sa motion (acte `MotionProcedure_Type` de même uid sans `DEC`, même dossier) ; renvoi en commission (`TMP03`) → issue `renvoi_en_commission`, ni adoption ni rejet ; une autre motion, ou une motion introuvable, reste non classée. `TSORTFnull` → issue `sans_conclusion`, jamais déduite de la suite | l'alerte #118 nomme chaque nuit 2 codes (36 décisions : 25 + 11). Les 25 décisions `TSORTMOT01` (25 dossiers, 10 de la XIVe et 15 de la XVe, en première lecture) suivent toutes une motion de renvoi en commission : le journal du 13/11 (« la source ne dit pas laquelle ») cherchait le type de motion sur la décision, il est sur l'acte voisin. Les 11 `TSORTFnull` sont des décisions du Sénat en nouvelle lecture, sans libellé, dans des dossiers tous promulgués | 1 (1.6 R-ETAPE), 5 (Q45, Q46) |
+| R-SORT-FINAL version 5 : raison `renvoye_en_commission` quand la dernière décision est un renvoi en commission ; une décision `sans_conclusion` n'entre dans `conclusion_non_classee` (donc dans A7) que si elle laisse le sort non connu (raison `conclusion_non_classee`) ; le libellé servi est le premier dans l'ordre alphabétique, A7 écrit « sans libellé » au lieu de « None » ; vocabulaire `raison_sort` (C4) complété | 22 dossiers passent de `conclusion_non_classee` à `renvoye_en_commission` (les 3 autres ont une autre raison). La source écrit « Motion adoptée » et « Motion adopté(e) » : `any_value` en prenait un au hasard, et l'empreinte de l'alerte changeait avec lui (4 bascules du 13 au 22/11). Mesuré sur les archives : 4 317 décisions avant et après (la jointure à la motion ne double rien), plus aucun code non classé ; A7 ne devrait plus nommer de conclusion | 1 (1.6 R-SORT-FINAL) ; `config/schema_fichiers.yaml` |
+
+Restent dans l'alerte #118, hors de cette branche : les écarts de date de promulgation entre le JO
+et l'Assemblée (lois 2014-567 à 2024-582, une dizaine).
 
 ## Liste des candidats : lecture franceinfo du 23/11/2026 (alerte #155)
 
@@ -1071,6 +1086,14 @@ Branche `etape-2-candidature-2026-11-23`. La page franceinfo a été télécharg
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
 | Décision `candidature` : nouveau fichier `references/candidature/2026-11-23-franceinfo.yaml` (38 déclarés, 7 retirés, X. Bertrand `non_listee`). Dominique de Villepin (La France humaniste, Q131660) et Serge Tinland (Divers, sans article ni élément Wikidata) entrent comme déclarés ; François Ruffin passe de déclaré à retiré. Le fichier du 13/11 reste, la liste en vigueur est la plus récente | alerte #155 (A9) : Wikipédia disait Villepin déclaré et Ruffin retiré, la liste du 13/11 l'inverse ; la page du 23/11 donne raison à Wikipédia | — |
+
+## Périodes de mandat de député confrontées à Sycomore (23/11/2026)
+
+Branche `etape-2-relecture-mandats`, issue #63 (troisième famille : les périodes de mandat de député).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| A2, mandats : chaque nuit, toutes les périodes de mandat de député servies dans les carrières des candidats (faits `periode_carriere`, Assemblée, en fonction, depuis le 19/06/2002 ; segments d'un même mandat réunis) sont comparées, début et fin, à la fiche Sycomore de la personne (identifiant déclaré par Wikidata, P1045, comme R-CARRIERE). Sont nommés : une borne différente, une période servie qu'aucun mandat de Sycomore ne recouvre, un mandat de Sycomore depuis le 19/06/2002 absent de la carrière servie. Sans identifiant Sycomore ou sans fiche relevée : « non vérifié ». Comptés sans être nommés : les suspensions (Sycomore ne les publie pas ; leurs bornes sont celles de mandats comparés) et les périodes d'avant 2002 (lues dans Sycomore même). Bilan `a2_mandats` dans le rapport, ligne du résumé du calcul | #63 : les périodes de mandat n'étaient confrontées à rien. Sycomore est une page publique de l'Assemblée, base historique distincte de l'archive des acteurs, déjà relevée chaque nuit pour les candidats (point `sycomore-fiches`, faits seulement, Q36) : **aucune page lue en plus**, et pas de tirage, car la population est petite (33 périodes en g20). Mesuré en local sur la g20 : 33 périodes comparées, 33 vérifiées, 0 écart, 0 non vérifiée ; 6 suspensions et 2 périodes d'avant 2002 comptées. Échantillon élargi aux 16 personnes dont Sycomore donne un mandat depuis 2002 (dont 6 sans fiche publiée), contre l'archive des acteurs : 51 lignes, 50 identiques ; 1 écart, le mandat de Xavier Bertrand de la XIIe législature (19/06/2002 – 30/04/2004), absent de l'archive des acteurs (trou de la source ; sans effet aujourd'hui, Xavier Bertrand n'ayant pas de fiche publiée) | 2 (2.8, A2), 8 |
 
 ## Adresse publique de la page d'un groupe à l'Assemblée (23/11/2026)
 
