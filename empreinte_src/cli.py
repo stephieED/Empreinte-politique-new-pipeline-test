@@ -182,8 +182,12 @@ def cmd_calculer(a):
         retirees = dict(ctx.x("""SELECT 'candidat/' || adresse, raison_non_publie FROM candidat
                                  WHERE NOT publie AND adresse IS NOT NULL
                                    AND statut IN ('retiree', 'non_listee')""")) if ctx.existe("candidat") else {}
+        # Lignes de mandat local déclarées par Wikidata : leur disparition est toujours expliquée,
+        # nommée en A11 ; l'état des déclarations en donne la raison quand il la connaît (Q55 à Q57).
+        from .regles.r_mandat_local import declarations_wikidata
         ctrl.c1_c6_comparer(a.faits_precedents or None, os.path.join(a.sortie, "export", "faits-publies.parquet"),
-                            uids_changes_a_la_source=changes, fiches_retirees=retirees)
+                            uids_changes_a_la_source=changes, fiches_retirees=retirees,
+                            declarations_wikidata=declarations_wikidata(ctx))
         ctrl.a9_valeurs_videes(a.faits_precedents or None,
                                os.path.join(a.sortie, "export", "faits-publies.parquet"))
         # C3, C7 et avertissements : tables des règles et faits publiés de la candidate.
@@ -225,8 +229,7 @@ def cmd_calculer(a):
         ctrl.a6_couverture()
         ctrl.a8_mandats_ouverts()
         ctrl.a9_liste_des_candidats()
-        from .controles_mandats_locaux import a10_elus_ambigus
-        a10_elus_ambigus(ctrl)
+        ctrl.a10_elus_ambigus()
         ctrl.a7_non_resolues(ctx.decisions)          # en dernier : il vérifie les levées sans objet
     controles = ctrl.bilan()
     rapport["calcul"] = {"lecture": l.bilan, "export": ex, "mesures": mesures.etapes,
