@@ -315,3 +315,17 @@ def test_paroles_avant_le_perimetre_aucun_zero(tmp_path, monkeypatch):
     c = _lire(racine, "lignees/socialistes/paroles.json.gz")["couverture"]
     assert c["statut"] == "hors_perimetre" and c["maillons_hors_perimetre"][0]["raison"] == "paroles_avant_la_xve"
     assert not any(x["section"].startswith("paroles-textes") for x in ecr.faits)
+
+
+def test_adresse_publique_du_groupe_a_l_assemblee(tmp_path, monkeypatch):
+    # Règle vérifiée sur le site de l'Assemblée (issue #78) ; jamais pour un identifiant d'une autre forme.
+    assert composeur.adresse_groupe_an("PO845401") == \
+        "https://www2.assemblee-nationale.fr/instances/fiche/OMC_PO845401"
+    assert [composeur.adresse_groupe_an(x) for x in ("PO16A", "PA1", "", None, "PO")] == [None] * 5
+    # Frise : la page du dernier organe du maillon ; une adresse donnée par la source est gardée.
+    monkeypatch.setattr(composeur, "adresse_groupe_an", lambda o: f"https://an.example/{o}")
+    tables = dict(TABLES, maillon=[dict(x, source_url="https://source.example/PO17S") if x["organe"] == "PO17S"
+                                   else x for x in TABLES["maillon"]])
+    _, _, racine = _composer(tmp_path, tables)
+    m = _rows(_lire(racine, "lignees/socialistes/fiche.json.gz")["maillons"])
+    assert [x["source_url"] for x in m] == ["https://an.example/PO16B", "https://source.example/PO17S"]

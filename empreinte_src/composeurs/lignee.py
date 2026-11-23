@@ -11,7 +11,7 @@ Fichiers de `lignees/<adresse>/` :
 
 | fichier | ce que voit le lecteur | chargé |
 | --- | --- | --- |
-| `fiche.json.gz` | en-tête : nom, suite des noms, période ; frise des maillons (organes, dates, position déclarée — `divergente` si deux organes d'un maillon en déclarent deux différentes —, membres, effectif, lien vers la législature quand sa fiche existe) ; filiations (les décomptes qui relient chaque maillon à son prédécesseur, ou qui montrent pourquoi la lignée commence là) ; couverture | tout de suite |
+| `fiche.json.gz` | en-tête : nom, suite des noms, période ; frise des maillons (organes, dates, position déclarée — `divergente` si deux organes d'un maillon en déclarent deux différentes —, membres, effectif, lien vers la législature quand sa fiche existe, page du groupe sur le site de l'Assemblée — `source_url`, règle `adresse_groupe_an`) ; filiations (les décomptes qui relient chaque maillon à son prédécesseur, ou qui montrent pourquoi la lignée commence là) ; couverture | tout de suite |
 | `effectifs.json.gz` | effectif jour par jour de chaque maillon, écrit aux seuls jours où il change | à la demande |
 | `membres.json.gz` | un point par personne et par maillon : arrivée, départ, périodes, d'où elle vient (au départ, déjà là au groupe précédent, revenue d'un groupe plus ancien, nouvelle), si elle reste au maillon suivant ; lien vers sa fiche quand elle est candidate | à la demande |
 | `paroles.json.gz` | XVe à XVIIe : débats (sujets) avec leurs prises de parole et leurs orateurs distincts, prises de parole par nature et par orateur, index léger | à la demande |
@@ -64,6 +64,28 @@ LIMITES = [
     "Les groupes de la XIIe et de la XIIIe servent au calcul des filiations ; ils ne sont pas affichés.",
     "Effectifs et membres d'après les mandats de groupe publiés par l'Assemblée (apparentés compris).",
 ]
+
+
+FICHE_ORGANE_AN = "https://www2.assemblee-nationale.fr/instances/fiche/OMC_{organe}"
+
+
+def adresse_groupe_an(organe):
+    """Adresse publique, sur le site de l'Assemblée, de la page du groupe `organe` (`PO…`), ou
+    `None` si `organe` n'a pas la forme d'un identifiant d'organe (issue #78).
+
+    L'archive des acteurs ne donne aucune adresse (`prov_url` d'un organe reste vide, lecteur
+    `an_acteurs`). Règle : `https://www2.assemblee-nationale.fr/instances/fiche/OMC_<organe>`,
+    l'adresse que l'Assemblée donne elle-même à la fiche d'un organe (liens de partage de la page,
+    liste `instances/liste/groupes_politiques`). Vérifiée le 23/11/2026 sur neuf groupes de quatre
+    législatures (XIVe SRC PO656002, LR PO707869, SER PO713077 ; XVe LaREM PO730964, EDS PO771789 ;
+    XVIe RE PO800538, SOC-A PO830170 ; XVIIe RN PO845401, UDDPLR PO872880) : chaque page répond
+    et porte le nom du groupe, close (« Archives - Clos le… ») ou en cours. Un identifiant
+    inconnu de l'Assemblée répond aussi, par une page vide : l'adresse n'est donc construite que
+    pour un organe lu dans l'archive (un maillon de `maillon`), jamais pour un identifiant venu
+    d'ailleurs."""
+    if isinstance(organe, str) and organe.startswith("PO") and organe[2:].isdigit():
+        return FICHE_ORGANE_AN.format(organe=organe)
+    return None
 
 
 def _au(fin, au):
@@ -215,6 +237,10 @@ def _frise(ctx, l, maillons, membres, effectifs, commun):
                 n = e
         leg = m["legislature"]
         lien = f"legislature/{leg}" if leg in LEGISLATURES and leg in commun["legs"] else None
+        # Source de la posture : la page Assemblée du dernier organe du maillon (celle que la
+        # source donnerait, sinon celle de la règle `adresse_groupe_an`), pour un organe connu.
+        dernier = m["organes"][-1]
+        source = (pos[dernier][1] or adresse_groupe_an(dernier)) if dernier in pos else None
         out.append({"maillon": m["maillon"], "legislature": leg, "sigle": m["sigle"], "libelle": m["libelle"],
                     "debut": m["debut"], "fin": m["fin"], "position_maillon": m["position_maillon"],
                     "organes": list(m["organes"]), "sigles": list(m["sigles"]), "libelles": list(m["libelles"]),
@@ -223,7 +249,7 @@ def _frise(ctx, l, maillons, membres, effectifs, commun):
                     "membres": len(membres.get(m["maillon"], ())),
                     "effectif": n, "effectif_au": quand if n is not None else None,
                     "lien": lien, "raison_lien": None if lien else "législature sans fiche publiée",
-                    "source_url": pos.get(m["organes"][-1], (None, None))[1],
+                    "source_url": source,
                     "licence": commun["lic"].get(PA_AMO)})
     return out
 

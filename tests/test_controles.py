@@ -1,5 +1,7 @@
 """Contrôles bloquants (E6) : C1, C2, C4, C6 et la levée ciblée."""
 import json
+import re
+
 import pyarrow as pa
 import pyarrow.parquet as pq
 
@@ -328,3 +330,65 @@ def test_c1_non_inscrits_reconnus_sans_leur_effectif(tmp_path):
     assert comparer([groupe, ni(11, "2026-11-20")], [groupe, ni(12, "2026-11-21")]) == []
     assert comparer([groupe, ni(11, "2026-11-20")], [groupe]) == ["C1"]
     assert comparer([groupe, ni(11, "2026-11-20")], [groupe, ni(11, "2026-11-21", "Autre")]) == ["C1"]
+
+
+def test_c1_ligne_wikidata_disparue_perte_expliquee_et_nommee_en_a11(tmp_path):
+    """Décisions du 23/11/2026 : Q55 « Perte expliquée dans C1 », Q56 « Un code à part, A11 »,
+    Q57 « Oui, toute perte Wikidata ». Une ligne de mandat local déclarée par Wikidata (P39) qui
+    disparaît ne bloque jamais ; A11 la nomme, avec sa raison quand elle est connue. Une ligne du
+    répertoire qui disparaît reste une perte."""
+    def ligne(mandat, libelle, debut="2014-04-05", fin="2020-05-22", fiche="candidat/david-lisnard"):
+        return {"fiche": fiche, "section": "entete", "type_fait": "periode_carriere", "id_mandat": mandat,
+                "valeur": json.dumps({"institution": "local", "libelle": libelle, "debut": debut, "fin": fin,
+                                      "source": "wikidata", "mandat": mandat}, ensure_ascii=False)}
+    schema = pa.schema([(c, pa.string()) for c in ("fiche", "section", "type_fait", "valeur", "id_mandat")])
+    pa_, pb = str(tmp_path / "a.parquet"), str(tmp_path / "b.parquet")
+    a = ligne("wikidata:Q3018298-a", "maire de Cannes")
+    e = ligne("wikidata:Q3018298-e", "conseillère générale · Var", "1990-03-01", "1995-03-01")
+    rne = ligne("cm:06029", "Conseiller municipal · Cannes", "2020-05-18", None)
+    pq.write_table(pa.Table.from_pylist([a, e, rne], schema=schema), pa_)
+
+    def comparer(apres, declarations, **k):
+        pq.write_table(pa.Table.from_pylist(apres, schema=schema), pb)
+        c = Controles(str(tmp_path))
+        c.c1_c6_comparer(pa_, pb, declarations_wikidata=declarations, **k)
+        return c
+
+    def raisons(c):
+        return [re.split(r"déclaration Q\d+-\w : ", x, maxsplit=1)[1] for x in c.anomalies[0]["exemples"]]
+    # a supprimée dans Wikidata (son élément y est encore), e plus locale : expliquées, nommées en A11.
+    c = comparer([rne], {"Q3018298-b": True, "Q3018298-e": False})
+    b = c.bilan()
+    assert b["publication_autorisee"] and [x["controle"] for x in c.anomalies] == ["A11"]
+    assert not c.anomalies[0]["bloquant"] and b["expliques"]["c1_lignes_wikidata"] == 2
+    assert c.anomalies[0]["exemples"] == [
+        "candidat/david-lisnard : conseillère générale · Var (1990-03-01 – 1995-03-01), déclaration "
+        "Q3018298-e : le libellé ne désigne plus une fonction locale",
+        "candidat/david-lisnard : maire de Cannes (2014-04-05 – 2020-05-22), déclaration Q3018298-a : "
+        "déclaration supprimée dans Wikidata"]
+    assert b["avertissements"] == [c.anomalies[0]["empreinte"]]
+    # Toute autre raison (Q57) : expliquée aussi, la raison dite quand elle est connue.
+    c = comparer([e, rne], {"Q3018298-a": True, "Q3018298-e": True})
+    assert [x["controle"] for x in c.anomalies] == ["A11"] and c.bilan()["publication_autorisee"]
+    assert raisons(c)[0].startswith("raison non établie : déclaration toujours présente et locale")
+    c = comparer([e, rne], {"Q999-x": True})
+    assert [x["controle"] for x in c.anomalies] == ["A11"] and raisons(c) == ["élément absent de la réponse Wikidata"]
+    for d in ({}, None):
+        c = comparer([e, rne], d)
+        assert [x["controle"] for x in c.anomalies] == ["A11"] and raisons(c) == ["réponse Wikidata non lue ou vide"]
+    # Une ligne du répertoire n'est jamais expliquée ainsi.
+    c = comparer([a, e], {"Q3018298-a": True, "Q3018298-e": True})
+    assert [x["controle"] for x in c.anomalies] == ["C1"] and "Conseiller municipal" in c.anomalies[0]["exemples"][0]
+    # Fiche retirée : expliquée par le retrait (A9), pas nommée en A11.
+    c = comparer([rne], {}, fiches_retirees={"candidat/david-lisnard": "n'est plus dans la liste"})
+    assert c.anomalies == [] and c.bilan()["publication_autorisee"]
+    # Aucune perte : A11 se tait, rien n'est compté.
+    c = comparer([a, e, rne], {"Q3018298-a": True, "Q3018298-e": True})
+    assert c.anomalies == [] and "c1_lignes_wikidata" not in c.bilan()["expliques"]
+
+
+def test_element_wikidata_d_une_declaration():
+    from empreinte_src.controles import _element_wikidata
+    assert _element_wikidata("Q3018298-E1B2") == "Q3018298"
+    assert _element_wikidata("q42$F078E5B3") == "Q42"
+    assert _element_wikidata("sans-element") is None
