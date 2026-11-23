@@ -198,6 +198,11 @@ def test_wikidata_p39_mandats_passes(tmp_path):
         ("conseillère générale", "departemental", "mandat", "1990-03-01", "1995-03-01", "wikidata:Q3018298-e"),
         ("maire de Cannes", "municipal", "fonction", "2014-04-05", "2020-05-22", "wikidata:Q3018298-a")]
     assert {(r["declare_par"], r["fin_nature"]) for r in wd} == {("wikidata", "declaree")}
+    # Ce que C1 reçoit (Q55) : chaque déclaration de la réponse, et si son libellé est local (sans
+    # tenir compte des dates : la c, sans fin, est locale ; la d et la f ne le sont pas).
+    assert r_mandat_local.declarations_wikidata(ctx) == {
+        "Q3018298-a": True, "Q3018298-b": True, "Q3018298-c": True, "Q3018298-d": False,
+        "Q3018298-e": True, "Q3018298-f": False}
     car = _lignes(ctx, "SELECT * FROM carriere WHERE per = ? AND source = 'wikidata' ORDER BY debut", [per])
     assert car[0]["libelle"] == "conseillère générale · Var" and car[0]["declare_par"] == "wikidata"
     assert car[0]["mandat"] == "wikidata:Q3018298-e" and car[0]["institution"] == "local"
@@ -207,7 +212,7 @@ def test_wikidata_p39_mandats_passes(tmp_path):
 def test_homonymes_nes_le_meme_jour_non_rattaches_et_a10(tmp_path):
     """Q53 : la clé de Lisnard désigne deux conseillers municipaux de deux communes : aucun
     rattachement par la clé, une ligne dans `mandat_local_ambigu`, l'avertissement A10."""
-    from empreinte_src.controles_mandats_locaux import a10_elus_ambigus
+    from empreinte_src.controles import Controles
     z2 = _z2(tmp_path)
     e = Entrepot(str(tmp_path / "e"))
     pa_cfg = {"id": "rne-cm", "source": "rne", "type": "elus_rne", "format": "fichier",
@@ -231,21 +236,18 @@ def test_homonymes_nes_le_meme_jour_non_rattaches_et_a10(tmp_path):
     ro = ctx.un("SELECT per FROM candidat WHERE nom_liste = 'Fabien Roussel'")
     assert ctx.un("SELECT count(*) FROM mandat_local_candidat WHERE per = ?", [ro]) == 4
 
-    class Ctrl:
-        def __init__(s, con):
-            s.con, s.anomalies = con, []
-
-        def _a(s, *t):
-            return all(ctx.existe(x) for x in t)
-
-        def _x(s, sql, params=None):
-            return s.con.execute(sql, params or []).fetchall()
-
-        def _avertir(s, code, titre, objets, detail=None):
-            s.anomalies.append((code, objets))
-    c = Ctrl(ctx.con)
-    a10_elus_ambigus(c)
-    assert c.anomalies[0][0] == "A10" and "David Lisnard : 2 élus" in c.anomalies[0][1][0]
+    # A10, dans `controles.py` (rapatrié du module `controles_mandats_locaux`, Q55).
+    c = Controles(str(tmp_path))
+    c.con, c._vues = ctx.con, {t for t in ("mandat_local_ambigu",) if ctx.existe(t)}
+    c.a10_elus_ambigus()
+    a = c.anomalies[0]
+    assert (a["controle"], a["titre"], a["bloquant"]) == ("A10", "Mandats locaux : homonymes non rattachés", False)
+    assert "David Lisnard : 2 élus" in a["exemples"][0] and c.bilan()["publication_autorisee"]
+    # Sans table (règle non appliquée), rien.
+    c = Controles(str(tmp_path))
+    c.con, c._vues = ctx.con, set()
+    c.a10_elus_ambigus()
+    assert c.anomalies == []
 
 
 def test_lecteur_wd_fonctions():
