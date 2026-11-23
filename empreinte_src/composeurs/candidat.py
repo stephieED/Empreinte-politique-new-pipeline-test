@@ -73,6 +73,11 @@ PA_WP, PA_WD, PA_SENAT = "wp-candidatures-2027", "wd-identifiants-parlementaires
 PA_PE, PA_PE_VOTES, PA_PARLTRACK = "pe-eurodeputes", "pe-votes", "parltrack-votes"
 PA_PARLTRACK_ACT = "parltrack-activites"
 PA_RNE = "rne-cm"                  # répertoire national des élus (tous ses points : Licence Ouverte)
+# Points des mandats locaux (couverture « local ») : le répertoire, et les fonctions P39 de Wikidata
+# pour les mandats passés (décision Q52 du 23/11/2026).
+PA_RNE_TOUS = ("rne-cm", "rne-maires", "rne-epci", "rne-cd", "rne-cr", "rne-ca", "rne-ma", "rne-consfde",
+               "rne-afe", "rne-sortants-cm", "rne-sortants-maires")
+PA_WD_FONCTIONS = "wd-fonctions-candidats"
 DEBUT_VOTES_PE = "2019-07-02"      # portail du PE : votes nominatifs à partir de la 9e législature (Q3)
 
 # Statuts de couverture de R-CARRIERE → statuts servis (doc. 1, 1.5.5).
@@ -287,7 +292,7 @@ def _commun(ctx, au) -> dict:
               "an_amendements__amendement", "an_comptes_rendus__intervention", "an_questions__question",
               "senat_export__mandat", "wd_identifiants__identifiant_externe", "pe_eurodeputes__eurodepute", "pe_votes__vote_pe", "parltrack_votes__vote_pt",
               "parltrack_activites__activite_pt",
-              "rne_elus__mandat_local",
+              "rne_elus__mandat_local", "wd_fonctions__fonction_wikidata",
               "wp_candidatures__candidature"):
         if _vue(ctx, t):
             for p, l in ctx.x(f"SELECT DISTINCT prov_point, licence FROM {t} WHERE prov_point IS NOT NULL"):
@@ -473,7 +478,7 @@ COLS_CARRIERE = ["institution", "debut", "fin", "libelle", "etat", "legislature"
                  "gouvernement_nom", "qualite", "groupe", "groupe_sigle", "groupe_libelle",
                  "groupe_statut", "siege", "siege_date", "raison_siege", "lien", "raison_lien",
                  "circonscription", "cause_fin", "fin_raison", "mandat", "source", "source_url",
-                 "licence"]
+                 "licence", "nature_periode", "fin_nature", "declare_par"]
 COLS_PERIODES = ["periode", "debut", "fin", "legislature", "banc", "raisons_banc", "gouvernement",
                  "gouvernement_nom", "lien", "dans_le_perimetre"]
 
@@ -527,7 +532,8 @@ def _carriere(ctx, f, c, commun):
         l["gouvernement_nom"] = g["nom"] if g else None
         l["licence"] = (lic_an if l.get("source") == "an" else commun["lic"].get(PA_PE)
                         if l.get("source") == "pe" else commun["lic"].get(PA_RNE)
-                        if l.get("source") == "rne" else None
+                        if l.get("source") == "rne" else commun["lic"].get(PA_WD_FONCTIONS)
+                        if l.get("source") == "wikidata" else None
                         if l.get("source") == "sycomore" else commun["lic"].get(PA_SENAT))
         if l["licence"]:
             f.licences.add(l["licence"])
@@ -538,7 +544,7 @@ def _carriere(ctx, f, c, commun):
         for r in _lignes(ctx, "SELECT * FROM couverture_carriere WHERE per = ?", [c["per"]]):
             inst = r["institution"]
             pts = {"assemblee": [PA_AMO], "assemblee_avant_2002": [], "gouvernement": [PA_AMO],
-                   "senat": [PA_SENAT]}.get(inst, [])
+                   "senat": [PA_SENAT], "local": list(PA_RNE_TOUS) + [PA_WD_FONCTIONS]}.get(inst, [])
             ls = [l for l in lignes if l["institution"] == inst]
             couv[inst] = {"institution": inst, "libelle": LIBELLE_INSTITUTION.get(inst, inst),
                           "statut": STATUT_CARRIERE.get(r["statut"], "non_relu"),
