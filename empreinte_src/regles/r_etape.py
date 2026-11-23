@@ -17,7 +17,8 @@ quelle lecture l'acte a eu lieu. Échelle, de la plus basse à la plus haute :
 
 La législature d'un acte est celle où tombe sa date, entre son début et sa fin (table
 `legislature`, R-LEGISLATURES) ; son identifiant (`L17-…`) ne sert que faute de date, ou pour une
-date qui ne tombe dans aucune législature (entre la dissolution et l'ouverture de la suivante).
+date qui ne tombe dans aucune législature (entre la dissolution et l'ouverture de la suivante :
+décision du 23/11/2026, doc. 5, Q54 « Selon l'identifiant »).
 Un texte transmis par le Sénat survit à la dissolution et a une ligne par législature où il a
 avancé. Version 3 (décision du 23/11/2026, doc. 5, Q48 « Ranger par la date ») : l'identifiant
 seul rangeait sous la XIVe des actes de 2018 que l'archive close de la XIVe numérote `L14-`
