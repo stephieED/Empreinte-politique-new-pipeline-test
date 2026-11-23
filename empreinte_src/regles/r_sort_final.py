@@ -13,6 +13,13 @@ code), dans l'ordre :
 | `rejete` | rejet qui clôt le dossier : lecture définitive rejetée ; résolution rejetée ; proposition de loi rejetée en première lecture par la chambre où elle a été déposée |
 | `non_connu` | aucune de ces preuves (navette en cours, texte non examiné, révision constitutionnelle…) |
 
+Raison `renvoye_en_commission` (version 5, alerte #118, classement à valider : doc. 5, Q45) : la
+dernière décision du dossier est l'adoption d'une motion de renvoi en commission (R-ETAPE,
+`renvoi_en_commission`) ; le texte n'est ni adopté ni rejeté, et aucune décision ne suit (il peut
+être revenu en commission ou en séance sans être voté). Une décision publiée sans conclusion
+(`sans_conclusion`, TSORTFnull) n'est nommée que si elle laisse le sort non connu : dernière
+décision d'un dossier sans autre preuve (raison `conclusion_non_classee`, Q46).
+
 Raison `suite_absente_des_archives` (version 3) : le dossier n'est publié que par l'archive d'une
 législature close, qui s'arrête (`fin_archive_du_dossier`) alors que le texte a continué sous la
 suivante, dont l'archive ne le publie pas : son issue n'est pas lue. Depuis la version 4,
@@ -29,7 +36,7 @@ from .r_etape import UNE_CHAMBRE, adoptions_definitives, decisions
 from .r_loi_dossier import suite_absente_sql
 
 NOM = "R-SORT-FINAL"
-VERSION = 4
+VERSION = 5
 DEPEND = ("R-ETAPE", "R-49-3", "R-LOIS", "R-LOI-DOSSIER")
 SORTIES = ("etat_dossier", "conclusion_non_classee")
 DESCRIPTION = (
@@ -37,8 +44,9 @@ DESCRIPTION = (
     "chambres : promulgué, adopté définitivement, retiré, rejeté, ou non connu. Il peut différer du "
     "vote affiché : un texte adopté par l'Assemblée peut échouer au terme de la navette. Une "
     "proposition de loi rejetée en première lecture par la chambre où elle a été déposée est "
-    "rejetée. L'adoption sans vote par l'article 49, alinéa 3, est signalée à part : c'est un fait "
-    "de procédure, pas un vote.")
+    "rejetée. Un texte renvoyé en commission par une motion, sans décision ensuite, n'est ni adopté "
+    "ni rejeté : son sort reste non connu, avec cette raison. L'adoption sans vote par l'article 49, "
+    "alinéa 3, est signalée à part : c'est un fait de procédure, pas un vote.")
 
 
 def appliquer(ctx):
@@ -103,7 +111,8 @@ def appliquer(ctx):
                              WHEN d.procedure_code = '7' AND dr.dossier IS NOT NULL THEN 'revision_constitutionnelle'
                              WHEN sa.dossier IS NOT NULL THEN 'suite_absente_des_archives'
                              WHEN dr.dossier IS NULL THEN 'aucune_decision_en_seance'
-                             WHEN dr.issue IS NULL THEN 'conclusion_non_classee'
+                             WHEN dr.issue = 'renvoi_en_commission' THEN 'renvoye_en_commission'
+                             WHEN dr.issue IS NULL OR dr.issue = 'sans_conclusion' THEN 'conclusion_non_classee'
                              ELSE 'aucune_decision_finale' END END AS raison_sort,
                    a.motif AS motif_adoption, coalesce(a.acte, rj.acte) AS acte_decisif,
                    dr.conclusion AS derniere_conclusion, dr.date AS date_derniere_decision,
@@ -130,15 +139,24 @@ def appliquer(ctx):
                CASE WHEN et.dossier IS NULL THEN 'aucun_acte_date' ELSE et.raison END AS raison_etape,
                s.type_texte, s.procedure_code, s.titre, s.url_loi, s.source_url
         FROM s LEFT JOIN etape_dossier et USING (dossier)""")
-    # Codes de conclusion qu'aucune liste de R-ETAPE ne classe : nommés, jamais devinés (#45).
+    # Codes de conclusion qu'aucune liste de R-ETAPE ne classe : nommés, jamais devinés (#45). Une
+    # décision sans conclusion (TSORTFnull) ne l'est que là où elle laisse le sort non connu : dernière
+    # décision d'un dossier ni promulgué, ni adopté, ni retiré, ni rejeté (#118, Q46). Le
+    # libellé est le premier dans l'ordre alphabétique : la source écrit « Motion adoptée » et
+    # « Motion adopté(e) », et l'avertissement ne doit pas changer d'une nuit à l'autre pour si peu.
     ctx.ecrire("conclusion_non_classee", f"""
-        SELECT conclusion_code, any_value(conclusion_libelle) AS conclusion_libelle,
+        WITH dec AS ({decisions(ctx)}),
+             nc AS (SELECT d.* FROM dec d
+                    WHERE d.issue IS NULL
+                       OR (d.issue = 'sans_conclusion' AND d.dossier IN (
+                           SELECT dossier FROM etat_dossier WHERE raison_sort = 'conclusion_non_classee')))
+        SELECT conclusion_code, min(conclusion_libelle) AS conclusion_libelle,
                count(*) AS decisions, count(DISTINCT dossier) AS dossiers,
                list(DISTINCT dossier ORDER BY dossier)[:5] AS exemples,
                count(DISTINCT dossier) FILTER (dossier IN (
                    SELECT dossier FROM etat_dossier WHERE raison_sort = 'conclusion_non_classee'))
                    AS dossiers_dont_c_est_la_derniere_decision
-        FROM ({decisions(ctx)}) WHERE issue IS NULL GROUP BY 1 ORDER BY 1""")
+        FROM nc GROUP BY 1 ORDER BY 1""")
     n = ctx.un("SELECT count(DISTINCT dossier) FROM etat_dossier")
     connu = ctx.un("SELECT count(DISTINCT dossier) FROM etat_dossier WHERE sort <> 'non_connu'")
     prom = ctx.un("SELECT count(DISTINCT dossier) FROM etat_dossier WHERE sort = 'promulgue'")

@@ -150,6 +150,47 @@ défaut peut rester.
   propriétaire peut, par décision, les borner à la fin du gouvernement ou les faire signaler à
   la source.
 
+### Q45. Une motion de renvoi en commission adoptée : quel sort pour le texte ?
+
+- **Constat** (alerte #118 ; archives des dossiers XIVe-XVIIe du 04/11/2026, relu le 23/11/2026) :
+  la conclusion `TSORTMOT01` (« Motion adoptée », écrit aussi « Motion adopté(e) ») est portée par
+  25 décisions, une par dossier (10 de la XIVe, 15 de la XVe) : 24 propositions de loi et une
+  proposition de loi constitutionnelle, toutes en première lecture à l'Assemblée. Le libellé ne
+  dit pas quelle motion, mais l'acte de la motion, juste avant (même uid sans `DEC`), le dit :
+  pour les 25, une **motion de renvoi en commission** (`typeMotion` `TMP03`). Le journal du
+  13/11 disait le contraire (« la source ne dit pas laquelle ») : la motion était cherchée sur la
+  décision, pas sur l'acte voisin. Dans aucun des 25 dossiers une décision ne suit ; dans 3, le
+  texte revient en commission ou en séance sans vote (exemple : `DLR5L14N29698`, amnistie des faits commis lors de mouvements sociaux, renvoi le
+  29/04/2013, séance le 16/05/2013).
+- **Bloque** : la raison du sort de 22 de ces dossiers (« non connu », raison
+  `conclusion_non_classee` ; les 3 autres ont déjà une autre raison : `DLR5L15N37128`, révision
+  constitutionnelle ; `DLR5L14N29698` et `DLR5L14N35595`, actes jusqu'en XVIIe) et
+  l'avertissement A7, qui les nomme chaque nuit.
+- **Options** : (1) « renvoi en commission » : ni adoption ni rejet ; sort « non connu », raison
+  nouvelle `renvoye_en_commission` ; une motion adoptée d'un autre type resterait non classée ;
+  (2) la même lecture, mais raison `aucune_decision_finale` (pas de raison nouvelle) ;
+  (3) « rejeté » : le texte est en pratique abandonné, mais la source ne dit pas rejet ;
+  (4) ne rien changer.
+- **En attendant** : classement proposé (1) par la PR de l'alerte #118, en brouillon tant que la
+  propriétaire ne l'a pas validé ; `main` garde le défaut (non classé, nommé par A7).
+
+### Q46. Une décision publiée sans conclusion (`TSORTFnull`)
+
+- **Constat** (mêmes archives) : 11 décisions du Sénat en nouvelle lecture (`SNNLEC-DEBATS-DEC`),
+  XVe à XVIIe, ont pour conclusion `TSORTFnull`, sans libellé. Le sens n'est que dans la suite du
+  dossier : 8 fois, l'Assemblée est saisie en lecture définitive (le Sénat n'a donc pas adopté le
+  texte conforme) ; 3 fois, le texte part au Conseil constitutionnel puis est promulgué (le Sénat
+  l'a donc adopté) : `DLR5L15N42346`, `DLR5L15N42350` (lois de financement de la sécurité sociale,
+  2022), `DLR5L17N50588` (loi de financement de la sécurité sociale pour 2025). Les 11 dossiers
+  sont promulgués : le sort n'en dépend pas, l'avertissement A7 les nomme quand même.
+- **Bloque** : rien de publié ; un avertissement A7 permanent.
+- **Options** : (1) « sans conclusion » : ni adoption ni rejet, jamais déduit de la suite ; nommé
+  par A7 seulement s'il laisse le sort non connu (dernière décision d'un dossier sans autre
+  preuve) ; (2) déduire de la suite (lecture définitive à l'Assemblée → non conforme ; Conseil
+  constitutionnel ou promulgation → adoption définitive) : contraire à « rien n'est deviné » ;
+  (3) ne rien changer.
+- **En attendant** : classement proposé (1) par la même PR, à valider ; `main` garde le défaut.
+
 ---
 
 ## C — Réglages (le défaut peut rester)

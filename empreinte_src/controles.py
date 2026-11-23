@@ -842,7 +842,9 @@ class Controles:
         if self._a("conclusion_non_classee"):
             # Codes de conclusion non classés (R-ETAPE) : le sort de ces dossiers reste « non connu »
             # au lieu d'être deviné ; la liste dit lesquels (issue #45).
-            objets += [f"conclusion {c} (« {l} ») non classée : {n} décisions, {d} dossiers "
+            # Une conclusion sans libellé (TSORTFnull) est dite telle, pas « None » (#118).
+            objets += [f"conclusion {c} ({'« ' + l + ' »' if l else 'sans libellé'}) non classée : "
+                       f"{n} décisions, {d} dossiers "
                        f"({k} dont c'est la dernière décision), dont {', '.join(ex)}"
                        for c, l, n, d, ex, k in self._x(
                            "SELECT conclusion_code, conclusion_libelle, decisions, dossiers, exemples, "

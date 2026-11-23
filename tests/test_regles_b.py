@@ -506,6 +506,37 @@ def test_sort_final_lu_dans_les_conclusions(tmp_path):
     assert cm["par_49_3"] is False and cm["numero_loi"] is None    # pas de 0, pas de loi inventée
 
 
+
+def test_sort_renvoi_en_commission_et_decision_sans_conclusion(tmp_path):
+    """Alerte #118 (classement à valider : doc. 5, Q45 et Q46). Une motion de renvoi en commission
+    adoptée (TSORTMOT01, motion TMP03) n'est ni une adoption ni un rejet : raison
+    `renvoye_en_commission`, plus nommée par A7. Une décision sans conclusion (TSORTFnull) n'est
+    nommée que là où elle est la dernière décision."""
+    dossiers = [_dos("RC", "PPL renvoyée en commission"), _dos("SC", "Nouvelle lecture au Sénat, puis AN"),
+                _dos("SD", "Nouvelle lecture au Sénat, rien ensuite")]
+    actes = [
+        _depot("RC", "PIONANR5L17B0001"),
+        _acte("RC", "L17-RC-M", "MotionProcedure_Type", "AN1-DEBATS-MOTION", "2025-03-01",
+              type_motion_code="TMP03", type_motion_libelle="Motions de renvoi en commission"),
+        _decision("RC", "L17-RC-MDEC", "AN1-DEBATS-MOTION-VOTE", "TSORTMOT01", "2025-03-01", "Motion adoptée"),
+        _depot("SC", "PRJLANR5L17B0002"),
+        _decision("SC", "L17-SC-1", "SNNLEC-DEBATS-DEC", "TSORTFnull", "2025-03-01"),
+        _decision("SC", "L17-SC-2", "ANLDEF-DEBATS-DEC", "TSORTF01", "2025-03-05", "adopté"),
+        _depot("SD", "PRJLANR5L17B0003"),
+        _decision("SD", "L17-SD-1", "SNNLEC-DEBATS-DEC", "TSORTFnull", "2025-03-01"),
+    ]
+    for a in actes:                                         # la source ne publie pas de libellé
+        if a.get("conclusion_code") == "TSORTFnull":
+            a["conclusion_libelle"] = None
+    ctx, _ = _relier(_z2(tmp_path / "z2", actes=actes, dossiers=dossiers), tmp_path / "z3")
+    s = {x["dossier"]: (x["sort"], x["raison_sort"]) for x in _lignes(ctx, "SELECT * FROM etat_dossier")}
+    assert s == {"RC": ("non_connu", "renvoye_en_commission"), "SC": ("adopte", None),
+                 "SD": ("non_connu", "conclusion_non_classee")}
+    nc = _lignes(ctx, "SELECT * FROM conclusion_non_classee")
+    assert [(x["conclusion_code"], x["conclusion_libelle"], x["decisions"], x["exemples"],
+             x["dossiers_dont_c_est_la_derniere_decision"]) for x in nc] == [
+        ("TSORTFnull", None, 1, ["SD"], 1)]
+
 def test_lois_et_projets_rattaches_a_la_date(tmp_path):
     dossiers = [_dos("DL", "Loi de la dissolution"), _dos("DP", "Projet déposé au Sénat", "1"),
                 _dos("DX", "Projet sans date", "1")]

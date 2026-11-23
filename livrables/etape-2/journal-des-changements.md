@@ -1036,3 +1036,17 @@ Branche `etape-2-natures-parole`, issue #87.
 | Regroupement `nature_parole` (`references/regroupement/nature_parole.yaml`), 7 cases : questions au gouvernement (QG, QPM), questions orales (QOSD), textes, motion de censure, explications de vote, commission (aucun code : comptes rendus de commission non relevés), autres | issue #87 | — |
 | Forme commune : `ordre` facultatif d'une case (l'ordre de la légende peut différer de l'ordre de rangement) ; le fichier servi donne `champs`, l'ordre dans lequel le code d'une valeur est cherché | une motion de censure doit être rangée avant « Textes » mais vient après dans la légende | 1 (1.3.3) |
 
+
+## Conclusions non classées : classement proposé (23/11/2026)
+
+Branche `etape-2-a7-conclusions`, alerte #118 (avertissement A7). **Classement proposé, à valider
+par la propriétaire** (doc. 5, Q45 et Q46) : la PR reste en brouillon tant qu'il ne l'est pas.
+Relu sur les archives des dossiers XIVe-XVIIe du 04/11/2026 (`travail/sources`), en local.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-ETAPE version 3 : `TSORTMOT01` « Motion adoptée » se lit avec le type de sa motion (acte `MotionProcedure_Type` de même uid sans `DEC`, même dossier) ; renvoi en commission (`TMP03`) → issue `renvoi_en_commission`, ni adoption ni rejet ; une autre motion, ou une motion introuvable, reste non classée. `TSORTFnull` → issue `sans_conclusion`, jamais déduite de la suite | l'alerte #118 nomme chaque nuit 2 codes (36 décisions : 25 + 11). Les 25 décisions `TSORTMOT01` (25 dossiers, 10 de la XIVe et 15 de la XVe, en première lecture) suivent toutes une motion de renvoi en commission : le journal du 13/11 (« la source ne dit pas laquelle ») cherchait le type de motion sur la décision, il est sur l'acte voisin. Les 11 `TSORTFnull` sont des décisions du Sénat en nouvelle lecture, sans libellé, dans des dossiers tous promulgués | 1 (1.6 R-ETAPE), 5 (Q45, Q46) |
+| R-SORT-FINAL version 5 : raison `renvoye_en_commission` quand la dernière décision est un renvoi en commission ; une décision `sans_conclusion` n'entre dans `conclusion_non_classee` (donc dans A7) que si elle laisse le sort non connu (raison `conclusion_non_classee`) ; le libellé servi est le premier dans l'ordre alphabétique, A7 écrit « sans libellé » au lieu de « None » ; vocabulaire `raison_sort` (C4) complété | 22 dossiers passent de `conclusion_non_classee` à `renvoye_en_commission` (les 3 autres ont une autre raison). La source écrit « Motion adoptée » et « Motion adopté(e) » : `any_value` en prenait un au hasard, et l'empreinte de l'alerte changeait avec lui (4 bascules du 13 au 22/11). Mesuré sur les archives : 4 317 décisions avant et après (la jointure à la motion ne double rien), plus aucun code non classé ; A7 ne devrait plus nommer de conclusion | 1 (1.6 R-SORT-FINAL) ; `config/schema_fichiers.yaml` |
+
+Restent dans l'alerte #118, hors de cette branche : les écarts de date de promulgation entre le JO
+et l'Assemblée (lois 2014-567 à 2024-582, une dizaine).
