@@ -15,8 +15,9 @@ Ce que le composeur ne fait pas : il ne déduit rien que les règles ne disent p
 déclarées dans les fichiers : l'**initiateur** d'un texte est lu dans l'identifiant du texte
 déposé (`PRJL` = gouvernement ; `PION`/`PNRE` déposé à l'Assemblée = députés, au Sénat =
 sénateurs), faute de règle R-INITIATEUR ; la **date de dépôt** est celle du premier acte de
-dépôt du dossier. Ni nuage de mots, ni place médiane d'un groupe, ni terme légal : aucune règle
-ne les donne (voir `LIMITES`).
+dépôt du dossier. Ni nuage de mots ni place médiane d'un groupe : aucune règle ne les donne
+(voir `LIMITES`). Le **terme légal** (date à laquelle le mandat devait finir, hors dissolution)
+vient de R-LEGISLATURES (code électoral, L.O. 121) et est servi dans l'en-tête.
 
 Le compte des **lois** est celui des actes de promulgation (R-LOIS) dont la date tombe dans la
 législature, quelle que soit la législature d'ouverture du dossier. La capture du site actuel
@@ -77,9 +78,6 @@ LIMITES = [
     {"sujet": "place_mediane", "statut": "non_collecte",
      "detail": "La place médiane d'un groupe dans l'hémicycle n'est donnée par aucune règle : seuls "
                "les sièges sont servis."},
-    {"sujet": "terme_legal", "statut": "non_collecte",
-     "detail": "Le terme légal de la législature n'est pas publié par la source de l'Assemblée : "
-               "la frise s'arrête à la date de référence."},
     {"sujet": "hemicycle_legislature_close", "statut": "trou_source",
      "detail": "Le siège d'un député n'est publié, pour une législature close, que par l'archive "
                "figée de cette législature ; celle-ci n'en a pas d'utilisable : ni l'hémicycle ni "
@@ -203,6 +201,9 @@ def composer_legislature(ctx, ecr, leg: dict):
             "numero": numero, "nom": _nom(numero), "organe": leg["organe"],
             "debut": leg["debut"], "fin": leg["fin"], "en_cours": leg["en_cours"],
             "mode_fin": leg["mode_fin"], "regle": leg.get("regle"),
+            # terme légal (code électoral, L.O. 121), que la source ne publie pas : R-LEGISLATURES v2
+            "terme_legal": leg.get("terme_legal"), "raison_terme_legal": leg.get("raison_terme_legal"),
+            "source_terme_legal": leg.get("source_terme_legal"),
             "source_url": leg.get("source_url"), "source_point": leg_src["prov_point"],
             "source_uid": leg_src["prov_uid"], "licence": lic.get(leg_src["prov_point"])},
         "au": au,

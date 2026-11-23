@@ -1028,3 +1028,22 @@ Branche `etape-2-liens-amendements-xiv`, constat fait en route sur #63 (relectur
 | Fiches de groupe (lignées), sections `amendements-N` : colonne `raison_source_url` servie, schéma mis à jour | l'essai 43843521371 servait 5 512 amendements de la XIVe sans lien et sans raison sur les fiches de groupe (seules les fiches de candidat portaient la colonne) | 1 (1.7) |
 
 A9 nommera les liens vidés la première nuit (essai 43843521371 : 5 276 faits `amendement_lignee` sur 741 934) : attendu.
+## Terme légal d'une législature (16/11/2026)
+
+Branche `etape-2-terme-legal`, issue #81.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-LEGISLATURES version 2 : `terme_legal`, le troisième mardi de juin de la cinquième année qui suit l'élection (code électoral, article L.O. 121, loi organique n° 2001-419 du 15 mai 2001 ; lien Légifrance servi), calculé depuis l'Assemblée élue en 1997, sinon vide avec sa raison ; couverture `terme_legal_etabli` | la source ne publie pas ce terme ; l'interface écrit, pour une législature dissoute, « Le mandat devait courir jusqu'en… » (#81). Vérifié sur l'archive AMO30 du 14/11/2026 : pour les XIIe, XIIIe, XIVe et XVe, closes au terme, le terme calculé est la date de fin publiée ; XVIe (dissoute le 09/06/2024) → 15/06/2027 ; XVIIe → 19/06/2029 | 1 (1.6 R-LEGISLATURES) |
+| Fiche législature : `terme_legal`, `raison_terme_legal`, `source_terme_legal` dans l'en-tête ; la limite « terme légal non collecté » est retirée | idem | 1 (1.7.2) |
+## Natures de prise de parole (15/11/2026)
+
+Branche `etape-2-natures-parole`, issue #87.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-SUJET version 2 : `code_creneau` (`QG`, `QOSD`, `QPM`, lu dans le code du point de la question, sinon dans l'intitulé du créneau) et `genre_point` (`explications_de_vote` : sous-point codé `DISC_ARTICLES_1_2` ou `EXPL_VOTE_PERSO_1_10`, ou intitulé ; `motion_de_censure` : point de niveau 1 qui nomme une motion de censure, hors créneau). Rien ne change de ce que lit R-QAG (`type_sujet`, `point`, `sujet_publie`) | la nature d'une parole ne se lisait que dans des intitulés écrits de plusieurs façons, et les explications de vote (sous-point) étaient perdues ; mesuré sur les comptes rendus XVIe–XVIIe | 1 (1.6 R-SUJET) |
+| R-PAROLE-PERSONNE version 2 : fait suivre `code_creneau` et `genre_point` ; paroles des candidats et des lignées : `genre_point` dans l'index, `code_creneau` dans les sujets ; schéma C4 mis à jour | besoin de l'interface (#87) : filtrer les paroles par nature | 1 (1.7.2) |
+| Regroupement `nature_parole` (`references/regroupement/nature_parole.yaml`), 7 cases : questions au gouvernement (QG, QPM), questions orales (QOSD), textes, motion de censure, explications de vote, commission (aucun code : comptes rendus de commission non relevés), autres | issue #87 | — |
+| Forme commune : `ordre` facultatif d'une case (l'ordre de la légende peut différer de l'ordre de rangement) ; le fichier servi donne `champs`, l'ordre dans lequel le code d'une valeur est cherché | une motion de censure doit être rangée avant « Textes » mais vient après dans la légende | 1 (1.3.3) |
+
