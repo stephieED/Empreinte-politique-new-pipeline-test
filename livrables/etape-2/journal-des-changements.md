@@ -1167,3 +1167,12 @@ identités des 37 fiches publiées de g20) :
 
 Risque C1 propre à Q52 : une déclaration P39 supprimée dans Wikidata, ou dont le libellé ne dit plus
 une fonction locale, retire sa ligne de la frise, et C1 y verra une perte.
+
+## R-ETAPE : la législature d'un acte est celle de sa date (23/11/2026)
+
+Branche `etape-2-etape-par-date`, décision du 23/11/2026 (doc. 5, Q48 « Ranger par la date » ; issue #63).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-ETAPE version 4 (après la version 3 de la PR #161) : un acte compte dans la législature où tombe sa date, entre son début et sa fin (table `legislature`, R-LEGISLATURES, désormais une dépendance) ; l'identifiant de l'acte ne sert que faute de date, ou pour une date hors de toute législature (dissolution). Vaut pour l'étape (`etape_dossier`) et pour la législature des décisions (`decisions`, lue par R-SORT-FINAL) | Q48 : l'archive close de la XIVe numérote `L14-` des actes de 2018 ; la relecture A2 des textes (#162) l'a relevé sur DLR5L14N35418, servi pour la XIVe à l'étape « examen en commission » du 17/01/2018. Mesuré sur la g20 (R-ETAPE rejouée sur l'export des faits lus, 12 755 textes servis reproduits à l'identique) : 25 lignes changent d'étape (XIVe 15 et XVe 8, examen en commission → dépôt ; XVIe : 1 dans chaque sens) ; les 5 autres textes datés après la fin de leur législature le sont pendant la dissolution de 2024 et gardent la XVIe ; 11 textes servis apparaissent dans une législature (XVe 10, XVIe 1) où ils n'ont qu'un retrait ou une procédure accélérée, à l'étape « non établie » ; aucune ligne ne disparaît, donc aucune perte pour C1 | 1 (1.6 R-ETAPE) |
+| Doc. 5 : Q54, décidée le 23/11/2026, « Selon l'identifiant » : pendant la dissolution, tant qu'aucune législature ne couvre la date d'un acte, l'identifiant de l'archive décide (ce que fait déjà R-ETAPE version 4) | 5 promulgations et actes des 12 et 13/06/2024 restent sous la XVIe | 5 (Q54) |
