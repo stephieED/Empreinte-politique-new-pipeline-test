@@ -222,12 +222,28 @@ def regroupements(dossier: str | None = DECISIONS) -> list[dict]:
     return out
 
 
+def normalisation_titres(dossier: str | None = DECISIONS) -> dict | None:
+    """Rend la normalisation déclarée des mots des titres (`references/mots_titres/*.yaml`, #82) :
+    `fichier` et, par genre (`formule`, `mot_vide`, `verbe_intention`), la liste des textes."""
+    d = os.path.join(dossier or "", "mots_titres")
+    for n in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+        if n.endswith(".yaml"):
+            with open(os.path.join(d, n)) as f:
+                y = yaml.safe_load(f) or {}
+            par: dict[str, list[str]] = {}
+            for e in y.get("decisions") or []:
+                par.setdefault(e.get("genre"), []).append(str(e.get("texte")))
+            return {"fichier": f"references/mots_titres/{n}", "genres": par}
+    return None
+
+
 def donnees(config: str | None = CONFIG) -> dict:
     """Rend tout ce que la page décrit : `etapes`, `zones`, `perimetre`, `lecteurs` (avec les
     points d'accès de `config`), `provenance`, `regles` et `controles`."""
     return {"etapes": etapes(), "zones": zones(), "perimetre": perimetre(),
             "lecteurs": lecteurs(config), "provenance": colonnes_provenance(),
-            "regles": regles(), "controles": controles(), "regroupements": regroupements()}
+            "regles": regles(), "controles": controles(), "regroupements": regroupements(),
+            "normalisation_titres": normalisation_titres()}
 
 
 # -- la page ------------------------------------------------------------------------------------
@@ -436,4 +452,18 @@ def rendre(d: dict, commit: str | None = None, depot: str | None = None,
         w("\n".join(f"| {_cellule(str(c['libelle']))} | "
                      f"{', '.join(f'`{x}`' for x in c['codes']) or '*aucun code de cette source*'} |"
                      for c in r["cases"]) + "\n")
+    nt = d.get("normalisation_titres")
+    if nt:
+        w("### Mots des titres d'une législature\n")
+        w(f"*décision `{nt['fichier']}`*\n")
+        w("Le nuage de mots d'une législature compte, pour chaque mot, les textes dont le titre le "
+          "contient. Avant de compter, le titre est mis en minuscules et sans accents ; les formules "
+          "de procédure sont retirées en entier ; les nombres, les mots de moins de trois lettres, les "
+          "mots vides de la langue et ceux de la table ci-dessous sont écartés. Les titres ne changent "
+          "pas : chaque mot renvoie aux dossiers qui le portent.\n")
+        noms = {"formule": "Formules de procédure retirées", "mot_vide": "Mots vides propres aux titres",
+                "verbe_intention": "Verbes d'intention écartés"}
+        w("| Liste | Contenu |\n| --- | --- |")
+        w("\n".join(f"| {noms.get(g, g)} | {', '.join(f'« {x} »' for x in xs)} |"
+                     for g, xs in nt["genres"].items()) + "\n")
     return "\n".join(p).rstrip() + "\n"

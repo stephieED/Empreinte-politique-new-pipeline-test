@@ -695,6 +695,11 @@ colonnes:
   - source_url
   - source_point
   - licence
+  legislatures/mots-titres:
+  - mot
+  - forme
+  - textes
+  - dossiers
   legislatures/ordre-du-jour-N:
   - date
   - reunion

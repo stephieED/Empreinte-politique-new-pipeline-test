@@ -1,0 +1,84 @@
+# Issue #82 : normalisation des mots des titres d'une législature, pour le nuage de mots.
+# Proposition du 23/11/2026, à relire par la propriétaire (elle la valide en fusionnant la PR).
+#
+# Le nuage compte, pour chaque mot, les textes de la législature dont le titre le contient.
+# Avant de compter :
+#   1. le titre est mis en minuscules, sans accents ;
+#   2. les `formule` sont retirées en entier (formules de procédure) ;
+#   3. le titre est découpé en mots de 3 lettres et plus ; les nombres sont écartés ;
+#   4. les mots vides de la langue (liste commune du filtre par mot) et les `mot_vide` ci-dessous
+#      sont écartés ; les `verbe_intention` aussi.
+# Les titres eux-mêmes ne changent pas : chaque mot du nuage renvoie aux dossiers qui le portent.
+# Changer cette table ne demande ni recollecte ni perte : la nuit suivante l'applique.
+#
+# Mesuré sur la nuit g20 (12 755 textes, XIVe à XVIIe) : « loi » 2 409 titres, « proposition »
+# 2 000, « visant » 1 206, « contre » 841, « renforcer » 510, « relative » 452, « tendant » 301,
+# « portant » 218, « accord » 243 (« autorisant l'approbation de l'accord… »).
+type: normalisation_titres
+date: 2026-11-23
+decisions:
+  # --- formules de procédure, retirées en entier (de la plus longue à la plus courte)
+  - {genre: formule, texte: "proposition de resolution europeenne"}
+  - {genre: formule, texte: "proposition de resolution"}
+  - {genre: formule, texte: "proposition de loi organique"}
+  - {genre: formule, texte: "proposition de loi constitutionnelle"}
+  - {genre: formule, texte: "proposition de loi"}
+  - {genre: formule, texte: "projet de loi organique"}
+  - {genre: formule, texte: "projet de loi constitutionnelle"}
+  - {genre: formule, texte: "projet de loi de finances"}
+  - {genre: formule, texte: "projet de loi"}
+  - {genre: formule, texte: "autorisant l approbation de l accord"}
+  - {genre: formule, texte: "autorisant l approbation de la convention"}
+  - {genre: formule, texte: "autorisant l approbation"}
+  - {genre: formule, texte: "autorisant la ratification"}
+  - {genre: formule, texte: "ratifiant l ordonnance"}
+  - {genre: formule, texte: "adoptee par le senat"}
+  - {genre: formule, texte: "en matiere de"}
+  - {genre: formule, texte: "visant a"}
+  - {genre: formule, texte: "tendant a"}
+  - {genre: formule, texte: "relative a"}
+  - {genre: formule, texte: "relatif a"}
+  - {genre: formule, texte: "relatives a"}
+  - {genre: formule, texte: "relatifs a"}
+  # --- mots vides propres aux titres (ni sujet ni objet du texte)
+  - {genre: mot_vide, texte: "loi"}
+  - {genre: mot_vide, texte: "lois"}
+  - {genre: mot_vide, texte: "proposition"}
+  - {genre: mot_vide, texte: "projet"}
+  - {genre: mot_vide, texte: "resolution"}
+  - {genre: mot_vide, texte: "organique"}
+  - {genre: mot_vide, texte: "visant"}
+  - {genre: mot_vide, texte: "tendant"}
+  - {genre: mot_vide, texte: "relative"}
+  - {genre: mot_vide, texte: "relatif"}
+  - {genre: mot_vide, texte: "portant"}
+  - {genre: mot_vide, texte: "autorisant"}
+  - {genre: mot_vide, texte: "contre"}
+  - {genre: mot_vide, texte: "cadre"}
+  - {genre: mot_vide, texte: "cas"}
+  - {genre: mot_vide, texte: "mesures"}
+  - {genre: mot_vide, texte: "diverses"}
+  - {genre: mot_vide, texte: "dispositions"}
+  - {genre: mot_vide, texte: "certaines"}
+  - {genre: mot_vide, texte: "certains"}
+  - {genre: mot_vide, texte: "afin"}
+  - {genre: mot_vide, texte: "vue"}
+  # --- verbes d'intention (« visant à renforcer… ») : ils disent le geste, pas le sujet.
+  # Choix le plus discutable de la table : à garder ou à retirer selon le nuage voulu.
+  - {genre: verbe_intention, texte: "renforcer"}
+  - {genre: verbe_intention, texte: "garantir"}
+  - {genre: verbe_intention, texte: "instaurer"}
+  - {genre: verbe_intention, texte: "ameliorer"}
+  - {genre: verbe_intention, texte: "permettre"}
+  - {genre: verbe_intention, texte: "rendre"}
+  - {genre: verbe_intention, texte: "creer"}
+  - {genre: verbe_intention, texte: "lutter"}
+  - {genre: verbe_intention, texte: "proteger"}
+  - {genre: verbe_intention, texte: "favoriser"}
+  - {genre: verbe_intention, texte: "faciliter"}
+  - {genre: verbe_intention, texte: "assurer"}
+  - {genre: verbe_intention, texte: "modifier"}
+  - {genre: verbe_intention, texte: "etendre"}
+  - {genre: verbe_intention, texte: "reduire"}
+  - {genre: verbe_intention, texte: "encadrer"}
+  - {genre: verbe_intention, texte: "simplifier"}

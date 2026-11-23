@@ -230,7 +230,8 @@ def test_fichiers_et_entete(ctx, tmp_path):
     fichiers = {k.split("/")[-1] for k in man["fichiers"] if k.startswith("legislatures/17/")}
     assert fichiers == {"fiche.json.gz", "hemicycle.json.gz", "groupes.json.gz",
                         "ordre-du-jour-2025.json.gz", "ordre-du-jour-2026.json.gz",
-                        "textes.json.gz", "textes-deposes-2024.json.gz", "commissions.json.gz"}
+                        "textes.json.gz", "textes-deposes-2024.json.gz", "commissions.json.gz",
+                        "mots-titres.json.gz"}
     f = lire("fiche")
     assert f["titre"] == "XVIIe législature"
     assert f["legislature"]["mode_fin"] == "en_cours" and f["au"] == REF
@@ -250,8 +251,7 @@ def test_fichiers_et_entete(ctx, tmp_path):
     # 49.3 : le texte adopté compte, pas le dossier « engagement » (procédure 13) ; un acte.
     assert c["textes_adoptes_49_3"]["valeur"] == 1
     assert c["textes_adoptes_49_3"]["engagements_distincts"] == 1
-    assert {l["sujet"] for l in f["limites"]} >= {"senat", "commissions", "nuage_de_mots",
-                                                   "place_mediane"}
+    assert {l["sujet"] for l in f["limites"]} >= {"senat", "commissions", "place_mediane"}
     assert "hemicycle_legislature_close" not in {l["sujet"] for l in f["limites"]}
     assert f["licences"] == ["etalab-2.0"]
 
@@ -370,3 +370,33 @@ def test_legislature_close_sans_hemicycle(ctx, tmp_path):
     assert cv["statut"] == "complet" and "sièges de cette législature close ne sont pas publiés" in cv["detail"]
     assert all(x["fiche"] != "legislature/16" or x["date"] is None or x["date"] <= "2024-06-09"
                for x in ecr.faits)
+
+
+def test_mots_des_titres_normalisation_declaree(ctx, tmp_path):
+    """#82 : nuage des mots des titres, après la normalisation déclarée (vraie table) ; sans
+    décision, pas de nuage (non collecté)."""
+    import yaml
+    racine_depot = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    with open(os.path.join(racine_depot, "references", "mots_titres", "normalisation.yaml")) as fh:
+        y = yaml.safe_load(fh)
+    _, _, _, lire = composer(ctx, tmp_path / "sans")
+    assert lire("mots-titres")["couverture"]["statut"] == "non_collecte"
+    titres = {"D-PLF": "Projet de loi de finances pour 2026",
+              "D-PPL": "Proposition de loi visant à protéger les forêts",
+              "D-SEN": "Proposition de loi adoptée par le Sénat",
+              "D-OLD": "Proposition de loi relative aux forêts domaniales"}
+    etats = [dict(zip([d[0] for d in r.description], x)) for r in [ctx.con.execute("SELECT * FROM etat_dossier")]
+             for x in r.fetchall()]
+    vue(ctx, "etat_dossier", [{**e, "titre": titres.get(e["dossier"], e["titre"])} for e in etats])
+    ctx.decisions = {**ctx.decisions, "normalisation_titres": [
+        {**e, "fichier": f"mots_titres/normalisation.yaml#{k}"} for k, e in enumerate(y["decisions"])]}
+    _, _, _, lire = composer(ctx, tmp_path / "avec")
+    m = lire("mots-titres")
+    # « Projet de loi de finances pour 2026 » : formule, mot vide et nombre écartés ;
+    # « Proposition de loi visant à protéger les forêts » : formules et verbe d'intention écartés ;
+    # « Proposition de loi adoptée par le Sénat » : formules seules.
+    # « …relative aux forêts domaniales » : « aux » est un mot vide de la langue.
+    assert lignes(m) == [{"mot": "forets", "forme": "forêts", "textes": 2, "dossiers": ["D-OLD", "D-PPL"]},
+                         {"mot": "domaniales", "forme": "domaniales", "textes": 1, "dossiers": ["D-OLD"]}]
+    assert m["couverture"]["statut"] == "complet"
+

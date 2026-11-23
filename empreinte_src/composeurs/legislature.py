@@ -15,7 +15,7 @@ Ce que le composeur ne fait pas : il ne déduit rien que les règles ne disent p
 déclarées dans les fichiers : l'**initiateur** d'un texte est lu dans l'identifiant du texte
 déposé (`PRJL` = gouvernement ; `PION`/`PNRE` déposé à l'Assemblée = députés, au Sénat =
 sénateurs), faute de règle R-INITIATEUR ; la **date de dépôt** est celle du premier acte de
-dépôt du dossier. Ni nuage de mots ni place médiane d'un groupe : aucune règle ne les donne
+dépôt du dossier. Pas de place médiane d'un groupe : aucune règle ne la donne
 (voir `LIMITES`). Le **terme légal** (date à laquelle le mandat devait finir, hors dissolution)
 vient de R-LEGISLATURES (code électoral, L.O. 121) et est servi dans l'en-tête.
 
@@ -28,6 +28,8 @@ avec le compte.
 from __future__ import annotations
 
 import datetime as dt
+import re
+from collections import Counter, defaultdict
 
 from ..perimetre import LEGISLATURES, LEGISLATURES_GOUVERNEMENTS
 
@@ -79,10 +81,6 @@ LIMITES = [
                "des dossiers sans texte déposé : ils sont écartés des textes de la législature "
                "(leur nombre est donné avec la section), et leur rattachement à une commission "
                "n'est pas lu."},
-    {"sujet": "nuage_de_mots", "statut": "non_collecte",
-     "detail": "Pas de nuage de mots des titres : aucune règle publiée ne normalise les mots, et "
-               "les titres portent des formules de procédure (« visant à », « autorisant "
-               "l'approbation de l'accord ») qui domineraient le nuage."},
     {"sujet": "place_mediane", "statut": "non_collecte",
      "detail": "La place médiane d'un groupe dans l'hémicycle n'est donnée par aucune règle : seuls "
                "les sièges sont servis."},
@@ -253,6 +251,7 @@ def composer_legislature(ctx, ecr, leg: dict):
     _section_ordre_du_jour(ctx, f, leg, au, lic)
     textes = _section_textes(ctx, f, leg, au, lic)
     _section_commissions(ctx, f, leg, au, lic, textes)
+    _section_mots_titres(ctx, f, leg, au, lic, textes)
     f.entete({"couverture_regles": _couverture_regles(ctx)})
 
 
@@ -679,8 +678,8 @@ def _section_textes(ctx, f, leg, au, lic) -> list[dict]:
               f"non établie ». Étape établie pour {_fr(eta)}, initiateur pour {_fr(ini)}, sort "
               f"connu pour {_fr(connu)} (les autres : navette en cours ou texte non examiné). "
               f"{_fr(sum(e['dossiers'] for e in ecartes))} dossiers sans texte déposé (rapports, "
-              "missions, engagements de responsabilité…) sont écartés. Pas de nuage de mots : "
-              "aucune règle publiée ne le fait. Les textes du seul Sénat ne sont pas lus.")
+              "missions, engagements de responsabilité…) sont écartés. Les textes du seul Sénat ne "
+              "sont pas lus.")
     # Poids (cahier 4.7) : les textes seulement déposés, au sort non connu (les trois quarts),
     # ne sont affichés qu'en décompte ; leur liste est à part, par année de dépôt.
     seulement_deposes = [l for l in lignes if l["etape"] == "depot" and l["sort"] == "non_connu"]
@@ -761,3 +760,74 @@ def _couverture_regles(ctx) -> list[dict]:
         r = _regle(ctx, vue)
         out.append({"sortie": vue, "regle": r, "presente": r is not None})
     return out
+
+
+# --------------------------------------------------------------------------- mots des titres
+
+COLS_MOTS_TITRES = ["mot", "forme", "textes", "dossiers"]
+NB_MOTS_TITRES = 100
+_LETTRES = re.compile(r"[^\W\d_]+")
+
+
+def _normalisation_titres(ctx) -> dict[str, list[str]]:
+    """La normalisation déclarée (`references/mots_titres/`, issue #82) : `formule`, `mot_vide`,
+    `verbe_intention`. Vide sans décision : le nuage n'est alors pas composé."""
+    par: dict[str, list[str]] = defaultdict(list)
+    for d in ctx.decisions.get("normalisation_titres", []):
+        if d.get("genre") and d.get("texte"):
+            par[d["genre"]].append(str(d["texte"]))
+    return par
+
+
+def _section_mots_titres(ctx, f, leg, au, lic, textes):
+    """Nuage des mots des titres de la législature (#82) : pour chaque mot, les textes dont le titre
+    le contient, après la normalisation déclarée. Les titres ne changent pas ; chaque mot renvoie
+    aux dossiers qui le portent. Un décompte, jamais un classement de personnes."""
+    from .candidat import VIDES, _norm
+    points = _points(ctx, "an_dossiers__dossier")
+    norm = _normalisation_titres(ctx)
+    if not norm:
+        f.section("mots-titres", [], "mot_titre_legislature",
+                  couverture={"statut": "non_collecte", "detail": "Aucune normalisation des titres n'est "
+                              "décidée (références `normalisation_titres`) : pas de nuage de mots.",
+                              "points_acces": points},
+                  colonnes=COLS_MOTS_TITRES)
+        return
+    # Formules : la plus longue d'abord (« proposition de loi organique » avant « proposition de loi »).
+    formules = sorted({" " + " ".join(_LETTRES.findall(_norm(x))) + " " for x in norm.get("formule", [])},
+                      key=len, reverse=True)
+    ecartes = VIDES | {_norm(x) for k in ("mot_vide", "verbe_intention") for x in norm.get(k, [])}
+    par_mot: dict[str, set] = defaultdict(set)
+    formes: dict[str, Counter] = defaultdict(Counter)
+    for t in textes:
+        titre = t.get("titre") or ""
+        brut = _LETTRES.findall(titre.lower())
+        cle = " " + " ".join(_norm(w) for w in brut) + " "
+        for fo in formules:
+            cle = cle.replace(fo, " ")
+        gardes = {w for w in cle.split() if len(w) >= 3 and w not in ecartes}
+        for w in brut:
+            n = _norm(w)
+            if n in gardes:
+                formes[n][w] += 1
+        for n in gardes:
+            par_mot[n].add(t["dossier"])
+    lignes = [{"mot": m, "forme": formes[m].most_common(1)[0][0] if formes[m] else m,
+               "textes": len(ds), "dossiers": sorted(ds)}
+              for m, ds in par_mot.items()]
+    lignes.sort(key=lambda r: (-r["textes"], r["mot"]))
+    lignes = lignes[:NB_MOTS_TITRES]
+    n_textes = len(textes)
+    f.section("mots-titres", lignes, "mot_titre_legislature",
+              ids={"autre": "mot"},
+              couverture={"statut": "complet", "numerateur": len(lignes), "denominateur": len(par_mot),
+                          "detail": f"Les {_fr(len(lignes))} mots les plus fréquents (sur {_fr(len(par_mot))}) "
+                                    f"des titres des {_fr(n_textes)} textes de la législature, après la "
+                                    "normalisation déclarée en méthodologie : formules de procédure, mots "
+                                    "vides et verbes d'intention écartés. Chaque mot renvoie aux dossiers "
+                                    "qui le portent.",
+                          "points_acces": points},
+              colonnes=COLS_MOTS_TITRES,
+              extra={"ordre": "nombre de textes décroissant, puis mot", "au": au,
+                     "normalisation": "references/mots_titres/normalisation.yaml"})
+

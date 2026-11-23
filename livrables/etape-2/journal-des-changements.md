@@ -1270,3 +1270,13 @@ Branche `etape-2-referentiel-sources`, issue #73 (`besoin-interface`) ; s'appuie
 | Nouveau type de décision `nom_point_acces` : `references/nom_point_acces/table.yaml`, 57 noms proposés par l'agent (« Organisme — ce qu'on y lit »), **à relire par la propriétaire** dans la PR ; un test vérifie que la table nomme chaque point de la configuration, une fois | le nom affiché est un choix éditorial (issue #73) | 1 (1.3.3 : types de décision) |
 
 Essais 45208281111 (56 points) puis 45219130978 (branche à jour de `main`, 57 points, entrepôt g23) : **publication autorisée** ; 73 fiches, 2 952 744 faits publiés, pic 6,5 Go. `sources.json.gz` : 57 points, tous nommés, aucun nom sans point ; date de la donnée à la source connue pour 50 ; mêmes dates que `couverture.json.gz`. Le second essai a rencontré une vraie panne du portail du Parlement européen (`pe-eurodeputes`, `pe-votes` : délai dépassé) : date de la source vide (« relevé de cette nuit en échec »), dernier relevé réussi du 22/11, 13 sections en `panne` dans les manques. Aucun avertissement nouveau.
+
+## Mots des titres d'une législature : nuage de mots (23/11/2026)
+
+Branche `etape-2-mots-titres`, issue #82.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Référence `normalisation_titres` (`references/mots_titres/normalisation.yaml`) : formules de procédure retirées en entier (« proposition de loi », « visant à », « autorisant l'approbation de l'accord »…), mots vides propres aux titres, verbes d'intention ; proposition à relire par la propriétaire | les titres sont dominés par la procédure (nuit g20 : « loi » dans 2 409 titres sur 12 755, « proposition » 2 000, « visant » 1 206, « contre » 841, « renforcer » 510) | — |
+| Fiche législature : section `mots-titres`, les 100 mots les plus fréquents des titres des textes de la législature, chacun avec sa forme accentuée la plus fréquente, le nombre de textes et la liste de ses dossiers ; sans référence, la section est vide et dit « non collecté » ; la limite « nuage de mots » est retirée ; schéma C4 mis à jour | besoin de l'interface (#82) : chaque mot renvoie aux dossiers qui le portent ; changer la table ne demande ni recollecte ni perte | — |
+| Page de méthodologie : sous-section « Mots des titres d'une législature », la normalisation déclarée | la normalisation est déclarée dans la méthodologie (contrainte de l'issue) | — |
