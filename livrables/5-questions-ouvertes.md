@@ -150,6 +150,37 @@ défaut peut rester.
   propriétaire peut, par décision, les borner à la fin du gouvernement ou les faire signaler à
   la source.
 
+### Q45. Lois du JO absentes des archives de l'Assemblée : comment les déclarer expliquées ?
+
+- **Constat** (23/11/2026, alerte #146, g20) : une fois corrigée la lecture des travaux
+  préparatoires (lecteur `jo_actes` version 3 : le JO les publie souvent dans le bloc des
+  signataires), A3 nomme 59 lois du JO absentes de l'Assemblée et non reliées à un dossier
+  (52 de la XIVe, 7 de la XVe ; liste au journal des changements). Ce sont des écarts réels de
+  la source : les documents de l'Assemblée que le JO cite n'existent dans aucune archive de
+  l'Assemblée (archives brutes relues), et toutes ces lois viennent d'un texte engagé sous la
+  législature précédente. Les archives de la XIVe et de la XVe sont closes : la liste ne bougera
+  plus. L'explication `avant_les_travaux_au_jo` (Q43, 49 lois) reposait sur l'erreur de lecture
+  et ne couvre plus rien.
+- **Bloque** : la fusion de la correction de lecture sans que l'avertissement passe de 11 à 59
+  noms ; A3 ne doit nommer que l'inexpliqué (décision du 13 au 15/11).
+- **Options** :
+  1. *Déclaration par référence* : le type `rattachement_loi`, prévu au doc. 1 (1.3.3 : « une
+     loi que R-LOI-DOSSIER ne rattache pas à son dossier ») et à la recette (T18) mais jamais
+     créé. Un fichier, une entrée par loi (sur le modèle de `adresse_citee`) : numéro de la loi,
+     `dossier` (un `DLR…` si on le retrouve, sinon `aucun`), cause (`absente_des_archives_de_l_assemblee`),
+     documents cherchés. A3 les compte (`expliquees_par_reference`) sans les nommer ; une entrée
+     qui ne s'applique plus (loi apparue à l'Assemblée, ou reliée par R-LOI-DOSSIER) est nommée
+     par A7, comme `borne_mandat`. Chaque cas est vu une fois ; un cas nouveau (XVIIe → XVIIIe)
+     est nommé jusqu'à sa déclaration.
+  2. *Explication automatique* : une loi engagée sous la législature précédente dont aucun
+     document cité n'existe à l'Assemblée est comptée. Rien à tenir, mais la date d'engagement
+     est lue dans le texte des travaux, et un cas nouveau serait compté sans que personne le voie.
+  3. *Rien* : les 59 lois sont nommées chaque nuit (liste longue et immobile, écartée pour Q43).
+- **Recommandation** : option 1, livrée dans la même PR que la correction de lecture, avec les
+  59 déclarations à valider ; l'explication `avant_les_travaux_au_jo` est alors retirée.
+- **En attendant** : la correction de lecture n'est pas fusionnée ; sur `main`, A3 nomme
+  toujours les 11 lois de l'alerte #146.
+
 ---
 
 ## C — Réglages (le défaut peut rester)

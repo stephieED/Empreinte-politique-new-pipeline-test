@@ -625,10 +625,13 @@ class Controles:
           **expliquée** (`reliees_par_le_jo`) ;
         - une loi du JO absente de l'Assemblée, sans travaux préparatoires et promulguée avant la
           première loi du périmètre que le JO publie avec les siens, est **expliquée**
-          (`avant_les_travaux_au_jo` : le JO ne les publiait pas encore ; 49 lois de la XIVe,
-          avant le 08/12/2015, mesuré sur la g14) ;
+          (`avant_les_travaux_au_jo` ; 49 lois de la XIVe sur la g14). Le JO les publiait en fait
+          dans le bloc des signataires : lues depuis le lecteur `jo_actes` version 3 (issue #146),
+          aucune loi n'est plus dans ce cas (g20) ;
         - toute autre loi du JO absente de l'Assemblée est **nommée**, avec la raison de
-          R-LOI-DOSSIER (11 sur la g14 : 3 de la XIVe, 8 de la XVe) ;
+          R-LOI-DOSSIER (g20, lecteur version 3 : 59, 52 de la XIVe et 7 de la XVe, toutes
+          engagées sous la législature précédente et absentes des archives de l'Assemblée ;
+          comment les déclarer expliquées : doc. 5, Q45) ;
         - une loi de l'Assemblée absente du JO est nommée (aucune sur la g14), si le JO couvre sa
           date.
         Les décomptes par législature sont toujours dans le détail."""

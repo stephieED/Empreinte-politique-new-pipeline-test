@@ -52,18 +52,30 @@ Travaux préparatoires (`travaux_preparatoires`, version 2, issue #35) : le bloc
 parlementaire du Sénat. Seul moyen de relier une loi à son dossier de l'Assemblée quand aucune
 archive de l'Assemblée ne publie la promulgation (17 dossiers de la XIVe : R-LOI-DOSSIER) ;
 l'Assemblée ne publie pas de NOR dans ses documents. Rien n'est déduit ici : la législature d'un
-numéro est l'affaire de la règle.
+numéro, quand le JO ne la nomme pas, est l'affaire de la règle.
+
+Version 3 (issue #146, 23/11/2026) : quand le bloc `TP` est vide, les travaux préparatoires sont
+lus à la fin du bloc des signataires, à partir de la ligne qui les annonce (« (1) Travaux
+préparatoires : loi n° … », « (1) Loi n° … ― Travaux préparatoires : »), ou à défaut du premier
+intitulé de chambre (« Sénat : »). C'est là que le JO les publie pour la plupart des lois d'avant
+2016 et pour quelques-unes depuis (2016-113, 2019-127, 2019-284) ; aucune loi n'en a aux deux
+endroits. La colonne `bloc` dit d'où vient la ligne (`TP` ou `SIGNATAIRES`). La législature que le
+JO nomme parfois (« Proposition de loi n° 4348 (quatorzième législature) », « Assemblée nationale
+(treizième législature) : ») est gardée (`legislature`) ; un texte adopté écrit « (TA, n° 671) »
+est lu comme « (TA n° 671) ».
 
 Adresse publique : `https://www.legifrance.gouv.fr/jorf/id/{JORFTEXT…}` (acte, liens, plan) ;
 `ID_ELI` du sommaire pour un numéro du JO.
 """
 from __future__ import annotations
 
+import re
+
 import pyarrow as pa
 from lxml import etree
 
 NOM = "jo_actes"
-VERSION = 2
+VERSION = 3
 TYPES = ("jorf",)
 
 SENTINELLE = "2999-01-01"
@@ -110,7 +122,8 @@ TABLES = {
     "travaux_preparatoires": pa.schema([
         ("acte", pa.string()), ("livraison", pa.string()), ("rang", pa.int32()),
         ("chambre", pa.string()), ("nature", pa.string()), ("numero", pa.string()),
-        ("numero_ta", pa.string()), ("session", pa.string()), ("ligne", pa.string()),
+        ("numero_ta", pa.string()), ("session", pa.string()), ("legislature", pa.int32()),
+        ("ligne", pa.string()), ("bloc", pa.string()),
     ]),
     "suppression_jo": pa.schema([
         ("livraison", pa.string()), ("rang", pa.int32()), ("chemin", pa.string()),
@@ -195,31 +208,69 @@ _NATURES = (("proposition de loi", "proposition_de_loi"), ("projet de loi", "pro
             ("discussion", "discussion"), ("décision", "decision"))
 
 
-def _travaux(r, acte, livraison, url) -> list[dict]:
-    """Lignes du bloc des travaux préparatoires, telles que publiées (voir l'en-tête)."""
-    import re
+_ANNONCE = re.compile(r"travaux\s+préparatoires", re.I)
+_INTITULE_CHAMBRE = re.compile(r"^(sénat|assemblée nationale)\b[^:]{0,40}:$", re.I)
+_ORDINAUX = {"douzième": 12, "treizième": 13, "quatorzième": 14, "quinzième": 15, "seizième": 16,
+             "dix-septième": 17, "dix-huitième": 18, "xiie": 12, "xiiie": 13, "xive": 14, "xve": 15,
+             "xvie": 16, "xviie": 17, "xviiie": 18}
+_LEGISLATURE = re.compile(r"\(([\w-]+) législature\)", re.I)
+
+
+def _texte_travaux(r) -> tuple[str | None, str | None]:
+    """Texte des travaux préparatoires d'un acte et bloc d'où il vient : le bloc `TP` ; s'il est
+    vide, la fin du bloc des signataires, à partir de la première ligne qui annonce les travaux
+    préparatoires, ou à défaut du premier intitulé de chambre (« Sénat : », « Assemblée
+    nationale : ») (version 3, issue #146). Rend (None, None) s'il n'y en a nulle part."""
     texte = _texte_html(r.find("TP/CONTENU"))
+    if texte:
+        return texte, "TP"
+    sig = _texte_html(r.find("SIGNATAIRES/CONTENU"))
+    if sig:
+        lignes = sig.split("\n")
+        k = next((i for i, l in enumerate(lignes) if _ANNONCE.search(l)), None)
+        if k is None:
+            k = next((i for i, l in enumerate(lignes) if _INTITULE_CHAMBRE.match(l.strip())), None)
+        if k is not None:
+            return "\n".join(lignes[k:]), "SIGNATAIRES"
+    return None, None
+
+
+def _legislature(texte: str) -> int | None:
+    """Législature que nomme le texte (« (quatorzième législature) », « (XIIIe législature) »)."""
+    m = _LEGISLATURE.search(texte)
+    return _ORDINAUX.get(m.group(1).lower()) if m else None
+
+
+def _travaux(r, acte, livraison, url) -> list[dict]:
+    """Lignes des travaux préparatoires, telles que publiées (voir l'en-tête)."""
+    texte, bloc = _texte_travaux(r)
     if not texte:
         return []
-    out, chambre = [], None
+    out, chambre, leg_chambre = [], None, None
     for ligne in texte.split("\n"):
-        brut = ligne.strip(" -–;.")
+        brut = ligne.strip(" -–―;.")
         bas = brut.lower()
+        # L'annonce (« (1) Travaux préparatoires : loi n° … », « ― Travaux préparatoires : »)
+        # et le numéro de la loi seul (« : loi n° 2009-971 ») ne sont pas des lignes des travaux.
+        if (bas.startswith("(1)") or _ANNONCE.search(bas)
+                or re.fullmatch(r"[:\s]*loi n°\s*\d{4}-\d+", bas)):
+            continue
         if bas.endswith(":") and len(bas) < 60:
             chambre = next((c for m, c in _CHAMBRES if m in bas), bas.rstrip(" :"))
-            continue
-        if bas.startswith("(1)") or bas.startswith("travaux préparatoires"):
+            # « Assemblée nationale (treizième législature) : » vaut pour les lignes qui suivent.
+            leg_chambre = _legislature(bas)
             continue
         nature = next((n for m, n in _NATURES if bas.startswith(m) or f" {m}" in bas[:40]), "autre")
-        ta = re.search(r"\bTA n°\s*(\d+)", brut)
-        sans_ta = re.sub(r"\bTA n°\s*\d+", "", brut)
+        ta = re.search(r"\bTA,?\s*n°\s*(\d+)", brut)
+        sans_ta = re.sub(r"\bTA,?\s*n°\s*\d+", "", brut)
         num = re.search(r"n°\s*(\d+)", sans_ta)
         session = re.search(r"\((\d{4}-\d{4})\)", brut)
         out.append({"acte": acte, "livraison": livraison, "rang": len(out), "chambre": chambre,
                     "nature": nature, "numero": num.group(1) if num else None,
                     "numero_ta": ta.group(1) if ta else None,
-                    "session": session.group(1) if session else None, "ligne": brut,
-                    "prov_url": url})
+                    "session": session.group(1) if session else None,
+                    "legislature": _legislature(brut) or leg_chambre, "ligne": brut,
+                    "bloc": bloc, "prov_url": url})
     return out
 
 
