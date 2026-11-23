@@ -6,6 +6,9 @@ spécification qu'il illustre, sous un intertitre « En image ». Les numéros d
 document 1 n'ont pas changé ; en cas d'écart entre un schéma et la spécification, c'est la
 spécification qui fait foi.
 
+Les six écarts entre schémas et spécification relevés à la fusion (PR #104) ont été
+corrigés le 23/11/2026 d'après le code de `main` ; voir le journal de l'étape 2.
+
 | Ancienne section | Où elle est maintenant |
 | --- | --- |
 | 7.1 Le modèle en une image | doc. 1, [Le modèle en une image](1-modele-de-donnees.md#le-modele-en-une-image), en tête du document |
