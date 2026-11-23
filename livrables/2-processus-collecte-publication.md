@@ -300,7 +300,8 @@ Particularités par source (le traitement complet de chaque piège est dans le d
 | Sénat | export complet chaque soir (régénéré vers 03 h 17 UTC) ; plancher de taille et nombre de tables (95) ; la table de présence `activite_participant` est écartée au découpage |
 | Wikipédia | numéro de révision de l'article ; on ne relit la section que si la révision a changé. Complétude : nombre de candidats extraits = nombre de lignes du tableau, sinon relevé `suspect` ; un titre qui mène à une page d'homonymie (`pageprops`) part en relecture |
 | Sycomore, Wikidata | à l'arrivée d'une personne dans le périmètre, puis une fois par an |
-| Répertoire national des élus | chaque semaine : l'identifiant de ressource change à chaque publication, on le relit depuis la fiche du jeu ; seules les ressources des mandats locaux (pas celles des députés, sénateurs, eurodéputés) |
+| Répertoire national des élus | chaque nuit, par requête conditionnelle (11 × 304 en ≈ 10 s quand rien ne change) ; l'identifiant de ressource **ne change pas** d'une publication à l'autre (mesuré aux publications du 11/08 et du 20/11/2026), l'adresse `/datasets/r/<id>` suit le fichier du jour ; seules les ressources des mandats locaux (pas celles des députés, sénateurs, eurodéputés) ; l'entrepôt garde chaque version, ce qui date la fin d'un mandat disparu (Q49) |
+| Wikidata, fonctions P39 des candidats (`wd-fonctions-candidats`) | chaque nuit, une requête pour les éléments de la liste ; réponse gardée sous forme canonique (Q40), versionnée si elle change (Q52) |
 | Finances, Drees, Unédic | chaque semaine, comparaison d'empreinte (republications silencieuses). Un lecteur par format, reconnu à l'empreinte de schéma (11 formats de crédits) ; classeur Drees retrouvé sur la page du jeu à chaque édition ; licence lue jeu par jeu dans le catalogue (sans licence : non collecté). Exécution 2021-2022 publiée en PDF : `non_collecte`. Séries mensuelles antérieures à 2024 (absentes de l'API, mesuré le 04/11/2026) et budget de l'année (seulement sur `budget.gouv.fr`) : `trou_source` |
 | Pages publiques de l'Assemblée | tirage au sort de 40 faits par mise à jour pour la vérification croisée (E6) |
 
@@ -485,6 +486,7 @@ daté, public.
 | A5 Famille à zéro pour tout le monde | (cas non bloquant : famille nouvelle ou optionnelle) |
 | A6 Couverture insuffisante | candidats sans fiche, personnes sans prise de parole sur une période couverte, groupes dont trop peu de membres ont des données |
 | A7 Entrées non résolues | files de relecture non vides, décisions qui ne s'appliquent plus, fin ou ouverture d'une législature détectée (doc. 1, 1.8) |
+| A10 Mandats locaux : homonymes non rattachés | le nom, le prénom et la date de naissance d'un candidat désignent deux élus de collectivités différentes dans un fichier où une personne n'a qu'un siège ; aucun n'est rattaché (Q53, module `controles_mandats_locaux`) |
 | A8 Mandat ouvert dans un organe clos | mandat sans date de fin dans un organe qui en a une (7 mandats GOUVERNEMENT dans le gouvernement Bayrou, clos le 09/09/2025 ; AMO30 du 03/11/2026) |
 
 ### 2.8.3 À la main, sans rien publier

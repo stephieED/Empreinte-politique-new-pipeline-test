@@ -37,7 +37,7 @@ from ..perimetre import LEGISLATURES, LEGISLATURES_GOUVERNEMENTS
 from .r_candidatures import vue_ou_vide
 
 NOM = "R-CARRIERE"
-VERSION = 4
+VERSION = 5
 DEPEND = ("R-IDENTITE", "R-MANDAT-LOCAL", "R-DEPUTES", "R-APPARTENANCE", "R-COMPOSITION", "R-GOUVERNEMENTS",
           "R-HEMICYCLE")
 SORTIES = ("carriere", "couverture_carriere")
@@ -49,7 +49,8 @@ DESCRIPTION = (
     "dates. Un député entré au gouvernement "
     "voit son mandat suspendu, pas terminé : la frise le montre. Le groupe affiché est celui "
     "auquel il appartenait à chaque date, et pour le Sénat avec le nom que le groupe portait "
-    "alors. Les mandats locaux viennent du Répertoire national des élus, depuis 2020. Les mandats de "
+    "alors. Les mandats locaux viennent du Répertoire national des élus, depuis 2020 ; les mandats "
+    "locaux plus anciens ou terminés, de Wikidata, qui les déclare. Les mandats de "
     "député antérieurs à juin 2002 viennent de Sycomore, la base historique de l'Assemblée, dont nous "
     "ne reprenons que les faits (dates, département, groupe), avec le lien de la fiche.")
 DEBUT_ARCHIVE = "2002-06-19"
@@ -120,12 +121,13 @@ def appliquer(ctx):
     loc = vue_ou_vide(ctx, "mandat_local_candidat", {
         "per": "VARCHAR", "fonction": "VARCHAR", "collectivite": "VARCHAR", "debut": "VARCHAR",
         "fin": "VARCHAR", "fin_raison": "VARCHAR", "fichier": "VARCHAR", "code_collectivite": "VARCHAR",
-        "source_url": "VARCHAR", "methode": "VARCHAR"})
+        "source_url": "VARCHAR", "methode": "VARCHAR", "mandat_id": "VARCHAR", "source": "VARCHAR",
+        "nature_periode": "VARCHAR", "fin_nature": "VARCHAR", "declare_par": "VARCHAR"})
+    rech = vue_ou_vide(ctx, "mandat_local_recherche", {
+        "per": "VARCHAR", "raison": "VARCHAR", "elus_de_ce_nom": "BIGINT", "identite_recherchable": "BOOLEAN"})
     # Identité recherchable dans le répertoire : nom, prénom et naissance connus, ou une décision.
     ctx.x(f"""CREATE OR REPLACE TEMP TABLE _car_loc_id AS
-        SELECT DISTINCT per FROM personne_identite
-        WHERE naissance IS NOT NULL AND nom IS NOT NULL
-        UNION SELECT DISTINCT per FROM {loc}""")
+        SELECT per, raison, elus_de_ce_nom FROM {rech}""")
 
     # Identifiant Sycomore : celui de la grande requête Wikidata (R-CANDIDATURES), sinon celui du
     # point sycomore-fiches pour l'élément retenu.
@@ -254,7 +256,8 @@ def appliquer(ctx):
                    CASE WHEN s.legislature IN ({publies}) THEN 'legislature/' || s.legislature END AS lien,
                    'an' AS source, s.etat, NULL::VARCHAR AS qualite, s.mandat, s.acteur,
                    s.circonscription, s.cause_fin, s.fin_raison,
-                   coalesce(s.source_url, '{URL_DEPUTE}' || s.acteur) AS source_url
+                   coalesce(s.source_url, '{URL_DEPUTE}' || s.acteur) AS source_url,
+                   NULL::VARCHAR AS nature_periode, NULL::VARCHAR AS fin_nature, NULL::VARCHAR AS declare_par
             FROM _car_an_seg s
             LEFT JOIN (SELECT acteur, any_value(civilite) AS civilite FROM (SELECT uid AS acteur, civilite FROM {ident_an}) GROUP BY 1) i
               ON i.acteur = s.acteur
@@ -267,7 +270,7 @@ def appliquer(ctx):
                    CASE WHEN m.gouvernement IN (SELECT gouvernement FROM gouvernement_legislature
                                                 WHERE legislature IN ({gouv_publies}))
                         THEN 'gouvernement/' || g.adresse END,
-                   'an', 'en_fonction', m.qualite, m.mandat, m.acteur, NULL, NULL, NULL, m.source_url
+                   'an', 'en_fonction', m.qualite, m.mandat, m.acteur, NULL, NULL, NULL, m.source_url, NULL, NULL, NULL
             FROM membre_gouvernement m JOIN _car_c c ON c.acteur = m.acteur
             LEFT JOIN gouvernement g ON g.organe = m.gouvernement
             WHERE m.debut IS NOT NULL),
@@ -278,7 +281,7 @@ def appliquer(ctx):
                    NULL::INTEGER, NULL, s.groupe, s.sigle, s.groupe_libelle,
                    coalesce(s.groupe_statut, 'non_etabli'), NULL::INTEGER, NULL, NULL, NULL,
                    'senat', s.etat, NULL, s.mandat, s.acteur, s.circonscription, s.cause_fin, NULL,
-                   s.source_url
+                   s.source_url, NULL, NULL, NULL
             FROM (SELECT * FROM {segments("_car_sen", "_car_gsen")}
                   UNION ALL BY NAME
                   SELECT *, NULL::VARCHAR AS groupe, NULL::VARCHAR AS sigle,
@@ -294,7 +297,7 @@ def appliquer(ctx):
                    || CASE WHEN s.represente IS NOT NULL AND s.represente <> 'FRA' THEN ' · ' || s.represente ELSE '' END,
                    NULL::INTEGER, NULL, s.groupe, s.sigle, s.groupe_libelle,
                    coalesce(s.groupe_statut, 'non_etabli'), NULL::INTEGER, NULL, NULL, NULL,
-                   'pe', s.etat, NULL, s.mandat, s.acteur, NULL, NULL, NULL, s.source_url
+                   'pe', s.etat, NULL, s.mandat, s.acteur, NULL, NULL, NULL, s.source_url, NULL, NULL, NULL
             FROM {segments("_car_pe", "_car_gpe")} s
             LEFT JOIN (SELECT personne, any_value(genre) AS genre FROM {pe_fiche} GROUP BY 1) f
               ON f.personne = s.acteur),
@@ -305,21 +308,21 @@ def appliquer(ctx):
                    NULL::INTEGER, NULL, NULL, NULL, m.groupe,
                    CASE WHEN m.groupe IS NULL THEN 'non_etabli' ELSE 'groupe' END, NULL::INTEGER, NULL,
                    NULL, NULL, 'sycomore', 'en_fonction', NULL, 'sycomore:' || m.identifiant || ':' || m.debut,
-                   NULL, m.departement, NULL, NULL, m.prov_url
+                   NULL, m.departement, NULL, NULL, m.prov_url, NULL, NULL, NULL
             FROM {syc} m JOIN _car_c c ON c.sycomore = m.identifiant
             WHERE m.chambre = 'assemblee' AND m.debut IS NOT NULL AND m.debut < '{DEBUT_ARCHIVE}'),
         loc AS (
             SELECT l.per, 'local', l.debut::DATE, coalesce(l.fin::DATE, {FIN_OUVERTE}),
                    l.fonction || CASE WHEN l.collectivite IS NOT NULL THEN ' · ' || l.collectivite ELSE '' END,
                    NULL::INTEGER, NULL, NULL, NULL, NULL, 'sans_objet', NULL::INTEGER, NULL, NULL, NULL,
-                   'rne', 'en_fonction', NULL, l.fichier || ':' || coalesce(l.code_collectivite, ''), NULL,
-                   NULL, NULL, l.fin_raison, l.source_url
+                   l.source, 'en_fonction', NULL, l.mandat_id, NULL,
+                   NULL, NULL, l.fin_raison, l.source_url, l.nature_periode, l.fin_nature, l.declare_par
             FROM {loc} l WHERE l.debut IS NOT NULL)
         SELECT per, institution, strftime(d0, '%Y-%m-%d') AS debut,
                CASE WHEN d1 < {FIN_OUVERTE} THEN strftime(d1, '%Y-%m-%d') END AS fin,
                libelle, legislature, gouvernement, groupe, groupe_sigle, groupe_libelle, groupe_statut,
                siege, siege_date, raison_siege, lien, source, etat, qualite, mandat, acteur,
-               circonscription, cause_fin, fin_raison, source_url
+               circonscription, cause_fin, fin_raison, source_url, nature_periode, fin_nature, declare_par
         FROM (SELECT * FROM an UNION ALL SELECT * FROM gv UNION ALL SELECT * FROM sen
               UNION ALL SELECT * FROM pe UNION ALL SELECT * FROM loc UNION ALL SELECT * FROM syc)
         ORDER BY per, debut, institution""")
@@ -345,7 +348,9 @@ def appliquer(ctx):
                                      WHEN NOT {str(bool(senat_collecte)).lower()} THEN 'non_collecte'
                                      WHEN n.lignes > 0 THEN 'complet' ELSE 'non_etabli' END
               WHEN 'local' THEN CASE WHEN NOT {str(bool(rne_collecte)).lower()} THEN 'non_collecte'
-                                     WHEN c.per NOT IN (SELECT per FROM _car_loc_id) THEN 'non_etabli'
+                                     WHEN lr.raison IN ('aucun_elu_de_ce_nom', 'homonyme_non_rattache',
+                                                        'ambigu_non_rattache') OR lr.raison IS NULL
+                                     THEN 'non_etabli'
                                      ELSE 'partiel' END
               WHEN 'parlement_europeen' THEN CASE WHEN c.eurodepute IS NULL THEN 'aucun_identifiant'
                                      WHEN NOT {str(bool(pe_collecte)).lower()} THEN 'non_collecte'
@@ -373,12 +378,16 @@ def appliquer(ctx):
                                      WHEN n.lignes > 0 THEN 'Mandats de député européen du portail du Parlement européen, toutes législatures.'
                                      ELSE 'Identifiant européen déclaré, aucun mandat lu dans le portail du Parlement européen.' END
               WHEN 'local' THEN CASE WHEN NOT {str(bool(rne_collecte)).lower()} THEN 'Répertoire national des élus non collecté.'
-                                     WHEN c.per NOT IN (SELECT per FROM _car_loc_id) THEN 'Date de naissance inconnue de nos sources : un élu du répertoire, qui n''a pas d''identifiant, ne peut pas être rattaché à cette personne sans décision.'
-                                     WHEN n.lignes > 0 THEN 'Mandats en cours et mandats municipaux 2020-2026 du Répertoire national des élus, rattachés par ' || CASE WHEN c.per IN (SELECT per FROM {loc} WHERE methode = 'decision') THEN 'une décision (date de naissance inconnue de nos autres sources)' ELSE 'le nom, le prénom et la date de naissance' END || ' ; avant 2020 : hors source. La fin d''un mandat municipal de 2020 est déduite au 15/03/2026.'
-                                     ELSE 'Aucun mandat dans ce que couvre le Répertoire national des élus (mandats en cours, mandats municipaux 2020-2026) ; avant 2020 et autres mandats terminés : hors source.' END
+                                     WHEN lr.raison = 'aucun_elu_de_ce_nom' THEN 'Date de naissance inconnue de nos sources ; aucun élu de ce nom dans le Répertoire national des élus.'
+                                     WHEN lr.raison = 'homonyme_non_rattache' THEN 'Date de naissance inconnue de nos sources ; homonyme non rattaché : ' || lr.elus_de_ce_nom || CASE WHEN lr.elus_de_ce_nom > 1 THEN ' élus' ELSE ' élu' END || ' de ce nom dans le Répertoire national des élus, qui n''a pas d''identifiant : aucun n''est rattaché sans décision.'
+                                     WHEN lr.raison = 'ambigu_non_rattache' THEN 'Homonyme non rattaché : le nom, le prénom et la date de naissance désignent deux élus distincts dans le Répertoire national des élus ; aucun n''est rattaché sans décision.'
+                                     WHEN lr.raison IS NULL THEN 'Identité non établie.'
+                                     WHEN n.lignes > 0 THEN 'Mandats en cours et mandats municipaux 2020-2026 du Répertoire national des élus, rattachés par ' || CASE WHEN c.per IN (SELECT per FROM {loc} WHERE methode = 'decision') THEN 'une décision (date de naissance inconnue de nos autres sources)' ELSE 'le nom, le prénom et la date de naissance' END || ' ; la fin d''un mandat municipal de 2020 est déduite au 15/03/2026, celle d''un mandat disparu du répertoire est observée entre deux relevés. Mandats plus anciens ou terminés : ceux que déclare Wikidata, signalés comme tels.'
+                                     ELSE 'Aucun mandat dans ce que couvre le Répertoire national des élus (mandats en cours, mandats municipaux 2020-2026) ; mandats plus anciens ou terminés : ceux que déclare Wikidata, signalés comme tels.' END
               ELSE 'Mandats locaux : non collectés dans l''essai.' END AS detail
         FROM c CROSS JOIN i
         LEFT JOIN n ON n.per = c.per AND n.institution = i.institution
+        LEFT JOIN _car_loc_id lr ON lr.per = c.per
         ORDER BY c.per, i.institution""")
 
     n = ctx.un("SELECT count(*) FROM _car_c")
