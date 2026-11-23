@@ -539,7 +539,7 @@ def _proposes(ctx, f, l, ms, anciens, commun, idx):
 
 COLS_AMENDEMENTS = ["amendement", "numero_long", "date_depot", "sort", "famille_sort", "commission",
                     "commission_libelle", "dossier", "titre_dossier", "document", "article_designation",
-                    "acteur", "nom", "source_url", "licence"]
+                    "acteur", "nom", "source_url", "raison_source_url", "licence"]
 COLS_AGREGATS = ["commission", "commission_libelle", "annee", "nb_amendements", "nb_dossiers_distincts",
                  "nb_irrecevables_40", "nb_irrecevables_45", "nb_signatures_cosignataire", "au"]
 

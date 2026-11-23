@@ -786,6 +786,7 @@ colonnes:
   - acteur
   - nom
   - source_url
+  - raison_source_url
   - licence
   lignees/amendements-N-N:
   - amendement
@@ -802,6 +803,7 @@ colonnes:
   - acteur
   - nom
   - source_url
+  - raison_source_url
   - licence
   lignees/avec-qui-N:
   - maillon

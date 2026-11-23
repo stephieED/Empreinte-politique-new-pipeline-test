@@ -1019,6 +1019,17 @@ Branche `etape-2-c1-identite-enrichie`, alerte #148, décision du 15/11/2026 (do
 | --- | --- | --- |
 | C1 : un fait absent de la nuit n'est pas perdu si la même fiche porte un fait nouveau, de même type, qui garde tous ses identifiants inchangés et en ajoute (appariement sur son premier identifiant, dans les seules fiches touchées : mémoire bornée) ; compté dans `expliques.c1_identite_enrichie` | nuit du 15/11/2026 (run 43758857473) refusée à tort : les actes des lois 2010-837 et 2010-838, arrivés au JO cette nuit-là (absents de la g14), identifient la loi citée par des actes des gouvernements Attal, Castex et Philippe II ; les 4 faits gagnent `id_acte`, `loi_jorf` et un lien Légifrance, les fiches gardent leur nombre de faits (59, 108, 124). Rejoué en local sur les faits de la g14 et de la nuit : 4 identités enrichies, plus de refus (8 s ; pic 3,9 Go, contre 3,2 Go sans le correctif) | 2 (C1) |
 
+## Liens des amendements de la XIVe (16/11/2026)
+
+Branche `etape-2-liens-amendements-xiv`, constat fait en route sur #63 (relecture des signataires), correction demandée par la propriétaire le 15/11/2026.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| R-AMENDEMENT (version 4) : adresse publique d'un amendement de la XIVe = page de l'ancien site (`https://www.assemblee-nationale.fr` + `document_uri`, `.asp` au lieu de `.pdf`) ; sans lien, avec `raison_source_url = page_non_publiee_par_l_assemblee`, pour un amendement sans date de publication qui n'est pas irrecevable ; `adresse_sql` et `raison_adresse_sql` | les 151 293 amendements de la XIVe servis (g14) avaient pour source `/dyn/14/amendements/<uid>`, qui répond 404. Mesuré sur 108 pages de l'ancien site : discutés et à discuter 46 sur 46, irrecevables 34 sur 38 (3 introuvables, 1 délai dépassé), retirés 16 sur 38 ; un retiré avec date de publication a sa page (10 sur 10), sans date non (9 sur 10). En local (g10) : 161 869 amendements de la XIVe avec lien, 5 551 sans (raison donnée) ; XVIIe inchangée. Reste : ≈ 8 % de liens morts parmi les irrecevables, qu'aucun champ ne distingue | 1 (R-AMENDEMENT) |
+
+| Fiches de groupe (lignées), sections `amendements-N` : colonne `raison_source_url` servie, schéma mis à jour | l'essai 43843521371 servait 5 512 amendements de la XIVe sans lien et sans raison sur les fiches de groupe (seules les fiches de candidat portaient la colonne) | 1 (1.7) |
+
+A9 nommera les liens vidés la première nuit (essai 43843521371 : 5 276 faits `amendement_lignee` sur 741 934) : attendu.
 ## Terme légal d'une législature (16/11/2026)
 
 Branche `etape-2-terme-legal`, issue #81.
@@ -1038,6 +1049,21 @@ Branche `etape-2-natures-parole`, issue #87.
 | Regroupement `nature_parole` (`references/regroupement/nature_parole.yaml`), 7 cases : questions au gouvernement (QG, QPM), questions orales (QOSD), textes, motion de censure, explications de vote, commission (aucun code : comptes rendus de commission non relevés), autres | issue #87 | — |
 | Forme commune : `ordre` facultatif d'une case (l'ordre de la légende peut différer de l'ordre de rangement) ; le fichier servi donne `champs`, l'ordre dans lequel le code d'une valeur est cherché | une motion de censure doit être rangée avant « Textes » mais vient après dans la légende | 1 (1.3.3) |
 
+## C1 : la ligne « Non-inscrits » reconnue sans ses sièges (23/11/2026)
+
+Branche `etape-2-c1-non-inscrits`, alerte #156.
+
+Constat : les nuits du 21 et du 22/11/2026 (g21, g22) sont refusées par C1 pour une seule « perte », la ligne « Non-inscrits » des groupes de la XVIIe (`legislature/17`, section `groupes`, `effectif_groupe`, sans identifiant). Dernière publication : g20.
+
+Cause vérifiée sur les faits publiés de la g20 et ceux de la nuit du 22/11 (run 45067231642) : la ligne passe de `"effectif":11,"au":"2026-11-20",…,"sieges_dans_l_hemicycle":11` à `"effectif":12,"au":"2026-11-22",…,"sieges_dans_l_hemicycle":12`, rien d'autre ne change (David Habib, LIOT, n'est plus dans l'hémicycle publié ; PA642905 y entre non-inscrit). C1 reconnaît un fait sans identifiant à sa valeur sans ses dates de compte ni ses compteurs `nb_…` et `effectif…` ; `sieges_dans_l_hemicycle`, égal à l'effectif, n'en faisait pas partie. Dans la g20, c'est le seul compteur hors de cette convention parmi les 1 964 faits sans identifiant (1 961 `actes_compte`, 3 lignes « Non-inscrits » des XVe à XVIIe).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| C1 : les champs de compte d'un fait sans identifiant sont nommés (`CHAMPS_DE_COMPTE`, `PREFIXES_DE_COMPTE`) ; `sieges_dans_l_hemicycle` s'y ajoute. Une ligne « Non-inscrits » qui disparaît, ou dont le sigle, le libellé ou le rattachement change, reste une perte | fausse perte à chaque arrivée ou départ d'un non-inscrit (alerte #156). Rejoué en local sur la g20 et la nuit du 22/11 : la ligne n'est plus perdue (7 s, pic 4,1 Go) | — |
+
+Essai 45190042750, sur l'entrepôt de la nuit du 22/11, comparé à la g20 : **publication autorisée**. 72 fiches, 2 971 077 faits publiés ; A2 : votes 40/40, signataires 20/20 ; calcul 10 min 36 s, pic 6,4 Go.
+
+Après la fusion de #144, #151 et #152 dans `main`, essai 45193620673 (branche à jour de `main`, même entrepôt, comparé à la g20) : **publication autorisée**, aucune anomalie C1 ; 72 fiches, 2 971 066 faits publiés ; A2 : votes 40/40, signataires 20/20 ; calcul 12 min 32 s, pic 6,4 Go. Avertissements : A3 (lois, connu) et A9 (5 276 liens `amendement_lignee.source_url` vidés, attendu par #152). Faits sans identifiant de l'essai : mêmes types que dans la g20 (1 961 `actes_compte`, 3 lignes « Non-inscrits » ; plus les 11 095 `parole_sujet`, reconnus à leur contenu), aucun n'est perdu.
 
 ## Conclusions non classées : classement décidé (23/11/2026)
 
