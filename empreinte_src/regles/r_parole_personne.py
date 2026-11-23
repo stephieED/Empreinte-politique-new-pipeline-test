@@ -11,6 +11,8 @@ comme « Mme Alice Rufo » sous celui de François Ruffin, n'est pas attribué),
 - qualité de l'orateur (R-QUALITE) et son origine (écrite par le compte rendu, ou déduite des
   fonctions à la date) ;
 - sujet (R-SUJET : le point d'ordre du jour sous le créneau) et dossier quand il est établi ;
+- `code_creneau` et `genre_point` (R-SUJET version 2) : créneau d'une question, explications de
+  vote ou motion de censure, pour le regroupement des natures de parole (#87) ;
 - `extrait` : les 300 premiers caractères du texte, espaces resserrés (`extrait_tronque` le dit) ;
 - `source_url` : le lien public **au paragraphe** (ancre `id_syceron` de la page du compte
   rendu) ;
@@ -19,7 +21,7 @@ comme « Mme Alice Rufo » sous celui de François Ruffin, n'est pas attribué),
 La règle ne compte rien par personne ; le compte des paroles est l'affaire de la fiche."""
 
 NOM = "R-PAROLE-PERSONNE"
-VERSION = 1
+VERSION = 2
 DEPEND = ("R-ORATEUR", "R-QUALITE", "R-SUJET", "R-PERIODE")
 SORTIES = ("parole_personne",)
 DESCRIPTION = (
@@ -55,7 +57,8 @@ def appliquer(ctx):
         SELECT a.acteur, a.compte_rendu, a.id_syceron, a.date,
                q.qualite, q.qualite_source, q.raison_non_etablie AS raison_qualite,
                a.preside, a.interruption,
-               s.sujet, s.statut AS statut_sujet, s.creneau, s.type_sujet, s.dossier, s.lien_dossier,
+               s.sujet, s.statut AS statut_sujet, s.creneau, s.code_creneau, s.genre_point, s.type_sujet,
+               s.dossier, s.lien_dossier,
                left(a.texte, {LONGUEUR_EXTRAIT}) AS extrait, length(a.texte) > {LONGUEUR_EXTRAIT} AS extrait_tronque,
                length(a.texte) AS longueur, per.periode, q.gouvernement_a_la_date,
                a.seance, a.ordre_absolu_seance, a.source_url

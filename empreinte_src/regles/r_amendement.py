@@ -24,11 +24,16 @@ visent un document absent des dossiers : dossier non établi.
 **Banc de l'auteur au dépôt** : la position déclarée du groupe de l'auteur à la date de dépôt
 (appartenance à la date, R-APPARTENANCE) ; « non déclaré » en XVIIe (aucun groupe ne déclare).
 
-**Adresse publique** : la source ne donne qu'un chemin relatif (`document_uri`) sans hôte. La page
-`https://www.assemblee-nationale.fr/dyn/{leg}/amendements/{uid}` redirige vers celle de
-l'amendement (vérifié le 06/11/2026 : `AMANR5L17PO838901B1839P0D1N000028` → amendement n° 28 du
-texte 1839 ; un identifiant inventé répond 404) ; la vérification croisée (A2) en relit un
-échantillon chaque nuit.
+**Adresse publique** : la source ne donne qu'un chemin relatif (`document_uri`) sans hôte. De la XVe
+à la XVIIe, la page `https://www.assemblee-nationale.fr/dyn/{leg}/amendements/{uid}` redirige vers
+celle de l'amendement (vérifié le 06/11/2026 : `AMANR5L17PO838901B1839P0D1N000028` → amendement
+n° 28 du texte 1839 ; un identifiant inventé répond 404). Pour la XIVe, cette page répond 404
+(version 4, 16/11/2026) : l'adresse est celle de l'ancien site, `document_uri` avec `.asp` au lieu
+de `.pdf`. Mesuré sur 108 amendements : discutés et à discuter 46 sur 46, irrecevables 34 sur 38,
+retirés 16 sur 38 ; un retiré avec une date de publication a sa page (10 sur 10), sans date non
+(9 sur 10). Un amendement de la XIVe sans date de publication, sauf irrecevable, n'a donc pas de
+lien (`raison_source_url = 'page_non_publiee_par_l_assemblee'`, 5 551 en XIVe). La vérification
+croisée (A2) relit chaque nuit les signataires d'un échantillon sur ces pages.
 
 Sorties :
 - `amendement_canonique` : une ligne par amendement (copies dédoublonnées), `acteur` = auteur
@@ -37,7 +42,7 @@ Sorties :
   une personne citée deux fois dans la même liste ne signe qu'une fois."""
 
 NOM = "R-AMENDEMENT"
-VERSION = 3
+VERSION = 4
 DEPEND = ("R-MATIERE", "R-APPARTENANCE")
 SORTIES = ("amendement_canonique", "amendement_auteur")
 
@@ -86,6 +91,31 @@ def table_sorts() -> str:
            ") AS t(priorite, etat_code, sous_etat, sort, famille)"
 
 
+
+def adresse_sql(t: str) -> str:
+    """Adresse publique d'un amendement (ligne `t` : `uid`, `document_uri`, `date_publication`,
+    `etat`). XVe à XVIIe : `/dyn/<législature>/amendements/<uid>`. XIVe : la page `/dyn/14/…`
+    répond 404 ; celle de l'ancien site (`document_uri`, `.asp` au lieu de `.pdf`) existe, sauf
+    pour un amendement sans date de publication qui n'est pas irrecevable (retiré avant d'être
+    publié) : pas d'adresse (version 4, 16/11/2026, voir la description du module)."""
+    leg = f"regexp_extract({t}.uid, 'R5L([0-9]+)', 1)"
+    return f"""CASE WHEN {leg} <> '14'
+                        THEN 'https://www.assemblee-nationale.fr/dyn/' || {leg} || '/amendements/' || {t}.uid
+                    WHEN {t}.document_uri LIKE '/14/amendements/%.pdf'
+                         AND ({t}.date_publication IS NOT NULL OR {t}.etat = 'Irrecevable')
+                        THEN 'https://www.assemblee-nationale.fr' || regexp_replace({t}.document_uri, '[.]pdf$', '.asp')
+               END"""
+
+
+def raison_adresse_sql(t: str) -> str:
+    """Pourquoi un amendement n'a pas d'adresse publique (voir `adresse_sql`)."""
+    leg = f"regexp_extract({t}.uid, 'R5L([0-9]+)', 1)"
+    return f"""CASE WHEN {leg} <> '14' THEN NULL
+                    WHEN {t}.document_uri IS NULL OR {t}.document_uri NOT LIKE '/14/amendements/%.pdf'
+                        THEN 'adresse_de_l_ancien_site_inconnue'
+                    WHEN {t}.date_publication IS NULL AND {t}.etat IS DISTINCT FROM 'Irrecevable'
+                        THEN 'page_non_publiee_par_l_assemblee' END"""
+
 def appliquer(ctx):
     """Applique R-AMENDEMENT : écrit `amendement_canonique` (un amendement compté une fois, son
     sort normalisé, la commission et le dossier visés) et `amendement_auteur` (ses signatures),
@@ -101,7 +131,7 @@ def appliquer(ctx):
             SELECT a.uid, a.examen, a.numero_long, a.chronotag, a.auteur, a.type_auteur, a.groupe_auteur,
                    a.date_depot, a.date_sort, a.etat_code, a.etat, a.sous_etat, a.sort, a.document,
                    a.organe_examen, a.organe_rapporteur, a.amendement_parent, a.article_designation,
-                   a.mission, a.document_uri,
+                   a.mission, a.document_uri, a.date_publication,
                    a.expose_sommaire IS NULL AND a.dispositif IS NULL AS sans_texte, s.cosignataires,
                    starts_with(a.uid, replace(a.examen, 'EXANR', 'AMANR')) AS copie_de_l_examen,
                    count(*) OVER (PARTITION BY a.examen, a.numero_long) AS nb_copies,
@@ -169,9 +199,8 @@ def appliquer(ctx):
                x.organe_rapporteur, x.article_designation, x.mission, x.date_sort,
                x.sans_texte,
                x.document_uri,
-               'https://www.assemblee-nationale.fr/dyn/' || regexp_extract(x.uid, 'R5L([0-9]+)', 1) || '/amendements/' || x.uid
-                   AS source_url,
-               NULL::VARCHAR AS raison_source_url
+               {adresse_sql('x')} AS source_url,
+               {raison_adresse_sql('x')} AS raison_source_url
         FROM x LEFT JOIN matiere m ON m.dossier = x.dossier_document
         ORDER BY x.uid""")
     ctx.ecrire("amendement_auteur", """

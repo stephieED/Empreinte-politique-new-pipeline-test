@@ -470,3 +470,26 @@ def test_q23_mandat_ouvert_dans_un_organe_clos_borne_par_decision(tmp_path):
     a7 = [x for x in c.anomalies if x["controle"] == "A7"]
     assert a7 and any("PM9 n'est plus ouvert à la source" in e for e in a7[0]["exemples"])
     assert not any("PM15855061" in e for e in a7[0]["exemples"])
+
+
+def test_terme_legal_de_la_legislature(tmp_path):
+    """#81 : terme légal = troisième mardi de juin de la cinquième année qui suit l'élection
+    (code électoral, L.O. 121, depuis la loi organique du 15 mai 2001) ; pas avant 1997."""
+    def leg(uid, n, debut, fin=None):
+        return {"uid": uid, "type_organe": "ASSEMBLEE", "legislature": str(n), "date_debut": debut,
+                "date_fin": fin}
+    organes = [leg("PO10", 10, "1993-04-02", "1997-04-21"), leg("PO12", 12, "2002-06-19", "2007-06-19"),
+               leg("PO14", 14, "2012-06-20", "2017-06-20"), leg("PO15", 15, "2017-06-21", "2022-06-21"),
+               leg("PO16", 16, "2022-06-22", "2024-06-09"), leg("PO17", 17, "2024-07-01")]
+    z2 = _ecrire_z2(tmp_path / "z2", organes, [])
+    ctx = Contexte(str(z2), str(tmp_path / "z3"))
+    (b,) = relier(ctx, [r_legislatures])
+    t = {n: (fin, terme, raison) for n, fin, terme, raison in ctx.x(
+        "SELECT numero, fin, terme_legal, raison_terme_legal FROM legislature")}
+    # au terme : la date de fin publiée par l'Assemblée est le terme légal
+    assert t[12][:2] == ("2007-06-19", "2007-06-19") and t[14][:2] == ("2017-06-20", "2017-06-20")
+    assert t[15][:2] == ("2022-06-21", "2022-06-21")
+    assert t[16] == ("2024-06-09", "2027-06-15", None)        # dissoute : le mandat devait courir jusque-là
+    assert t[17] == (None, "2029-06-19", None)
+    assert t[10] == ("1997-04-21", None, "avant_la_loi_de_2001")
+    assert b["couverture"]["terme_legal_etabli"] == [5, 6]
