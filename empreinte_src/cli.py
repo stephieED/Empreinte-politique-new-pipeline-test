@@ -204,6 +204,7 @@ def cmd_calculer(a):
             ctrl.a2_signataires(gen, recuperateur(cfg["parametres"]["user_agent"]), nb_am)
             if getattr(ctrl, "bilan_a2_amendements", None):
                 ctrl.bilan_a2_amendements["duree_s"] = round(_t.monotonic() - t0, 1)
+        ctrl.a2_mandats()                            # fiches Sycomore déjà relevées : aucune page lue
         nb_tx = int(cfg.get("parametres", {}).get("verification_textes", 0) or 0)
         if nb_tx:
             from .verification import recuperateur
@@ -287,6 +288,7 @@ def _ligne_a2(controles: dict) -> str:
     les pages publiques, vérifié, en écart, non vérifié."""
     parts = []
     for cle, nom in (("a2", "votes"), ("a2_amendements", "signataires d'amendement"),
+                     ("a2_mandats", "périodes de mandat (Sycomore)"),
                      ("a2_textes", "stade et dates des textes")):
         b = controles.get(cle)
         if b:

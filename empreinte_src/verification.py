@@ -26,6 +26,17 @@ l'ensemble des cosignataires. Deux formes de page (relevé du 15/11/2026) :
   commission : seuls ses cosignataires sont comparés. Un amendement retiré n'y est pas publié
   (404) : non vérifié.
 Un amendement du gouvernement n'a pas de signataire député : il n'est pas tiré.
+
+**Périodes de mandat de député** (issue #63, 23/11/2026) : `verifier_mandats`. Pas de page lue en
+plus : la fiche Sycomore de chaque candidat (point `sycomore-fiches`, page publique de l'Assemblée,
+base historique distincte de l'archive des acteurs) est déjà relue chaque nuit par la collecte, qui
+en garde les faits (`sycomore__mandat_sycomore`). Toutes les périodes servies sont donc comparées,
+sans tirage : chaque mandat de député en fonction servi dans une carrière (faits `periode_carriere`,
+`institution = 'assemblee'`, depuis le 19/06/2002), début et fin, contre la ligne de Sycomore de la
+même personne qui le recouvre ; et chaque mandat de Sycomore depuis le 19/06/2002 d'un candidat
+publié doit avoir sa période servie. Sycomore ne publie pas les suspensions (entrée au
+gouvernement) : elles ne sont pas comparées, mais leurs bornes sont la fin et la reprise de mandats
+comparés. Les périodes d'avant 2002 viennent de Sycomore même : comptées, jamais comparées.
 """
 from __future__ import annotations
 
@@ -226,3 +237,86 @@ def recuperateur(user_agent: str, delai_s: float = 20.0):
         r = session.get(url, timeout=delai_s)
         return r.text if r.status_code == 200 and r.text else None
     return recuperer
+
+
+# Périodes de mandat de député contre Sycomore (issue #63). Avant cette date, la carrière lit
+# Sycomore même (R-CARRIERE) : la comparaison n'aurait pas d'autre route.
+DEBUT_ARCHIVE_ACTEURS = "2002-06-19"
+FICHE_SYCOMORE = "https://www2.assemblee-nationale.fr/sycomore/fiche?num_dept="
+
+
+def verifier_mandats(con, avec_identifiants: bool = True) -> dict:
+    """Périodes de mandat de député servies (début, fin) contre les fiches Sycomore relevées la
+    même nuit. Lit `_ctl_fp`, `_ctl_fiches`, `candidat` (`per`, `adresse`, `sycomore`,
+    `element_wikidata`), `sycomore__mandat_sycomore` et, si `avec_identifiants`,
+    `sycomore__identifiant_sycomore` (identifiant Sycomore de l'élément, comme R-CARRIERE).
+
+    Rend `faits` (périodes servies comparables), `verifies`, `ecarts` (nommés : bornes différentes,
+    période absente de Sycomore, mandat de Sycomore absent de la carrière servie),
+    `non_verifies` (pas d'identifiant Sycomore, fiche non relevée) et les expliqués comptés :
+    `suspensions_non_comparees`, `avant_2002_lues_dans_sycomore`."""
+    syc_el = ("(SELECT min(i.identifiant) FROM sycomore__identifiant_sycomore i "
+              "WHERE i.element = c.element_wikidata)") if avec_identifiants else "NULL"
+    candidats = con.execute(f"""
+        SELECT c.per, 'candidat/' || c.adresse, coalesce(c.sycomore, {syc_el})
+        FROM candidat c JOIN _ctl_fiches f ON f.fiche = 'candidat/' || c.adresse
+        ORDER BY 2""").fetchall()
+    periodes = con.execute("""
+        WITH p AS (SELECT f.fiche, f.id_mandat AS mandat,
+                          json_extract_string(f.valeur, '$.institution') AS institution,
+                          json_extract_string(f.valeur, '$.etat') AS etat,
+                          json_extract_string(f.valeur, '$.legislature') AS legislature,
+                          json_extract_string(f.valeur, '$.debut') AS debut,
+                          json_extract_string(f.valeur, '$.fin') AS fin
+                   FROM _ctl_fp f WHERE f.type_fait = 'periode_carriere')
+        SELECT fiche, mandat, etat, institution, any_value(legislature), min(debut),
+               CASE WHEN bool_or(fin IS NULL) THEN NULL ELSE max(fin) END
+        FROM p WHERE institution IN ('assemblee', 'assemblee_avant_2002')
+        GROUP BY fiche, mandat, etat, institution ORDER BY fiche, 6""").fetchall()
+    syc = {}                                    # fiche relevée → ses mandats de député
+    for ident, chambre, d, f, leg in con.execute("""
+            SELECT DISTINCT identifiant, chambre, debut, fin, legislature FROM sycomore__mandat_sycomore
+            ORDER BY 1, 3""").fetchall():
+        lignes = syc.setdefault(ident, [])
+        if chambre == "assemblee":
+            lignes.append((d, f, leg))
+    servies = {}
+    suspensions = avant_2002 = 0
+    for fiche, mandat, etat, inst, leg, d, f in periodes:
+        if inst == "assemblee_avant_2002":
+            avant_2002 += 1
+        elif etat == "suspendu":
+            suspensions += 1
+        elif etat == "en_fonction" and d:
+            servies.setdefault(fiche, []).append((mandat, leg, d, f))
+    ecarts, non_verifies, verifies, faits = [], [], 0, 0
+    fin_ = lambda x: x or "en cours"
+    for per, fiche, ident in candidats:
+        nos = servies.get(fiche, [])
+        faits += len(nos)
+        if not ident:
+            non_verifies += [f"{fiche} {m} (pas d'identifiant Sycomore déclaré par Wikidata)" for m, *_ in nos]
+            continue
+        url = FICHE_SYCOMORE + ident
+        if ident not in syc:
+            non_verifies += [f"{fiche} {m} (fiche Sycomore {ident} non relevée)" for m, *_ in nos]
+            continue
+        restes = [s for s in syc[ident] if s[0] and s[0] >= DEBUT_ARCHIVE_ACTEURS]
+        for mandat, leg, d, f in nos:
+            recouvre = [s for s in restes if s[0] <= (f or "9999-12-31") and (s[1] or "9999-12-31") >= d]
+            if not recouvre:
+                ecarts.append(f"{fiche} {mandat} ({leg}e législature, du {d} au {fin_(f)}) : "
+                              f"aucun mandat de Sycomore sur cette période — {url}")
+                continue
+            s = next((s for s in recouvre if s[0] == d), recouvre[0])
+            restes.remove(s)
+            diff = [x for x in (f"début : nous {d}, Sycomore {s[0]}" if s[0] != d else "",
+                                f"fin : nous {fin_(f)}, Sycomore {fin_(s[1])}" if s[1] != f else "") if x]
+            if diff:
+                ecarts.append(f"{fiche} {mandat} ({leg}e législature) " + " ; ".join(diff) + f" — {url}")
+            else:
+                verifies += 1
+        ecarts += [f"{fiche} : mandat de Sycomore du {d} au {fin_(f)} ({leg}), absent de la carrière "
+                   f"servie — {url}" for d, f, leg in restes]
+    return {"faits": faits, "verifies": verifies, "ecarts": ecarts, "non_verifies": non_verifies,
+            "suspensions_non_comparees": suspensions, "avant_2002_lues_dans_sycomore": avant_2002}
