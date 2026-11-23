@@ -1071,3 +1071,12 @@ Branche `etape-2-candidature-2026-11-23`. La page franceinfo a été télécharg
 | Changement | Pourquoi | Documents à aligner |
 | --- | --- | --- |
 | Décision `candidature` : nouveau fichier `references/candidature/2026-11-23-franceinfo.yaml` (38 déclarés, 7 retirés, X. Bertrand `non_listee`). Dominique de Villepin (La France humaniste, Q131660) et Serge Tinland (Divers, sans article ni élément Wikidata) entrent comme déclarés ; François Ruffin passe de déclaré à retiré. Le fichier du 13/11 reste, la liste en vigueur est la plus récente | alerte #155 (A9) : Wikipédia disait Villepin déclaré et Ruffin retiré, la liste du 13/11 l'inverse ; la page du 23/11 donne raison à Wikipédia | — |
+
+## Vote solennel et initiateur nominatif des textes d'une législature (23/11/2026)
+
+Branche `etape-2-textes-solennel-initiateur`, issue #71.
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Fiche législature, textes (`textes`, `textes-deposes-N`) : `vote_solennel` et `scrutins_solennels`, les scrutins solennels de la législature (R-NATURE-SCRUTIN, code `SPS`/`SSG`) reliés au dossier (R-LIEN-SCRUTIN-DOSSIER) ; schéma C4 mis à jour | l'interface marque, dans la liste des textes d'une législature, ceux qui ont eu un vote solennel (#71) | 1 (1.7.2) |
+| Même section : `initiateur_role`, `initiateur_acteur`, `initiateur_nom`, `initiateur_groupe`, `initiateur_groupe_sigle`, `initiateur_gouvernement`, `nb_auteurs`. L'initiateur est le premier auteur du texte déposé (R-TEXTE-PORTE, rang de la source), avec son groupe à la date du dépôt (R-APPARTENANCE) ; pour un projet de loi, le rôle est `initiative_gouvernementale` et le gouvernement du dépôt est donné, sans groupe | l'interface donne le nom, la qualité et le groupe de l'initiateur (#71) ; un projet de loi n'est jamais un acte personnel du ministre (cahier 4.6) | 1 (1.7.2) |
