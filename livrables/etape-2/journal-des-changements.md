@@ -1251,6 +1251,15 @@ Branche `etape-2-couverture-corpus`, issue #74 (`besoin-interface`).
 
 Essai 45207570356 (branche à jour de `main`, entrepôt g23) : **publication autorisée** ; 73 fiches, 2 952 624 faits publiés, pic 6,4 Go. `couverture.json.gz` : 56 points (date de la donnée à la source connue pour 50 ; vide, « la source ne donne pas de date », pour `jo-global`, `wp-candidatures-2027`, `wd-identifiants-parlementaires`, `pe-eurodeputes`, `pe-votes`, `sycomore-fiches`), 763 manques sur 73 fiches, 4 672 sections et limites décomptées (3 909 complètes). Aucun avertissement nouveau.
 
+## Type de déposant des amendements d'une lignée (23/11/2026)
+
+Branche `etape-2-type-deposant`, issue #70 (le type de déposant seulement ; le contenu des amendements attend un arbitrage de poids).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Composeur `lignee`, listes `amendements-<annee>[-<k>]` : colonne `type_auteur`, le type de déposant publié par l'Assemblée (`typeAuteur`), servi en code : `depute` (« Député » ; « Depute », sans accent, dans la source de la XIVe) ou `rapporteur` ; vide pour un autre type. Schéma C4 : colonne et vocabulaire `type_auteur` | besoin de l'interface (#70) : distinguer, dans les amendements d'un groupe, ceux déposés comme député et comme rapporteur ; la donnée était dans `amendement_canonique.type_auteur` mais pas servie. Premier essai (23/11/2026) : la source écrit « Depute » pour 147 164 amendements de la XIVe et « Député » ensuite ; servir le code évite deux graphies d'un même type | 1 (1.7.2, fiche lignée) |
+| Composeur `lignee`, agrégats `amendements` : `nb_amendements_depute` et `nb_amendements_rapporteur`, décomptes parmi `nb_amendements` (hors irrecevables 40 et 45) par commission et par année ; un type autre ou absent est dit dans la couverture. Des décomptes seulement, aucun ratio ; schéma C4 mis à jour | cahier 4.3 : « amendements par commission et par type de déposant » ; le doc. 8 donnait la ligne pour couverte alors que le type n'était pas servi | 1 (1.7.2), 8 (recette, ligne « Ce qu'ils ont proposé » des lignées) |
+
 ## Référentiel des points d'accès : sources.json.gz (23/11/2026)
 
 Branche `etape-2-referentiel-sources`, issue #73 (`besoin-interface`) ; s'appuie sur la branche `etape-2-couverture-corpus` (#74).
