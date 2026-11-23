@@ -559,7 +559,7 @@ class Controles:
     # Fenêtre d'une transition (A3) : entrées et sorties du groupe à moins de tant de jours du scrutin.
     A3_FENETRE_TRANSITION = 7
 
-    def a3_totaux(self):
+    def a3_totaux(self, decisions: dict | None = None):
         """Effectif de chaque groupe à chaque scrutin (nos appartenances à la date) contre le
         nombre de membres publié par le scrutin ; lois promulguées sans dossier rattaché.
 
@@ -573,7 +573,10 @@ class Controles:
           ministres par leurs suppléants, création d'un groupe : les deux sources ne datent pas le
           changement du même jour).
         Seuls les écarts inexpliqués sont nommés. Mesuré sur la génération 10 : 2 187 écarts sur
-        193 821 décomptes, 1 592 de transition, 595 hors dates, aucun inexpliqué."""
+        193 821 décomptes, 1 592 de transition, 595 hors dates, aucun inexpliqué.
+
+        `decisions` : les références de la nuit ; les décisions `rattachement_loi` servent à la
+        confrontation des lois au JO (`a3_lois_contre_le_jo`)."""
         objets = []
         if self._a("an_scrutins__decompte_groupe", "an_scrutins__scrutin"):
             dates_groupe = ("(SELECT organe, debut, coalesce(fin, '9999-12-31') AS fin FROM groupe)"
@@ -614,29 +617,34 @@ class Controles:
                 "SELECT numero_loi, date_promulgation FROM loi WHERE dossier IS NULL AND legislature = 17 ORDER BY 1")]
         self._avertir("A3", "Totaux différents d'une autre source", objets,
                       detail=getattr(self, "bilan_a3", None))
-        self.a3_lois_contre_le_jo()
+        self.a3_lois_contre_le_jo((decisions or {}).get("rattachement_loi", []))
 
-    def a3_lois_contre_le_jo(self):
+    def a3_lois_contre_le_jo(self, rattachements: list[dict] | None = None):
         """Lois servies (actes de promulgation de l'Assemblée, R-LOIS) contre les lois publiées au
         Journal officiel, la seule source tenue hors de l'Assemblée (issue #63, décision du
         15/11/2026). Par législature du périmètre (celles où l'Assemblée publie des lois) :
 
         - une loi du JO absente de l'Assemblée et que R-LOI-DOSSIER relie à son dossier est
           **expliquée** (`reliees_par_le_jo`) ;
-        - une loi du JO absente de l'Assemblée, sans travaux préparatoires et promulguée avant la
-          première loi du périmètre que le JO publie avec les siens, est **expliquée**
-          (`avant_les_travaux_au_jo` ; 49 lois de la XIVe sur la g14). Le JO les publiait en fait
-          dans le bloc des signataires : lues depuis le lecteur `jo_actes` version 3 (issue #146),
-          aucune loi n'est plus dans ce cas (g20) ;
+        - une loi du JO absente de l'Assemblée, que R-LOI-DOSSIER ne relie pas, et qu'une décision
+          `rattachement_loi` déclare (Q47, décision du 23/11/2026 « Une décision par loi ») est
+          **expliquée** (`declarees_par_reference` : 59 lois sur la g20, 52 de la XIVe et 7 de la
+          XVe, toutes engagées sous la législature précédente et absentes des archives de
+          l'Assemblée). Une décision qui ne s'applique plus est nommée par A7 ;
         - toute autre loi du JO absente de l'Assemblée est **nommée**, avec la raison de
-          R-LOI-DOSSIER (g20, lecteur version 3 : 59, 52 de la XIVe et 7 de la XVe, toutes
-          engagées sous la législature précédente et absentes des archives de l'Assemblée ;
-          comment les déclarer expliquées : doc. 5, Q45) ;
+          R-LOI-DOSSIER ;
         - une loi de l'Assemblée absente du JO est nommée (aucune sur la g14), si le JO couvre sa
           date.
-        Les décomptes par législature sont toujours dans le détail."""
+        Les décomptes par législature sont toujours dans le détail. L'explication
+        `avant_les_travaux_au_jo` (Q43 : lois sans travaux préparatoires antérieures à la première
+        publiée avec les siens) est retirée le 23/11/2026 : le JO les publiait dans le bloc des
+        signataires, que le lecteur `jo_actes` lit depuis sa version 3 (issue #146)."""
         if not self._a("loi", "legislature", "jo_actes__acte_reglementaire"):
             return
+        import pyarrow as pa
+        self.con.register("_a3_references", pa.table(
+            {"numero_loi": pa.array([str(d.get("numero_loi")) for d in rattachements or []
+                                     if d.get("numero_loi") is not None], pa.string())}))
         lien = ("SELECT numero_loi, dossier, raison FROM loi_dossier_jo" if self._a("loi_dossier_jo") else
                 "SELECT NULL::VARCHAR AS numero_loi, NULL::VARCHAR AS dossier, NULL::VARCHAR AS raison WHERE false")
         self._x(f"""
@@ -647,16 +655,13 @@ class Controles:
                    FROM loi WHERE numero_loi IS NOT NULL GROUP BY 1),
             perimetre AS (SELECT DISTINCT legislature AS l FROM loi WHERE legislature IS NOT NULL),
             lien AS ({lien}),
-            seuil AS (SELECT min(jo.d) AS d FROM lien JOIN jo ON jo.numero = lien.numero_loi
-                      WHERE lien.raison IS DISTINCT FROM 'pas_de_travaux_preparatoires'
-                        AND jo.d >= (SELECT min(g.debut) FROM legislature g JOIN perimetre p ON p.l = g.numero)),
+            ref AS (SELECT DISTINCT numero_loi FROM _a3_references),
             jo_l AS (SELECT jo.*, (SELECT max(g.numero) FROM legislature g WHERE g.debut <= jo.d
                                    AND coalesce(g.fin, '9999-12-31') >= jo.d) AS l FROM jo)
             SELECT j.l AS legislature, j.numero AS numero_loi, j.d AS date, 'jo' AS cote,
                    CASE WHEN an.numero_loi IS NOT NULL THEN 'present'
                         WHEN lien.dossier IS NOT NULL THEN 'reliee_par_le_jo'
-                        WHEN lien.raison = 'pas_de_travaux_preparatoires' AND j.d < (SELECT d FROM seuil)
-                             THEN 'avant_les_travaux_au_jo'
+                        WHEN j.numero IN (SELECT numero_loi FROM ref) THEN 'declaree_par_reference'
                         ELSE 'nommee' END AS etat, lien.raison
             FROM jo_l j LEFT JOIN an ON an.numero_loi = j.numero LEFT JOIN lien ON lien.numero_loi = j.numero
             WHERE j.l IN (SELECT l FROM perimetre)
@@ -664,15 +669,17 @@ class Controles:
             SELECT an.l, an.numero_loi, an.d, 'assemblee', 'absente_du_jo', NULL FROM an
             WHERE an.numero_loi NOT IN (SELECT numero FROM jo) AND an.d >= (SELECT min(d) FROM jo)""")
         detail = {}
-        for l, jo, an, reliees, avant, nommees, absentes in self._x("""
+        for l, jo, an, reliees, declarees, nommees, absentes in self._x("""
                 SELECT legislature, count(*) FILTER (cote = 'jo'), count(*) FILTER (etat = 'present'),
-                       count(*) FILTER (etat = 'reliee_par_le_jo'), count(*) FILTER (etat = 'avant_les_travaux_au_jo'),
+                       count(*) FILTER (etat = 'reliee_par_le_jo'), count(*) FILTER (etat = 'declaree_par_reference'),
                        count(*) FILTER (etat = 'nommee'), count(*) FILTER (etat = 'absente_du_jo')
                 FROM _a3_lois GROUP BY 1 ORDER BY 1"""):
             detail[str(l)] = {"lois_au_jo": jo, "presentes_a_l_assemblee": an, "reliees_par_le_jo": reliees,
-                              "expliquees_avant_les_travaux_au_jo": avant, "nommees": nommees,
+                              "declarees_par_reference": declarees, "nommees": nommees,
                               "assemblee_absentes_du_jo": absentes}
         self.bilan_a3_lois = detail or None
+        # État de chaque loi du JO du périmètre : A7 y lit les décisions `rattachement_loi` sans objet.
+        self.a3_etat_lois = dict(self._x("SELECT numero_loi, etat FROM _a3_lois WHERE cote = 'jo'"))
         objets = [f"loi {n} ({d}) publiée au JO, absente de l'Assemblée et non reliée à un dossier"
                   + (f" ({r})" if r else "")
                   for n, d, r in self._x("SELECT numero_loi, date, raison FROM _a3_lois WHERE etat = 'nommee' ORDER BY date, numero_loi")]
@@ -814,6 +821,16 @@ class Controles:
                 [[d.get("mandat") for d in bornes]])}
             objets += [f"décision {d.get('fichier')} sans objet : le mandat {d.get('mandat')} n'est plus ouvert à la source"
                        for d in bornes if d.get("mandat") not in ouverts]
+        # Lois déclarées (`rattachement_loi`, Q47) : sans objet si la loi est à l'Assemblée, si
+        # R-LOI-DOSSIER la relie, ou si le JO ne la publie pas dans le périmètre (A3 a tourné).
+        etat_lois = getattr(self, "a3_etat_lois", None)
+        if etat_lois is not None:
+            pourquoi = {"present": "elle est à l'Assemblée", "reliee_par_le_jo": "R-LOI-DOSSIER la relie",
+                        None: "le JO ne la publie pas dans le périmètre"}
+            objets += [f"décision {d.get('fichier')} sans objet : loi {d.get('numero_loi')}, "
+                       + pourquoi.get(etat_lois.get(str(d.get("numero_loi"))), "")
+                       for d in decisions.get("rattachement_loi", [])
+                       if etat_lois.get(str(d.get("numero_loi"))) != "declaree_par_reference"]
         if self._a("population"):
             pers = {r[0] for r in self._x("SELECT DISTINCT coalesce(per, '') FROM population")} | \
                    {r[0] for r in self._x("SELECT DISTINCT coalesce(acteur, '') FROM population")}

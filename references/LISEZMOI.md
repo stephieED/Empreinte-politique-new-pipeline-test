@@ -25,7 +25,9 @@ Types en usage : `levee_controle`, `fin_legislature`, `rattachement_portefeuille
 `libelle_ministere`, `filiation`, `identite`, `perimetre`, `candidature`, `borne_mandat` (mandat resté ouvert dans un organe clos, borné à une date : Q23), `adresse_citee`
 (adresse de l'ancien site citée par un article publié, menant à sa fiche : issue #86), `regroupement`
 (table d'un regroupement pour l'affichage : chaque entrée met un code de la source dans une case ;
-servie à part dans `regroupements.json.gz`, issue #88) (voir le document 1, 1.3.3).
+servie à part dans `regroupements.json.gz`, issue #88), `rattachement_loi` (loi du JO absente
+des archives de l'Assemblée, déclarée une à une : A3 la compte sans la nommer, Q47) (voir le
+document 1, 1.3.3).
 
 Une décision `rattachement_portefeuille` donne le ou les ministères de tutelle d'un portefeuille
 (`rattache_a PO…`, ou `rattache_a PO… PO…` pour une co-tutelle, dans l'ordre où la source les

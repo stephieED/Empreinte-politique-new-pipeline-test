@@ -608,7 +608,7 @@ incohérences sont corrigées.
 | T15 | Vide en trois formes, uid objet ; bloc des QG | comblé | doc. 2, 2.5 ; doc. 1, 1.4 C `question` |
 | T16 | Borne de l'ordre du jour XIVe | comblé | doc. 1, 1.5.5 |
 | T17 | « Organe non référencé » | comblé | doc. 1, 1.4 D `reunion` |
-| T18 | Lois promulguées sous la législature suivante | comblé | doc. 1, 1.5.3 `lien_loi_dossier`, 1.6 R-LOI-DOSSIER, 1.3.3 `rattachement_loi` |
+| T18 | Lois promulguées sous la législature suivante | comblé : 987 lois du JO reliées par R-LOI-DOSSIER (g20) ; les 59 dont aucune archive de l'Assemblée ne porte les documents sont déclarées par `rattachement_loi` (Q47) et comptées par A3, une déclaration sans objet est nommée par A7 | doc. 1, 1.5.3 `lien_loi_dossier`, 1.6 R-LOI-DOSSIER, 1.3.3 `rattachement_loi` ; doc. 2, 2.8 A3 ; doc. 5, Q47 |
 | T19 | Échéancier des décrets d'application ; « applique » depuis 2024 | comblé (forme de l'échéancier à mesurer) | doc. 1, 1.4 C `echeancier`, 1.4 E |
 | T20 | Dates sentinelles ; naissances aberrantes | comblé | doc. 2, 2.5 ; doc. 1, 1.6 R-IDENTITE, 1.4 E |
 | T21 | Finances (formats, PDF, ministère, licence, Drees, provisoire, budget en cours, séries de l'API) ; mesures nominatives | comblé, sauf la règle de recalage d'exercice (à mesurer) | doc. 2, 2.2 ; doc. 1, 1.4 G, 1.6 R-MESURE-NOMINATIVE |

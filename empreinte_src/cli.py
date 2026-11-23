@@ -204,7 +204,7 @@ def cmd_calculer(a):
             ctrl.a2_signataires(gen, recuperateur(cfg["parametres"]["user_agent"]), nb_am)
             if getattr(ctrl, "bilan_a2_amendements", None):
                 ctrl.bilan_a2_amendements["duree_s"] = round(_t.monotonic() - t0, 1)
-        ctrl.a3_totaux()
+        ctrl.a3_totaux(ctx.decisions)
         ctrl.a4_double_affichage()
         ctrl.a5_famille_a_zero()
         ctrl.a6_couverture()

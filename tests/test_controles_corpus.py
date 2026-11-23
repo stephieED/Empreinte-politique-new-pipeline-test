@@ -292,11 +292,14 @@ def test_a3_tous_expliques_pas_d_avertissement(tmp_path):
 
 
 def test_a3_lois_contre_le_journal_officiel(tmp_path):
-    """Issue #63 (décision du 15/11/2026) : les lois servies (Assemblée) contre celles du JO. Une loi
-    du JO absente de l'Assemblée est expliquée si R-LOI-DOSSIER la relie, ou si elle est sans
-    travaux préparatoires et antérieure à la première loi que le JO publie avec les siens ; toute
-    autre est nommée, comme une loi de l'Assemblée absente du JO."""
-    loi = lambda n, d, l: {"numero_loi": n, "date_promulgation": d, "legislature": l, "dossier": "D" + n}
+    """Issue #63 (décision du 15/11/2026) et Q47 (décision du 23/11/2026, « Une décision par
+    loi ») : les lois servies (Assemblée) contre celles du JO. Une loi du JO absente de
+    l'Assemblée est expliquée si R-LOI-DOSSIER la relie, ou si une décision `rattachement_loi` la
+    déclare ; toute autre est nommée (même sans travaux préparatoires : l'explication « avant les
+    travaux au JO » est retirée), comme une loi de l'Assemblée absente du JO. A7 nomme une
+    décision sans objet : loi à l'Assemblée, reliée, ou absente du JO."""
+    loi = lambda n, d, l: {"numero_loi": n, "date_promulgation": d, "legislature": l, "dossier": "D" + n,
+                           "source_date_promulgation": "journal_officiel", "date_assemblee": d}
     acte = lambda n, d, nature="LOI": {"uid": "jorf:" + n, "nature": nature, "numero": n, "date_signature": d}
     lien = lambda n, dossier=None, raison=None: {"numero_loi": n, "dossier": dossier, "raison": raison}
     t = dict(TABLES,
@@ -305,9 +308,9 @@ def test_a3_lois_contre_le_journal_officiel(tmp_path):
              loi=[loi("2016-1", "2016-03-01", 14), loi("2017-9", "2017-01-01", 14), loi("2018-9", "2018-02-01", 15)],
              jo_actes__acte_reglementaire=[
                  acte("2016-1", "2016-03-01"), acte("2018-9", "2018-02-01"),
-                 acte("2013-5", "2013-04-01"),                       # avant les travaux au JO : expliquée
-                 acte("2016-8", "2016-06-01"),                       # sans travaux, mais après : nommée
-                 acte("2016-7", "2016-05-01"),                       # aucun document : nommée
+                 acte("2013-5", "2013-04-01"),                       # sans travaux, déclarée : expliquée
+                 acte("2016-8", "2016-06-01"),                       # sans travaux, non déclarée : nommée
+                 acte("2016-7", "2016-05-01"),                       # aucun document, déclarée : expliquée
                  acte("2018-3", "2018-03-01"),                       # reliée par le JO : expliquée
                  acte("2018-4", "2018-04-01", "LOI_ORGANIQUE"),      # nommée
                  acte("2018-5", "2018-05-01", "DECRET")],            # pas une loi
@@ -316,21 +319,49 @@ def test_a3_lois_contre_le_journal_officiel(tmp_path):
                              lien("2016-8", raison="pas_de_travaux_preparatoires"),
                              lien("2016-7", raison="aucun_document"), lien("2018-3", "D3"),
                              lien("2018-4", raison="aucun_document")])
+    f = "rattachement_loi/r.yaml"
+    decisions = {"rattachement_loi": [
+        {"numero_loi": n, "dossier": "aucun", "cause": "absente_des_archives_de_l_assemblee", "fichier": f"{f}#{k}"}
+        for k, n in enumerate(("2013-5", "2016-7", "2016-1", "2018-3", "2099-1"))]}
     c = _ctrl(tmp_path, tables=t)
-    c.a3_totaux()
+    c.a3_totaux(decisions)
     lois = [a for a in _an(c, "A3") if a["titre"].startswith("Lois du Journal officiel")][0]
     assert lois["exemples"] == sorted([
-        "loi 2016-7 (2016-05-01) publiée au JO, absente de l'Assemblée et non reliée à un dossier (aucun_document)",
         "loi 2016-8 (2016-06-01) publiée au JO, absente de l'Assemblée et non reliée à un dossier "
         "(pas_de_travaux_preparatoires)",
         "loi 2018-4 (2018-04-01) publiée au JO, absente de l'Assemblée et non reliée à un dossier (aucun_document)",
         "loi 2017-9 (2017-01-01) promulguée selon l'Assemblée, absente du JO"])
     assert lois["detail"] == {
         "14": {"lois_au_jo": 4, "presentes_a_l_assemblee": 1, "reliees_par_le_jo": 0,
-               "expliquees_avant_les_travaux_au_jo": 1, "nommees": 2, "assemblee_absentes_du_jo": 1},
+               "declarees_par_reference": 2, "nommees": 1, "assemblee_absentes_du_jo": 1},
         "15": {"lois_au_jo": 3, "presentes_a_l_assemblee": 1, "reliees_par_le_jo": 1,
-               "expliquees_avant_les_travaux_au_jo": 0, "nommees": 1, "assemblee_absentes_du_jo": 0}}
+               "declarees_par_reference": 0, "nommees": 1, "assemblee_absentes_du_jo": 0}}
     assert c.bilan()["expliques"]["a3_lois"] == lois["detail"]
+    c.a7_non_resolues(decisions)
+    a7 = [o for a in _an(c, "A7") for o in a["exemples"] if "rattachement_loi" in o]
+    assert sorted(a7) == [
+        f"décision {f}#2 sans objet : loi 2016-1, elle est à l'Assemblée",
+        f"décision {f}#3 sans objet : loi 2018-3, R-LOI-DOSSIER la relie",
+        f"décision {f}#4 sans objet : loi 2099-1, le JO ne la publie pas dans le périmètre"]
+
+
+def test_a3_lois_toutes_declarees_pas_d_avertissement(tmp_path):
+    """Q47 : les lois déclarées sont comptées, jamais nommées ; sans loi inexpliquée, A3 se tait
+    sur les lois, et le décompte reste dans le rapport."""
+    t = dict(TABLES,
+             legislature=[{"numero": 14, "debut": "2012-06-20", "fin": "2017-06-20"}],
+             loi=[{"numero_loi": "2016-1", "date_promulgation": "2016-03-01", "legislature": 14, "dossier": "D",
+                   "source_date_promulgation": "journal_officiel", "date_assemblee": "2016-03-01"}],
+             jo_actes__acte_reglementaire=[
+                 {"uid": "jorf:a", "nature": "LOI", "numero": "2016-1", "date_signature": "2016-03-01"},
+                 {"uid": "jorf:b", "nature": "LOI", "numero": "2015-1704", "date_signature": "2015-12-21"}],
+             loi_dossier_jo=[{"numero_loi": "2015-1704", "dossier": None, "raison": "aucun_document"}])
+    c = _ctrl(tmp_path, tables=t)
+    c.a3_totaux({"rattachement_loi": [{"numero_loi": "2015-1704", "fichier": "rattachement_loi/r.yaml#0"}]})
+    assert not [a for a in _an(c, "A3") if a["titre"].startswith("Lois du Journal officiel")]
+    assert c.bilan()["expliques"]["a3_lois"]["14"]["declarees_par_reference"] == 1
+    c.a7_non_resolues({"rattachement_loi": [{"numero_loi": "2015-1704", "fichier": "rattachement_loi/r.yaml#0"}]})
+    assert not [o for a in _an(c, "A7") for o in a["exemples"] if "rattachement_loi" in o]
 
 
 def test_a3_lois_sans_le_jo_rien_a_comparer(tmp_path):
@@ -450,3 +481,22 @@ def test_a2_page_de_la_legislature_du_scrutin():
     lues = []
     verifier(con, 1, lambda url: lues.append(url) or PAGE, nb_scrutins=1)
     assert lues == ["https://www.assemblee-nationale.fr/dyn/14/scrutins/34"]
+
+
+def test_q47_references_rattachement_loi():
+    """Q47 (23/11/2026, « Une décision par loi ») : le fichier des lois du JO absentes des archives
+    de l'Assemblée, tel que le traitement le charge. 59 lois (52 de la XIVe, 7 de la XVe), une
+    entrée chacune, avec un dossier (`DLR…` ou `aucun`), une cause et les documents cherchés."""
+    import re
+    from empreinte_src.liaison import Contexte
+    racine = os.path.join(os.path.dirname(__file__), "..", "references")
+    c = Contexte.__new__(Contexte)
+    c.con = duckdb.connect()
+    c._charger_decisions(racine)
+    d = c.decisions["rattachement_loi"]
+    assert len(d) == 59 and len({x["numero_loi"] for x in d}) == 59
+    assert sum(1 for x in d if x["legislature"] == 14) == 52 and sum(1 for x in d if x["legislature"] == 15) == 7
+    assert all(re.fullmatch(r"\d{4}-\d+", x["numero_loi"]) for x in d)
+    assert all(x["dossier"] == "aucun" or re.fullmatch(r"DLR5L\d+N\d+", x["dossier"]) for x in d)
+    assert {x["cause"] for x in d} == {"absente_des_archives_de_l_assemblee", "nature_fausse_au_jo"}
+    assert all(x["documents_cherches"] and x["fichier"].startswith("rattachement_loi/") for x in d)

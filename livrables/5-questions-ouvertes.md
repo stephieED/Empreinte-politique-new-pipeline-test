@@ -47,6 +47,7 @@ défaut peut rester.
 | Q41 (14/11/2026, issue #80). Rattachement des ministres délégués, secrétaires d'État et hauts-commissaires à leur ministère de tutelle : dans les gouvernements publiés (Ayrault II à Lecornu II, g13), 45 portefeuilles restaient « non établis », et non 9 comme l'issue le relevait sur g10. 22 libellés de l'Assemblée n'ont pas de « auprès » (21 dans Ayrault II, Delevoye), 3 nomment un ministère sous un intitulé inexact (Bayrou), 20 désignent plusieurs ministres (« auprès du ministre de l'intérieur et du ministre de la transition écologique »). Comment rattacher une co-tutelle ? | « Tous les ministres » (14/11/2026) : toutes les tutelles nommées sont servies, dans l'ordre du libellé (`ministeres_tutelle`, statut `co_tutelle`) ; l'interface choisit où afficher le portefeuille. Écartés : le premier nommé seulement ; laisser « non établi ». R-COMPOSITION version 2 établit seule 15 co-tutelles ; 30 décisions `rattachement_portefeuille` (14/11/2026) établissent les autres, sourcées par les décrets de composition du 21/06/2012, du 19/03/2013 et du 03/09/2019, ou par le libellé de l'Assemblée (5 co-tutelles mal formées, 3 libellés Bayrou). Reste : 54 portefeuilles non établis dans des gouvernements hors périmètre (Fillon I et II, Ayrault I) | R-COMPOSITION version 2 ; `references/rattachement_portefeuille/` ; section `composition` des gouvernements |
 | Q43 (15/11/2026, issue #63). Les lois servies (actes de promulgation de l'Assemblée) ne sont confrontées à aucune autre source. Le JO, seule source tenue hors de l'Assemblée, publie 448 lois sous la XIVe (Assemblée : 396), 353 sous la XVe (334), 136 et 149 sous la XVIe et la XVIIe (identiques) ; aucune loi de l'Assemblée n'y manque (g14). Quelles lois du JO absentes de l'Assemblée l'avertissement de chaque nuit nomme-t-il ? | « Sauf avant le JO » : expliquées et seulement comptées, les lois reliées par R-LOI-DOSSIER (11) et celles sans travaux préparatoires antérieures à la première loi du périmètre publiée avec les siens (08/12/2015 : 49 de la XIVe) ; nommées, toutes les autres (11 : 3 de la XIVe, 8 de la XVe) et toute loi de l'Assemblée absente du JO ; décomptes par législature dans le détail. Écartés : toutes chaque nuit (liste longue et immobile) ; décomptes seulement | A3 (doc. 2, 2.8) |
 | Q44 (15/11/2026, alerte #148). La nuit du 15/11 est refusée par C1 pour 4 faits « loi citée » des gouvernements Attal, Castex et Philippe II, qui ne sont pas perdus : les actes des lois 2010-837 et 2010-838, arrivés au JO cette nuit-là, identifient la loi citée, et le fait gagne un identifiant (`id_acte`) et un lien Légifrance. C1 reconnaît un fait à tous ses identifiants. Que faire ? | « Identité enrichie » : un fait qui garde tous ses identifiants, inchangés, et en gagne seulement (même fiche, même type, fait nouveau) n'est pas une perte ; il est compté (`expliques.c1_identite_enrichie`). Un identifiant qui change, ou un fait qui se fond dans un fait déjà publié, reste une perte. Écartés : levée ponctuelle (le refus reviendrait à chaque loi ancienne identifiée) ; les deux | C1 (doc. 2, 2.8) |
+| Q47 (23/11/2026, alerte #146). Une fois lus les travaux préparatoires que le JO publie dans le bloc des signataires (lecteur `jo_actes` version 3), A3 nomme 59 lois du JO absentes de l'Assemblée et non reliées à un dossier (52 de la XIVe, 7 de la XVe, g20) : écarts réels de la source, les documents de l'Assemblée cités par le JO ne sont dans aucune de ses archives (2018-1214 : le JO dit « projet » pour une proposition) ; toutes viennent d'un texte engagé sous la législature précédente. L'explication « avant les travaux au JO » de Q43 reposait sur l'erreur de lecture. Comment les déclarer expliquées ? | « Une décision par loi » : type de référence `rattachement_loi` (`references/rattachement_loi/2026-11-23-lois-hors-archives.yaml`, 59 entrées : numéro, dossier `DLR…` retrouvé par son adresse au Sénat ou `aucun`, cause, documents cherchés) ; A3 les compte (`declarees_par_reference`) sans les nommer ; A7 nomme une entrée sans objet (loi à l'Assemblée, reliée par R-LOI-DOSSIER, ou absente du JO), comme `borne_mandat` ; l'explication « avant les travaux au JO » est retirée. Écartés : explication automatique (un cas nouveau serait compté sans être vu) ; rien (59 noms chaque nuit) | doc. 1 (1.3.3), doc. 2 (A3, A7), doc. 8 (T18) |
 
 ---
 
@@ -149,37 +150,6 @@ défaut peut rester.
 - **En attendant** : ces mandats n'entrent pas dans la composition et sont signalés (A8) ; la
   propriétaire peut, par décision, les borner à la fin du gouvernement ou les faire signaler à
   la source.
-
-### Q45. Lois du JO absentes des archives de l'Assemblée : comment les déclarer expliquées ?
-
-- **Constat** (23/11/2026, alerte #146, g20) : une fois corrigée la lecture des travaux
-  préparatoires (lecteur `jo_actes` version 3 : le JO les publie souvent dans le bloc des
-  signataires), A3 nomme 59 lois du JO absentes de l'Assemblée et non reliées à un dossier
-  (52 de la XIVe, 7 de la XVe ; liste au journal des changements). Ce sont des écarts réels de
-  la source : les documents de l'Assemblée que le JO cite n'existent dans aucune archive de
-  l'Assemblée (archives brutes relues), et toutes ces lois viennent d'un texte engagé sous la
-  législature précédente. Les archives de la XIVe et de la XVe sont closes : la liste ne bougera
-  plus. L'explication `avant_les_travaux_au_jo` (Q43, 49 lois) reposait sur l'erreur de lecture
-  et ne couvre plus rien.
-- **Bloque** : la fusion de la correction de lecture sans que l'avertissement passe de 11 à 59
-  noms ; A3 ne doit nommer que l'inexpliqué (décision du 13 au 15/11).
-- **Options** :
-  1. *Déclaration par référence* : le type `rattachement_loi`, prévu au doc. 1 (1.3.3 : « une
-     loi que R-LOI-DOSSIER ne rattache pas à son dossier ») et à la recette (T18) mais jamais
-     créé. Un fichier, une entrée par loi (sur le modèle de `adresse_citee`) : numéro de la loi,
-     `dossier` (un `DLR…` si on le retrouve, sinon `aucun`), cause (`absente_des_archives_de_l_assemblee`),
-     documents cherchés. A3 les compte (`expliquees_par_reference`) sans les nommer ; une entrée
-     qui ne s'applique plus (loi apparue à l'Assemblée, ou reliée par R-LOI-DOSSIER) est nommée
-     par A7, comme `borne_mandat`. Chaque cas est vu une fois ; un cas nouveau (XVIIe → XVIIIe)
-     est nommé jusqu'à sa déclaration.
-  2. *Explication automatique* : une loi engagée sous la législature précédente dont aucun
-     document cité n'existe à l'Assemblée est comptée. Rien à tenir, mais la date d'engagement
-     est lue dans le texte des travaux, et un cas nouveau serait compté sans que personne le voie.
-  3. *Rien* : les 59 lois sont nommées chaque nuit (liste longue et immobile, écartée pour Q43).
-- **Recommandation** : option 1, livrée dans la même PR que la correction de lecture, avec les
-  59 déclarations à valider ; l'explication `avant_les_travaux_au_jo` est alors retirée.
-- **En attendant** : la correction de lecture n'est pas fusionnée ; sur `main`, A3 nomme
-  toujours les 11 lois de l'alerte #146.
 
 ---
 
