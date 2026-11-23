@@ -293,44 +293,73 @@ def test_a3_tous_expliques_pas_d_avertissement(tmp_path):
 
 
 def test_a3_lois_contre_le_journal_officiel(tmp_path):
-    """Issue #63 (décision du 15/11/2026) : les lois servies (Assemblée) contre celles du JO. Une loi
-    du JO absente de l'Assemblée est expliquée si R-LOI-DOSSIER la relie, ou si elle est sans
-    travaux préparatoires et antérieure à la première loi que le JO publie avec les siens ; toute
-    autre est nommée, comme une loi de l'Assemblée absente du JO."""
+    """Issue #63 (décision du 15/11/2026) et Q47 (décision du 23/11/2026, « option 2 ») : les lois
+    servies (Assemblée) contre celles du JO. Une loi du JO absente de l'Assemblée est expliquée si
+    R-LOI-DOSSIER la relie, ou si son texte a été engagé sous la législature précédente et
+    qu'aucun document de l'Assemblée cité par le JO n'existe dans nos archives, avec le type et
+    dans la législature voulus ; toute autre est nommée (même sans travaux préparatoires :
+    l'explication « avant les travaux au JO » est retirée), comme une loi de l'Assemblée absente
+    du JO."""
     loi = lambda n, d, l: {"numero_loi": n, "date_promulgation": d, "legislature": l, "dossier": "D" + n}
     acte = lambda n, d, nature="LOI": {"uid": "jorf:" + n, "nature": nature, "numero": n, "date_signature": d}
     lien = lambda n, dossier=None, raison=None: {"numero_loi": n, "dossier": dossier, "raison": raison}
+    tp = []
+
+    def travaux(n, *lignes):
+        for k, (chambre, nature, numero, ta, session, leg, ligne) in enumerate(lignes):
+            tp.append({"acte": "jorf:" + n, "rang": k, "chambre": chambre, "nature": nature, "numero": numero,
+                       "numero_ta": ta, "session": session, "legislature": leg, "ligne": ligne})
+    # Engagée au Sénat en 2011-2012, aucun document de l'Assemblée cité dans nos archives : expliquée.
+    travaux("2016-7", ("SN", "projet_de_loi", "10", None, "2011-2012", None, "Projet de loi n° 10 (2011-2012)"),
+            ("AN", "projet_de_loi", "500", None, None, None, "Projet de loi, adopté par le Sénat, n° 500"),
+            ("AN", "rapport", "600", None, None, None, "Rapport de M. X, n° 600"),
+            ("AN", "discussion", None, "70", None, None, "Discussion et adoption le 3 mars 2016 (TA n° 70)"))
+    # Engagée avant, mais le projet n° 501 de la XIVe est dans nos archives : nommée.
+    travaux("2016-6", ("SN", "projet_de_loi", "11", None, "2011-2012", None, "Projet de loi n° 11 (2011-2012)"),
+            ("AN", "projet_de_loi", "501", None, None, None, "Projet de loi, adopté par le Sénat, n° 501"),
+            ("AN", "discussion", None, "71", None, None, "Discussion et adoption le 3 mars 2016 (TA n° 71)"))
+    # Engagée sous la XVe (session 2017-2018 : octobre 2017) : nommée.
+    travaux("2018-4", ("SN", "projet_de_loi", "5", None, "2017-2018", None, "Projet de loi n° 5 (2017-2018)"),
+            ("AN", "projet_de_loi", "20", None, None, None, "Projet de loi, adopté par le Sénat, n° 20"))
+    # Législature nommée par le JO (XIVe) : le n° 967 de la XVe est un homonyme ; expliquée.
+    travaux("2018-8", ("AN", "proposition_de_loi", "967", None, None, 14,
+                       "Proposition de loi n° 967 (quatorzième législature)"),
+            ("AN", "discussion", None, "904", None, None, "Discussion et adoption le 2 février 2017 (TA n° 904)"))
     t = dict(TABLES,
              legislature=[{"numero": 14, "debut": "2012-06-20", "fin": "2017-06-20"},
                           {"numero": 15, "debut": "2017-06-21", "fin": "2022-06-21"}],
              loi=[loi("2016-1", "2016-03-01", 14), loi("2017-9", "2017-01-01", 14), loi("2018-9", "2018-02-01", 15)],
              jo_actes__acte_reglementaire=[
                  acte("2016-1", "2016-03-01"), acte("2018-9", "2018-02-01"),
-                 acte("2013-5", "2013-04-01"),                       # avant les travaux au JO : expliquée
-                 acte("2016-8", "2016-06-01"),                       # sans travaux, mais après : nommée
-                 acte("2016-7", "2016-05-01"),                       # aucun document : nommée
+                 acte("2013-5", "2013-04-01"),                       # sans travaux : nommée
+                 acte("2016-7", "2016-05-01"),                       # expliquée (Q47)
+                 acte("2016-6", "2016-05-02"),                       # document dans nos archives : nommée
                  acte("2018-3", "2018-03-01"),                       # reliée par le JO : expliquée
-                 acte("2018-4", "2018-04-01", "LOI_ORGANIQUE"),      # nommée
+                 acte("2018-4", "2018-04-01", "LOI_ORGANIQUE"),      # engagée sous la XVe : nommée
+                 acte("2018-8", "2018-06-01"),                       # expliquée (Q47)
                  acte("2018-5", "2018-05-01", "DECRET")],            # pas une loi
+             jo_actes__travaux_preparatoires=tp,
+             an_dossiers__document=[{"uid": "PRJLANR5L14B0501", "dossier": "DX"},
+                                    {"uid": "PIONANR5L15B0967", "dossier": "DY"}],
              loi_dossier_jo=[lien("2016-1", "D2016-1"), lien("2018-9", "D2018-9"),
                              lien("2013-5", raison="pas_de_travaux_preparatoires"),
-                             lien("2016-8", raison="pas_de_travaux_preparatoires"),
-                             lien("2016-7", raison="aucun_document"), lien("2018-3", "D3"),
-                             lien("2018-4", raison="aucun_document")])
+                             lien("2016-7", raison="aucun_document"), lien("2016-6", raison="un_seul_numero"),
+                             lien("2018-3", "D3"), lien("2018-4", raison="aucun_document"),
+                             lien("2018-8", raison="un_seul_numero")])
     c = _ctrl(tmp_path, tables=t)
     c.a3_totaux()
     lois = [a for a in _an(c, "A3") if a["titre"].startswith("Lois du Journal officiel")][0]
     assert lois["exemples"] == sorted([
-        "loi 2016-7 (2016-05-01) publiée au JO, absente de l'Assemblée et non reliée à un dossier (aucun_document)",
-        "loi 2016-8 (2016-06-01) publiée au JO, absente de l'Assemblée et non reliée à un dossier "
+        "loi 2013-5 (2013-04-01) publiée au JO, absente de l'Assemblée et non reliée à un dossier "
         "(pas_de_travaux_preparatoires)",
+        "loi 2016-6 (2016-05-02) publiée au JO, absente de l'Assemblée et non reliée à un dossier (un_seul_numero)",
         "loi 2018-4 (2018-04-01) publiée au JO, absente de l'Assemblée et non reliée à un dossier (aucun_document)",
         "loi 2017-9 (2017-01-01) promulguée selon l'Assemblée, absente du JO"])
     assert lois["detail"] == {
         "14": {"lois_au_jo": 4, "presentes_a_l_assemblee": 1, "reliees_par_le_jo": 0,
-               "expliquees_avant_les_travaux_au_jo": 1, "nommees": 2, "assemblee_absentes_du_jo": 1},
-        "15": {"lois_au_jo": 3, "presentes_a_l_assemblee": 1, "reliees_par_le_jo": 1,
-               "expliquees_avant_les_travaux_au_jo": 0, "nommees": 1, "assemblee_absentes_du_jo": 0}}
+               "expliquees_texte_anterieur_hors_archives": 1, "nommees": 2, "assemblee_absentes_du_jo": 1},
+        "15": {"lois_au_jo": 4, "presentes_a_l_assemblee": 1, "reliees_par_le_jo": 1,
+               "expliquees_texte_anterieur_hors_archives": 1, "nommees": 1, "assemblee_absentes_du_jo": 0}}
     assert c.bilan()["expliques"]["a3_lois"] == lois["detail"]
 
 
