@@ -24,6 +24,7 @@ vocabulaires:
   - suite_absente_des_archives
   - aucune_decision_en_seance
   - conclusion_non_classee
+  - renvoye_en_commission
   - aucune_decision_finale
   etape_atteinte:
   - depot
