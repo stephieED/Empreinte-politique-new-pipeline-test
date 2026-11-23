@@ -1364,7 +1364,7 @@ flowchart LR
 | En-tête, En bref (maillons, effectif jour par jour, banc déclaré) | `lignee`, `groupe`, `filiation`, `appartenance`, `position_declaree` (avec `divergente`) — R-FILIATION, R-CONTINUITE-GROUPE, R-BANC ; `source_url` de chaque maillon : la page Assemblée du dernier organe du maillon (`https://www2.assemblee-nationale.fr/instances/fiche/OMC_<organe>`, construite pour un organe lu dans l'archive, #78) | `fiche.json` |
 | Qui sont-ils (arrivées, départs, passages) | `appartenance`, `population` (drapeau candidat) | `membres.json` |
 | Sur quoi ils ont pris la parole | paroles des membres **pendant leur appartenance** | `paroles.json` |
-| Ce qu'ils ont proposé | `texte_porte`, `amendement_canonique` des membres pendant leur appartenance ; signatures à part | `proposes.json` |
+| Ce qu'ils ont proposé | `texte_porte`, `amendement_canonique` des membres pendant leur appartenance, avec le type de déposant (`type_auteur` : `depute` ou `rapporteur`, #70) et, par commission et année, les décomptes `nb_amendements_depute` et `nb_amendements_rapporteur` ; signatures à part | `proposes.json`, `amendements-<annee>.json` |
 | Ce qu'ils ont voté | `position_groupe_scrutin` : décompte des membres à la date, numérateur et dénominateur | `votes-<legislature>.json` |
 | Avec qui ils votent | positions majoritaires des groupes de la législature, `place_mediane` — R-HEMICYCLE | `avec-qui-<legislature>.json` |
 | Ce qu'on n'a pas pu lire | `couverture` par maillon | `fiche.json` |
