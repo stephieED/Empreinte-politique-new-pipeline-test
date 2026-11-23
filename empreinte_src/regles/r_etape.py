@@ -20,13 +20,13 @@ La législature d'un acte est celle où tombe sa date, entre son début et sa fi
 date qui ne tombe dans aucune législature (entre la dissolution et l'ouverture de la suivante :
 décision du 23/11/2026, doc. 5, Q54 « Selon l'identifiant »).
 Un texte transmis par le Sénat survit à la dissolution et a une ligne par législature où il a
-avancé. Version 3 (décision du 23/11/2026, doc. 5, Q48 « Ranger par la date ») : l'identifiant
+avancé. Version 4 (décision du 23/11/2026, doc. 5, Q48 « Ranger par la date ») : l'identifiant
 seul rangeait sous la XIVe des actes de 2018 que l'archive close de la XIVe numérote `L14-`
 (rapport du Sénat du 17/01/2018, dossier DLR5L14N35418), et que la page publique du dossier range
 sous la XVe ; 29 textes servis en g20 avaient une étape datée après la fin de leur législature."""
 
 NOM = "R-ETAPE"
-VERSION = 3
+VERSION = 4
 DEPEND = ("R-LEGISLATURES",)
 SORTIES = ("etape_dossier",)
 DESCRIPTION = (
@@ -41,10 +41,8 @@ DESCRIPTION = (
 # TSORTF12, TSORTF20, TSORTF21 « considérée comme définitive » / « adoptée » en application des
 # articles 151-3, 151-7 et 151-9 du Règlement, TSORTF14 « voté par les deux assemblées du Parlement
 # en termes identiques », TSORTF23 « modifié par le Sénat, considéré comme adopté… (49.3) » ;
-# TSORTF13 « rejeté définitivement ». Restent hors des deux listes, faute de sens établi :
-# TSORTMOT01 « Motion adoptée » (la source ne dit pas laquelle : rejet préalable ou renvoi en
-# commission) et TSORTFnull (sans libellé) : `issue` NULL, et R-SORT-FINAL les nomme
-# (`conclusion_non_classee`, avertissement A7).
+# TSORTF13 « rejeté définitivement ». Un code absent de toutes les listes ci-dessous garde
+# `issue` NULL : R-SORT-FINAL le nomme (`conclusion_non_classee`, avertissement A7).
 ADOPTION = ("('TSORTF01', 'TSORTF02', 'TSORTF03', 'TSORTF04', 'TSORTF05', 'TSORTF06', 'TSORTF12', "
             "'TSORTF14', 'TSORTF18', 'TSORTF19', 'TSORTF20', 'TSORTF21', 'TSORTF23')")
 # Adoption « telle quelle » : sans modification par rapport au texte transmis (TSORTF02 et
@@ -55,6 +53,17 @@ ADOPTION_CONFORME = "('TSORTF01', 'TSORTF03', 'TSORTF14')"
 # chambre clôt la navette (pas la nouvelle lecture, où chaque chambre vote son propre texte).
 NAVETTE = "('AN1', 'SN1', 'AN2', 'SN2', 'AN3', 'SN3')"
 REJET = "('TSORTF07', 'TSORTF13', 'TSORTF24')"
+# Version 3 (alerte #118, décidé par la propriétaire le 23/11/2026 : doc. 5, Q45 et Q46). Ni adoption ni rejet du texte :
+# - `renvoi_en_commission` : conclusion TSORTMOT01 « Motion adoptée » d'une décision dont la motion
+#   (l'acte `MotionProcedure_Type` de même uid, sans le suffixe `DEC`) est une motion de renvoi en
+#   commission (`typeMotion` TMP03). Toutes les décisions TSORTMOT01 des archives XIVe-XVIIe du
+#   04/11/2026 (25 dossiers, en première lecture à l'Assemblée) sont dans ce cas. Une autre motion
+#   adoptée, ou une motion introuvable, reste non classée ;
+# - `sans_conclusion` : TSORTFnull, décision publiée sans conclusion (11 décisions du Sénat en
+#   nouvelle lecture, XVe-XVIIe). Le sens n'est jamais déduit de la suite : la décision ne compte
+#   ni comme adoption ni comme rejet, et n'est nommée (A7) que si elle laisse le sort non connu.
+RENVOI_EN_COMMISSION = ("TSORTMOT01", "TMP03")    # (conclusion, type de la motion)
+SANS_CONCLUSION = "('TSORTFnull')"
 # Procédures à une seule chambre : résolutions (8) et résolutions de l'article 34-1 (22).
 UNE_CHAMBRE = "('8', '22')"
 
@@ -69,7 +78,7 @@ def date_ref(ctx) -> str:
 def legislature_acte(ctx, date: str, uid: str) -> str:
     """Expression SQL : la législature d'un acte, celle où tombe sa date (`date`, texte ISO), entre
     son début et sa fin ; à défaut (pas de date, date hors de toute législature, table `legislature`
-    absente), celle de son identifiant (`uid`, `L17-…`). Version 3, décision Q48 du 23/11/2026."""
+    absente), celle de son identifiant (`uid`, `L17-…`). Version 4, décision Q48 du 23/11/2026."""
     par_id = f"TRY_CAST(regexp_extract({uid}, '^L(\\d+)-', 1) AS INTEGER)"
     if not ctx.existe("legislature"):
         return par_id
@@ -79,7 +88,10 @@ def legislature_acte(ctx, date: str, uid: str) -> str:
 
 def decisions(ctx) -> str:
     """Décisions de séance datées (au plus tard à la date de référence), avec chambre, lecture et
-    issue lue dans la conclusion."""
+    issue lue dans la conclusion (`adopte`, `rejete`, `renvoi_en_commission`, `sans_conclusion`,
+    NULL si le code n'est pas classé). La motion d'une décision de motion est l'acte de même uid,
+    sans le suffixe `DEC`, dans le même dossier."""
+    concl_renvoi, motion_renvoi = RENVOI_EN_COMMISSION
     return f"""
         SELECT a.dossier, a.uid AS acte, left(a.date, 10) AS date, a.code,
                {legislature_acte(ctx, "a.date", "a.uid")} AS legislature,
@@ -88,9 +100,15 @@ def decisions(ctx) -> str:
                     WHEN a.code LIKE 'SN%' OR a.code LIKE 'CMP-DEBATS-SN%' THEN 'SN' END AS chambre,
                a.conclusion_code, a.conclusion_libelle,
                CASE WHEN a.conclusion_code IN {ADOPTION} THEN 'adopte'
-                    WHEN a.conclusion_code IN {REJET} THEN 'rejete' END AS issue,
+                    WHEN a.conclusion_code IN {REJET} THEN 'rejete'
+                    WHEN a.conclusion_code = '{concl_renvoi}' AND m.type_motion_code = '{motion_renvoi}'
+                         THEN 'renvoi_en_commission'
+                    WHEN a.conclusion_code IN {SANS_CONCLUSION} THEN 'sans_conclusion' END AS issue,
                d.procedure_code, a.prov_url
         FROM an_dossiers__acte a JOIN an_dossiers__dossier d ON d.uid = a.dossier
+        LEFT JOIN (SELECT DISTINCT dossier, uid, type_motion_code FROM an_dossiers__acte
+                   WHERE type_acte = 'MotionProcedure_Type') m
+               ON m.dossier = a.dossier AND a.uid = m.uid || 'DEC'
         WHERE a.type_acte = 'Decision_Type' AND a.conclusion_code LIKE 'TSORT%'
           AND left(a.date, 10) <= '{date_ref(ctx)}'"""
 

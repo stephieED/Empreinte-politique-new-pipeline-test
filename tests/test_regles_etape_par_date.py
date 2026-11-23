@@ -1,4 +1,4 @@
-"""R-ETAPE (version 3, décision Q48 du 23/11/2026, « Ranger par la date ») : la législature d'un acte
+"""R-ETAPE (version 4, décision Q48 du 23/11/2026, « Ranger par la date ») : la législature d'un acte
 est celle où tombe sa date ; son identifiant ne sert que faute de date, ou pour une date qui ne
 tombe dans aucune législature. Actes réels de l'archive des dossiers (export de la g20)."""
 from empreinte_src.lecteurs import an_dossiers
