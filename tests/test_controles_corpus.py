@@ -450,3 +450,82 @@ def test_a2_page_de_la_legislature_du_scrutin():
     lues = []
     verifier(con, 1, lambda url: lues.append(url) or PAGE, nb_scrutins=1)
     assert lues == ["https://www.assemblee-nationale.fr/dyn/14/scrutins/34"]
+
+
+def _periode(mandat, debut, fin, etat="en_fonction", institution="assemblee", legislature=None):
+    import json
+    r = _fait("candidat/alice-martin", "entete", json.dumps(
+        {"per": "per:000001", "institution": institution, "etat": etat, "legislature": legislature,
+         "debut": debut, "fin": fin, "mandat": mandat}), mandat=mandat, acteur="PA1")
+    r["type_fait"] = "periode_carriere"
+    return r
+
+
+# Carrière servie d'Alice Martin : un mandat découpé par deux groupes, un mandat suspendu (entrée au
+# gouvernement), un mandat en cours découpé lui aussi, et une période d'avant 2002 lue dans Sycomore.
+PERIODES = [_periode("PM15", "2017-06-21", "2018-01-01", legislature=15),
+            _periode("PM15", "2018-01-02", "2022-06-21", legislature=15),
+            _periode("PM16", "2022-06-22", "2022-07-22", legislature=16),
+            _periode("PM16", "2022-07-23", "2024-06-09", etat="suspendu", legislature=16),
+            _periode("PM17", "2024-07-08", "2024-07-18", legislature=17),
+            _periode("PM17", "2024-07-19", None, legislature=17),
+            _periode("sycomore:100:1997-06-01", "1997-06-01", "2002-06-18", institution="assemblee_avant_2002")]
+SYCOMORE = [{"identifiant": "100", "chambre": c, "debut": d, "fin": f, "legislature": l}
+            for c, d, f, l in (("assemblee", "1997-06-01", "2002-06-18", "XIe législature"),
+                               ("assemblee", "2017-06-21", "2022-06-21", "XVe législature"),
+                               ("assemblee", "2022-06-22", "2022-07-22", "XVIe législature"),
+                               ("assemblee", "2024-07-08", None, "XVIIe législature"),
+                               ("senat", "1990-10-01", "1999-09-30", None))]
+
+
+def _tables_mandats(sycomore=SYCOMORE, identifiants=({"element": "Q1", "identifiant": "100"},)):
+    t = dict(TABLES, candidat=[dict(c, sycomore=None, element_wikidata="Q1" if c["per"] == "per:000001" else None)
+                               for c in TABLES["candidat"]])
+    if sycomore is not None:
+        t["sycomore__mandat_sycomore"] = list(sycomore)
+    if identifiants:
+        t["sycomore__identifiant_sycomore"] = list(identifiants)
+    return t
+
+
+def test_a2_mandats_contre_sycomore(tmp_path):
+    """Issue #63 (23/11/2026) : chaque période de mandat de député servie (début, fin), contre la
+    fiche Sycomore relevée la même nuit, sans page lue en plus. L'identifiant Sycomore est celui que
+    Wikidata déclare pour l'élément (comme R-CARRIERE). Seul l'inexpliqué est nommé."""
+    c = _ctrl(tmp_path, tables=_tables_mandats(), faits=FAITS + PERIODES)
+    r = c.a2_mandats()
+    # Segments d'un même mandat réunis ; la suspension et la période d'avant 2002 comptées, pas comparées.
+    assert (r["faits"], r["verifies"], r["ecarts"], r["non_verifies"]) == (3, 3, [], [])
+    assert (r["suspensions_non_comparees"], r["avant_2002_lues_dans_sycomore"]) == (1, 1)
+    assert not [a for a in _an(c, "A2") if "mandat" in a["titre"]]
+    assert c.bilan()["a2_mandats"]["verifies"] == 3
+    from empreinte_src.cli import _ligne_a2
+    assert "périodes de mandat (Sycomore) : 3 faits, 3 vérifiés, 0 en écart, 0 non vérifiés" in _ligne_a2(c.bilan())
+
+    # Une fin différente, et un mandat de Sycomore que la carrière servie n'a pas : nommés.
+    autre = [dict(s, fin="2022-06-20") if s["debut"] == "2017-06-21" else s for s in SYCOMORE]
+    autre.append({"identifiant": "100", "chambre": "assemblee", "debut": "2012-06-20", "fin": "2017-06-20",
+                  "legislature": "XIVe législature"})
+    c = _ctrl(tmp_path, tables=_tables_mandats(autre), faits=FAITS + PERIODES)
+    r = c.a2_mandats()
+    url = "https://www2.assemblee-nationale.fr/sycomore/fiche?num_dept=100"
+    assert r["ecarts"] == [
+        f"candidat/alice-martin PM15 (15e législature) fin : nous 2022-06-21, Sycomore 2022-06-20 — {url}",
+        f"candidat/alice-martin : mandat de Sycomore du 2012-06-20 au 2017-06-20 (XIVe législature), "
+        f"absent de la carrière servie — {url}"]
+    a2 = [a for a in _an(c, "A2") if a["titre"].startswith("Périodes de mandat")][0]
+    assert a2["bloquant"] is False and c.bilan()["a2_mandats"]["ecarts"] == 2
+
+    # Un mandat servi qu'aucune ligne de Sycomore ne recouvre : nommé.
+    c = _ctrl(tmp_path, tables=_tables_mandats([s for s in SYCOMORE if s["debut"] != "2022-06-22"]),
+              faits=FAITS + PERIODES)
+    assert c.a2_mandats()["ecarts"] == [
+        "candidat/alice-martin PM16 (16e législature, du 2022-06-22 au 2022-07-22) : aucun mandat de "
+        f"Sycomore sur cette période — {url}"]
+
+    # Sans identifiant Sycomore, ou sans relevé : non vérifié, jamais un écart ; tout non vérifié → averti.
+    for t in (_tables_mandats(identifiants=()), _tables_mandats(sycomore=None)):
+        c = _ctrl(tmp_path, tables=t, faits=FAITS + PERIODES)
+        r = c.a2_mandats()
+        assert (r["faits"], r["verifies"], r["ecarts"], len(r["non_verifies"])) == (3, 0, [], 3)
+        assert [a for a in _an(c, "A2") if a["titre"].startswith("Vérification des mandats impossible")]
