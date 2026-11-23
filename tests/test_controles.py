@@ -1,4 +1,5 @@
 """Contrôles bloquants (E6) : C1, C2, C4, C6 et la levée ciblée."""
+import json
 import pyarrow as pa
 import pyarrow.parquet as pq
 
@@ -298,3 +299,32 @@ def test_c1_identite_enrichie_n_est_pas_une_perte(tmp_path):
                   fait('{"numero_loi":"2010-837"}', autre="2010-837", acte="J0")],
                  [fait('{"numero_loi":"2010-837"}', autre="2010-837", acte="J0")])
     assert [a["controle"] for a in c.anomalies] == ["C1"]
+
+
+def test_c1_non_inscrits_reconnus_sans_leur_effectif(tmp_path):
+    """Alerte #156 (nuits du 21 et du 22/11/2026) : la ligne « Non-inscrits » des groupes n'a pas
+    d'identifiant ; C1 la reconnaît à sa valeur sans ses comptes. Son effectif et ses sièges dans
+    l'hémicycle (égaux) changent avec les arrivées : ce n'est pas une perte. La ligne qui disparaît,
+    ou un autre champ qui change (libellé), en reste une."""
+    def ni(n, au, libelle="Non-inscrits"):
+        return {"fiche": "legislature/17", "section": "groupes", "type_fait": "effectif_groupe",
+                "id_organe": None,
+                "valeur": json.dumps({"groupe": None, "sigle": "NI", "libelle": libelle, "debut": None,
+                                      "fin": None, "position_declaree": None, "effectif": n, "au": au,
+                                      "effectif_a_la_fin": None, "sieges_dans_l_hemicycle": n,
+                                      "rattachement": "non_inscrit", "source_point": "an-amo30-l17",
+                                      "source_uid": None, "licence": "etalab-2.0"})}
+    groupe = {"fiche": "legislature/17", "section": "groupes", "type_fait": "effectif_groupe",
+              "id_organe": "PO1", "valeur": '{"groupe":"PO1","sigle":"G","effectif":100}'}
+    schema = pa.schema([(c, pa.string()) for c in ("fiche", "section", "type_fait", "id_organe", "valeur")])
+
+    def comparer(avant, apres):
+        pa_, pb = str(tmp_path / "a.parquet"), str(tmp_path / "b.parquet")
+        pq.write_table(pa.Table.from_pylist(avant, schema=schema), pa_)
+        pq.write_table(pa.Table.from_pylist(apres, schema=schema), pb)
+        c = Controles(str(tmp_path))
+        c.c1_c6_comparer(pa_, pb)
+        return [a["controle"] for a in c.anomalies]
+    assert comparer([groupe, ni(11, "2026-11-20")], [groupe, ni(12, "2026-11-21")]) == []
+    assert comparer([groupe, ni(11, "2026-11-20")], [groupe]) == ["C1"]
+    assert comparer([groupe, ni(11, "2026-11-20")], [groupe, ni(11, "2026-11-21", "Autre")]) == ["C1"]
