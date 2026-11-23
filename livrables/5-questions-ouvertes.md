@@ -112,6 +112,52 @@ défaut peut rester.
 - **En attendant** : non attribuées, avec la raison. Une décision `identite` pourrait associer
   un identifiant négatif à un `PA…` après vérification.
 
+### Q58 (23/11/2026). Objet illisible : garder ses faits précédents, ou bloquer ?
+
+- **Constat** : la conception prévoit qu'un objet qu'un lecteur ne sait pas lire garde ses
+  faits précédents, avec la couverture `trou_source` ou `en_cours` (doc. 2, 2.5 et 2.11). Le
+  code de `main` fait autrement depuis le 13/11/2026 (issue #39, module `lecture`) : la
+  version illisible ne donne aucun fait, pas même les lots lus avant l'erreur ; elle est
+  relue à la mise à jour suivante ; ses faits perdus ne sont pas expliqués par le changement
+  de la source, donc C1 refuse la publication tant qu'elle reste illisible (alerte
+  `lecture:illisibles`).
+- **Bloque** : le comportement décrit en 2.11 ; le choix entre une nuit refusée (rien de faux
+  publié, mais plus aucune publication jusqu'à la correction du lecteur ou une levée) et une
+  publication qui garde des faits d'une version dépassée.
+- **En attendant** : le comportement du code (aucun fait, C1 bloque). Les docs 2 et 8 disent
+  les deux, « prévu » et « réalisé ».
+
+### Q59 (23/11/2026). Fenêtre interdite : la coder avant le dépôt public ?
+
+- **Constat** : la décision du 04/11/2026 interdit toute écriture visible sur le dépôt public
+  du lundi au vendredi, de 9 h à 19 h (heure de Paris), hors jours fériés ; un lancement
+  manuel dans la fenêtre doit être refusé (doc. 2, 2.1 point 4, 2.9). Le code de `main` ne
+  la tient pas : le réglage `fenetre_interdite` vaut `false` (« désactivée sur le dépôt
+  d'essai ») et aucun module ne le lit. Les déclenchements planifiés sont à 20 h 30 et
+  23 h 30 UTC, hors fenêtre, mais une tâche planifiée retardée au matin ou un lancement
+  manuel écriraient en journée. L'acquis d'une nuit non écrite attend déjà dans un artefact
+  (14 jours) que la nuit suivante écrit (rattrapage) : c'est le mécanisme que la fenêtre
+  réutiliserait, et non le cache de GitHub Actions (7 jours) que montraient deux schémas.
+- **Bloque** : la bascule vers le dépôt public (migration).
+- **En attendant** : aucune fenêtre ; sans effet tant que le dépôt d'essai n'est pas public.
+
+### Q60 (23/11/2026). Registre des adresses : toutes les fiches, ou les lignées seulement ?
+
+- **Constat** : la spécification inscrit chaque adresse publiée dans un registre en ajout
+  seul, rangé avec le registre des identités (ZI) dans l'entrepôt, avec une page de
+  redirection quand l'objet fusionne ou disparaît (doc. 1, 1.2.2, 1.3.4 ; cahier 6.1). Le
+  code de `main` n'inscrit que les adresses des **lignées** (`registres/lignee_adresse.parquet`) ;
+  une lignée absorbée est marquée `redirection`, sans page de redirection servie. Les
+  adresses des candidats et des gouvernements sont recalculées à chaque mise à jour (R-IDENTITE,
+  R-GOUVERNEMENTS), sans registre. Le cadrage du 14/11/2026 (issue #86) a laissé la forme des
+  adresses libre, sauf douze adresses de l'ancien site citées par des articles, tenues par
+  décision `adresse_citee`. Le registre `registre/adresses.csv` du dépôt public, dessiné par
+  deux schémas, n'existe pas ; ces schémas montrent désormais le registre dans l'entrepôt.
+- **Bloque** : la promesse « une adresse publiée ne change jamais » (doc. 1, 1.0 principe 5 ;
+  recette E13) pour les fiches de candidat et de gouvernement, et les redirections.
+- **En attendant** : registre et redirection marquée pour les lignées seulement ; les autres
+  adresses restent stables tant que leur nom ne change pas.
+
 ## B — À trancher avant d'activer la fonction
 
 ### Q7. Déports et collaborateurs
