@@ -29,7 +29,7 @@ flowchart LR
         direction TB
         E0["E0 Démarrer<br/>verrou, options, fenêtre, plan"]
         E1["E1 Relever<br/>un collecteur par source"]
-        E2["E2 Découper et versionner<br/>un découpeur par format"]
+        E2["E2 Dépaqueter et versionner<br/>un dépaqueteur par format"]
         Z0[("Z0 Relevés")]
         Z1[("Z1 Objets sources<br/>versionnés")]
         ZD[("ZD Décisions<br/>fichiers YAML")]
@@ -47,7 +47,7 @@ flowchart LR
         Z3[("Z3 Graphe relié<br/>et couverture")]
         E5["E5 Composer<br/>un composeur par type de fiche"]
         Z4[("Z4 candidate<br/>fichiers JSON, jeu, manifeste")]
-        E6{"E6 Contrôler<br/>C1 à C7, A1 à A8"}
+        E6{"E6 Contrôler<br/>C1 à C7, A1 à A9"}
         E7["E7 Publier"]
         E8["E8 Rendre compte"]
         E3 --> Z2 --> E4 --> Z3 --> E5 --> Z4 --> E6
@@ -65,8 +65,8 @@ flowchart LR
 
 Ce qu'il faut voir :
 
-- **À gauche, l'acquis.** E1 et E2 écrivent au fil de l'eau, source par source. Ce qui est
-  écrit reste, même si la suite échoue.
+- **À gauche, l'acquis.** E1 et E2 produisent l'acquis de la nuit ; la tâche `ecrire` le
+  dépose dans l'entrepôt, même si la suite échoue (2.4, 2.15). Ce qui est écrit reste.
 - **À droite, le recalculé.** Faits, graphe, fiches : tout se refait à partir de Z1 et des
   décisions. On peut effacer Z2 et Z3 sans rien perdre.
 - **Ce qui circule** : des fichiers reçus et des relevés (E1), des versions d'objets (E2),
@@ -86,8 +86,8 @@ rejouées à volonté.
 | # | Étape | Lit | Produit | Persisté ? |
 | --- | --- | --- | --- | --- |
 | E0 | **Démarrer** | options, horloge, état de l'entrepôt, décisions | plan de la mise à jour, verrou | — |
-| E1 | **Relever** | sources (réseau) | fichiers reçus + relevés (Z0) | oui, dès la fin de chaque source |
-| E2 | **Dépaqueter et versionner** | fichiers reçus, index de Z1 | nouvelles versions d'objets, retraits constatés (Z1) | oui, dès la fin de chaque source |
+| E1 | **Relever** | sources (réseau) | fichiers reçus + relevés (Z0) | oui, par la tâche `ecrire`, même si la suite échoue (2.4) |
+| E2 | **Dépaqueter et versionner** | fichiers reçus, index de Z1 | nouvelles versions d'objets, retraits constatés (Z1) | oui, par la tâche `ecrire`, même si la suite échoue (2.4) |
 | E3 | **Lire** | versions nouvelles de Z1 (ou toutes, si un lecteur a changé) | faits lus (Z2) | oui (cache) |
 | E4 | **Relier et dériver** | Z2, décisions, règles | graphe relié (Z3), couverture | non (recalculé) |
 | E5 | **Composer** | Z3 | fichiers des fiches, jeu téléchargeable, manifeste (Z4 candidate) | non |
@@ -102,28 +102,32 @@ publié avec la couverture `en_cours`, jamais comme une absence.
 
 ### En image : une soirée normale
 
-**Chaque soir à 19 h 30, une tâche prend le verrou, interroge les sources, ne garde que ce qui
-a changé, recalcule tout le reste, contrôle, publie, puis rend compte ; à 21 h 30, un second
-déclenchement voit que c'est fait et s'arrête.**
+**Chaque soir à 20 h 30 UTC, cinq tâches s'enchaînent : `preparer` fait le plan, `collecter`
+interroge les sources et ne garde que ce qui a changé, `calculer` recalcule tout le reste et
+contrôle, `ecrire`, la seule qui écrit, dépose l'acquis puis publie, et `alerter` rend
+compte ; à 23 h 30 UTC, un second déclenchement voit que c'est fait et s'arrête.**
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant PL as Planificateur GitHub
-    participant T as Tâche Actions
+    participant T as Tâches preparer, collecter, calculer
+    participant W as Tâche ecrire
+    participant AL as Tâche alerter
     participant CA as Cache Actions
+    participant AR as Artefacts de l'exécution
     participant EN as Entrepôt - releases
     participant SO as Sources
     participant PG as GitHub Pages
     participant PU as Dépôt public
     participant PR as Dépôt privé
 
-    Note over PL: 19 h 30, heure de Paris
+    Note over PL: 20 h 30 UTC
     PL->>T: déclenchement planifié n°1
-    T->>T: E0 verrou concurrency, heure de Paris recalculée
-    T->>EN: lit le numéro de génération de l'entrepôt
-    T->>T: plan du soir - sources, chantiers, budget 5 h 15
-    T->>CA: restaure la copie de travail
+    T->>T: E0 file concurrency
+    T->>EN: preparer lit le numéro de génération de l'entrepôt
+    T->>T: plan de la nuit - sources, acquis d'une nuit non écrite à rattraper
+    T->>CA: collecter restaure la copie de travail, sans les octets
 
     par E1 - un collecteur par source, 2 requêtes au plus par hôte
         T->>SO: Parltrack, requête conditionnelle avec ETag
@@ -135,33 +139,37 @@ sequenceDiagram
         T->>SO: Journal officiel, livraisons depuis la dernière traitée
         SO-->>T: deux livraisons - relevés nouveaux
     end
-    T->>EN: relevés écrits dans Z0
 
-    T->>T: E2 découpe en objets, empreinte de chacun
+    T->>T: E2 dépaquette chaque archive en fichiers membres, à l'octet près
     T->>T: nouvelle version si l'empreinte change, retrait si absent d'un relevé complet
     T->>T: source inchangée - vu_jusqu_au prolongé pour tous ses objets
-    T->>EN: segments, index, manifeste de génération
-    Note over T,EN: À partir d'ici, l'acquis du soir est gardé quoi qu'il arrive
+    T->>AR: acquis de la nuit - relevés, segments, index, manifeste de génération
+    Note over T,AR: rien n'est encore écrit dans l'entrepôt - l'artefact reste 14 jours
 
-    T->>T: E3 lit seulement les versions nouvelles - cache par empreinte et lecteur
+    T->>T: calculer - E3 lit seulement les versions nouvelles, cache par empreinte et lecteur
     T->>T: E4 recalcule tout le graphe Z3 - files de relecture
     T->>T: E5 compose les fiches, le jeu, le manifeste
-    T->>T: E6 contrôles bloquants C1 à C7, avertissements A1 à A8
+    T->>T: E6 contrôles bloquants C1 à C7, avertissements A1 à A9
+    T->>AR: candidate et rapport
+
+    AR->>W: l'acquis, et la candidate si le calcul a réussi
+    W->>EN: écrit l'acquis - relevés, segments, index, registres, manifeste de génération
+    Note over W,EN: à partir d'ici, l'acquis de la nuit est gardé, même si le calcul a échoué
 
     alt aucune anomalie bloquante
-        T->>EN: E7 fichiers nouveaux au magasin, jeu donnees-derniere
-        T->>PG: un seul artefact - code + /donnees/id-publication/
-        T->>PU: une ligne ajoutée au registre des publications
-    else anomalie bloquante
-        Note over T: rien n'est publié, le site reste tel quel
+        W->>EN: E7 fichiers nouveaux au magasin, jeu donnees-derniere
+        W->>PG: un seul artefact - code + /donnees/id-publication/
+        W->>PU: une ligne ajoutée au registre des publications
+    else anomalie bloquante, ou calcul en échec
+        Note over W: rien n'est publié, le site reste tel quel
     end
 
-    T->>EN: E8 rapport-date.json dans la release rapports, publié ou non
-    T->>PR: alertes - une issue par sujet, touchée seulement si elle change
+    W->>EN: E8 rapport-date.json dans la release rapports, publié ou non
+    AL->>PR: alertes - une issue par sujet, touchée seulement si elle change
 
-    Note over PL: 21 h 30
+    Note over PL: 23 h 30 UTC
     PL->>T: déclenchement planifié n°2
-    T->>EN: la génération du jour existe déjà
+    T->>EN: preparer voit une génération écrite depuis 20 h UTC
     T->>T: s'arrête sans rien faire
 ```
 
@@ -175,8 +183,11 @@ Ce qu'il faut voir, étape par étape :
 3. **Relevés conditionnels.** Une source inchangée coûte une requête. Un téléchargement est
    vérifié contre sa taille annoncée, car l'Assemblée coupe des transferts en répondant
    « 200 ».
-4. **Découpe.** Une archive devient des objets (un acteur, un scrutin…). On ne garde une
-   version que si son empreinte change. Les présences et collaborateurs sont retirés ici.
+4. **Dépaquetage.** Une archive est dépaquetée en ses fichiers membres (un acteur, un
+   scrutin…), gardés à l'octet près. On ne garde une version que si son empreinte change.
+   Rien n'est retiré ici : les présences et les collaborateurs restent dans l'entrepôt, et
+   aucun lecteur ne les lit (2.4, E3). La collecte remet cet acquis à la tâche `ecrire` sous
+   forme d'artefact ; elle n'écrit pas elle-même dans l'entrepôt (2.15).
 5. **Lecture incrémentale.** On ne relit que les objets nouveaux ou changés, sauf si un
    lecteur a changé de version : alors on relit tout ce type d'objet, depuis l'entrepôt.
 6. **Recalcul.** Le graphe est recalculé **en entier**, chaque soir. C'est plus simple et
@@ -184,7 +195,7 @@ Ce qu'il faut voir, étape par étape :
    d'un texte, donc des positions sur des dizaines de fiches).
 7. **Composition.** Même entrée, mêmes octets : on peut comparer deux publications fichier
    par fichier.
-8. **Contrôles.** Sept contrôles bloquants, huit avertissements (2.8).
+8. **Contrôles.** Sept contrôles bloquants, neuf avertissements, A1 à A9 (2.8).
 9. **Publication.** Un seul déploiement : le code et les données d'une même publication.
 10. **Rapport et alertes.** Le compte rendu est public : un fichier `rapport-<date>.json`
     dans la *release* `rapports`, écrit **même quand rien n'est publié**, avec une copie
@@ -217,7 +228,10 @@ Wikidata à l'arrivée d'une personne puis une fois par an.
    tourne du lundi au vendredi entre 9 h et 19 h, **sauf jour férié français** (décision de la
    propriétaire du 04/11/2026), il collecte et calcule mais **diffère toute écriture
    visible** sur le dépôt public (publication, *release*, commit) jusqu'à 19 h. Un lancement
-   manuel dans cette fenêtre est refusé d'emblée, avec ce motif.
+   manuel dans cette fenêtre est refusé d'emblée, avec ce motif. **Réalisé** (23/11/2026) :
+   la fenêtre n'est pas codée. Le réglage `fenetre_interdite` de `config/points_acces.yaml`
+   vaut `false` (« désactivée sur le dépôt d'essai ») et aucun module ne le lit ; à faire
+   avant le dépôt public (doc. 5, Q59).
 5. **Plan** : liste des sources à relever aujourd'hui (cadence 2.3), chantiers en cours,
    budget de temps (5 h 15 sur les 6 h d'une tâche), mode (quotidien, complet, recalcul,
    essai). Les relevés propres à une personne (Sycomore, Wikidata, Parlement européen) ne
@@ -237,9 +251,9 @@ flowchart TB
     Q -- "non" --> N["Tout normalement,<br/>publication comprise"]
     Q -- "oui, lancement manuel" --> M["Refusé d'emblée,<br/>avec le motif"]
     Q -- "oui, tâche planifiée en retard" --> D["Collecte et calcule,<br/>n'écrit rien sur le dépôt public"]
-    D --> C["Segments acquis gardés<br/>dans le cache Actions<br/>sous la clé de la génération"]
+    D --> C["Acquis gardé en artefact<br/>de l'exécution, acquis-gNNNNNN,<br/>14 jours"]
     D --> X["Candidate abandonnée"]
-    C --> F["Mise à jour suivante, hors fenêtre :<br/>téléverse d'abord les segments,<br/>puis recalcule et publie"]
+    C --> F["Mise à jour suivante, hors fenêtre :<br/>écrit d'abord cet acquis,<br/>puis recalcule et publie"]
     X --> F
 ```
 
@@ -249,9 +263,12 @@ l'horaire. Une tâche prévue à 19 h 30 peut partir à 23 h, ou le lendemain ma
 Ce qui se passe quand une tâche tourne en fenêtre interdite :
 
 - **L'acquis n'est pas perdu.** Téléverser dans l'entrepôt serait une écriture visible
-  (l'entrepôt est fait d'actifs de *release* du dépôt public). Les segments sont donc gardés
-  dans le cache Actions, invisible, qui les conserve 7 jours sans lecture. La mise à jour
-  suivante, hors fenêtre, les téléverse avant tout le reste.
+  (l'entrepôt est fait d'actifs de *release* du dépôt public). L'acquis reste donc dans
+  l'artefact que la collecte remet à la tâche `ecrire` (2.4), gardé 14 jours. La mise à jour
+  suivante, hors fenêtre, le retrouve et l'écrit avant tout le reste (rattrapage, module
+  `rattrapage`, codé et utilisé aujourd'hui pour une tâche `ecrire` perdue).
+- **Ce schéma est le comportement prévu** : la fenêtre elle-même n'est pas encore codée
+  (2.1, point 4).
 - **La candidate n'est pas reprise.** La mise à jour suivante la recalcule : E3 à E5 ne
   coûtent que quelques minutes.
 - **Les décisions ne touchent jamais le dépôt public en journée.** La propriétaire les écrit
@@ -297,10 +314,11 @@ Particularités par source (le traitement complet de chaque piège est dans le d
 | Journal officiel | on relève **toutes** les livraisons parues depuis le nom de la dernière livraison traitée (deux par jour, week-end compris : le soir 2 à 6 Mo, surtout des redélivraisons ; la nuit, les actes du jour) ; rattrapage automatique après une panne ; on filtre par date de publication, pas de livraison |
 | Parltrack | relevé chaque soir par requête conditionnelle (`ETag`). **Mesuré le 04/11/2026 : aucun fichier n'a changé depuis le 24/07/2026** (`ep_votes` arrêté au 26/03/2026), et `dumps/arch/` garde 3 492 instantanés depuis 2019, contrairement à la « rétention de trois jours » du cahier. La famille est affichée « source figée depuis le … » tant qu'elle ne bouge pas ; l'adresse à relever est `dumps/` (avec la barre finale ; sans, réponse 502) |
 | Parlement européen | `User-Agent` qui nomme le site et une adresse de contact (cahier 3.3) ; personnes du volet européen (candidats anciens eurodéputés) chaque soir ; liste complète des eurodéputés français chaque semaine ; libellé de chaque groupe nouvellement cité lu dans `corporate-bodies/{id}`. Ni `ETag` ni `Last-Modified` : comparaison d'empreinte. Fin de pagination = **204 sans corps**, à distinguer d'un silence de limitation (délai d'attente) |
-| Sénat | export complet chaque soir (régénéré vers 03 h 17 UTC) ; plancher de taille et nombre de tables (95) ; la table de présence `activite_participant` est écartée au découpage |
+| Sénat | export complet chaque soir (régénéré vers 03 h 17 UTC) ; plancher de taille et nombre de tables (95) ; les tables de présence (`activite_participant`…) restent dans l'entrepôt avec tout l'export, et ne sont jamais lues (liste blanche du lecteur `senat_export`, 2.4) |
 | Wikipédia | numéro de révision de l'article ; on ne relit la section que si la révision a changé. Complétude : nombre de candidats extraits = nombre de lignes du tableau, sinon relevé `suspect` ; un titre qui mène à une page d'homonymie (`pageprops`) part en relecture |
 | Sycomore, Wikidata | à l'arrivée d'une personne dans le périmètre, puis une fois par an |
-| Répertoire national des élus | chaque semaine : l'identifiant de ressource change à chaque publication, on le relit depuis la fiche du jeu ; seules les ressources des mandats locaux (pas celles des députés, sénateurs, eurodéputés) |
+| Répertoire national des élus | chaque nuit, par requête conditionnelle (11 × 304 en ≈ 10 s quand rien ne change) ; l'identifiant de ressource **ne change pas** d'une publication à l'autre (mesuré aux publications du 11/08 et du 20/11/2026), l'adresse `/datasets/r/<id>` suit le fichier du jour ; seules les ressources des mandats locaux (pas celles des députés, sénateurs, eurodéputés) ; l'entrepôt garde chaque version, ce qui date la fin d'un mandat disparu (Q49) |
+| Wikidata, fonctions P39 des candidats (`wd-fonctions-candidats`) | chaque nuit, une requête pour les éléments de la liste ; réponse gardée sous forme canonique (Q40), versionnée si elle change (Q52) |
 | Finances, Drees, Unédic | chaque semaine, comparaison d'empreinte (republications silencieuses). Un lecteur par format, reconnu à l'empreinte de schéma (11 formats de crédits) ; classeur Drees retrouvé sur la page du jeu à chaque édition ; licence lue jeu par jeu dans le catalogue (sans licence : non collecté). Exécution 2021-2022 publiée en PDF : `non_collecte`. Séries mensuelles antérieures à 2024 (absentes de l'API, mesuré le 04/11/2026) et budget de l'année (seulement sur `budget.gouv.fr`) : `trou_source` |
 | Pages publiques de l'Assemblée | tirage au sort de 40 faits par mise à jour pour la vérification croisée (E6) |
 
@@ -366,6 +384,9 @@ l'exécution. `ecrire` les dépose dans l'entrepôt **même si le calcul échoue
 bloque la publication** : ce qui est collecté reste acquis. Si `ecrire` n'a pas lieu (machine
 perdue, fenêtre interdite), l'artefact reste disponible et la mise à jour suivante l'écrit en
 premier. La candidate de publication, elle, n'est jamais reprise : elle est recalculée.
+**Réalisé** : l'artefact `acquis-gNNNNNN` est gardé 14 jours, et la nuit suivante l'écrit
+avec sa propre génération s'il s'appuie sur la génération courante (module `rattrapage`) ; la
+fenêtre interdite n'est pas encore codée (2.1, point 4).
 
 ### En image : la vie d'un objet source
 
@@ -423,8 +444,10 @@ lecteur) :
   sentinelle (`2999-01-01` au JO, `1900-01-01` au RNE) devient `null` + « date sentinelle » ;
   le préfixe `PA` est rétabli (doc. 1, 1.2.1) ;
 - une erreur de lecture sur un objet n'arrête pas les autres : l'objet est compté
-  `illisible`, signalé, et ses faits précédents restent en place avec la couverture
-  `trou_source` (si c'est la source) ou `en_cours` (si c'est notre lecteur).
+  `illisible` et signalé. Prévu : ses faits précédents restent en place avec la couverture
+  `trou_source` (si c'est la source) ou `en_cours` (si c'est notre lecteur). **Réalisé**
+  (13/11/2026, issue #39) : la version illisible ne donne aucun fait et C1 bloque la
+  publication (voir 2.11 ; question Q58).
 
 ## 2.6 E4 — Relier et dériver
 
@@ -479,13 +502,15 @@ daté, public.
 | Avertissement | Méthode |
 | --- | --- |
 | A1 Fiche hors modèle | une fiche qui s'écarte du modèle par décision `fiche_hors_modele` |
-| A2 Vérification croisée | faits servis tirés au sort, relus sur les pages publiques de l'Assemblée ; écart → alerte avec le fait et l'adresse ; page illisible ou injoignable → « non vérifié », jamais un écart. Votes : 20 scrutins, totaux et une position nominative (40 faits, Q14). Signataires d'amendement, depuis le 15/11/2026 (issue #63) : 20 amendements servis signés par un député, auteur et cosignataires comparés (20 faits ; XIVe sur l'ancien site, où un amendement de commission n'a que ses cosignataires comparés et un amendement retiré n'est pas publié). Les sorts d'amendement, les mandats et les dates ne sont pas encore relus (#63) |
+| A2 Vérification croisée | faits servis tirés au sort, relus sur les pages publiques de l'Assemblée ; écart → alerte avec le fait et l'adresse ; page illisible ou injoignable → « non vérifié », jamais un écart. Votes : 20 scrutins, totaux et une position nominative (40 faits, Q14). Signataires d'amendement, depuis le 15/11/2026 (issue #63) : 20 amendements servis signés par un député, auteur et cosignataires comparés (20 faits ; XIVe sur l'ancien site, où un amendement de commission n'a que ses cosignataires comparés et un amendement retiré n'est pas publié). Périodes de mandat de député, depuis le 23/11/2026 (issue #63) : toutes les périodes servies dans les carrières (début, fin), sans tirage, contre la fiche Sycomore de la personne, déjà relue chaque nuit par la collecte (aucune page lue en plus) ; un mandat de Sycomore depuis le 19/06/2002 absent de la carrière servie est nommé aussi ; sans identifiant Sycomore ou sans fiche relevée : « non vérifié » ; les suspensions, que Sycomore ne publie pas, et les périodes d'avant 2002, lues dans Sycomore même, sont comptées sans être comparées. Les sorts d'amendement et les dates ne sont pas encore relus (#63) |
 | A3 Totaux d'une autre source | effectif de chaque groupe à chaque scrutin (nos appartenances à la date) contre les décomptes publiés par le scrutin, hors scrutins à dissidents seuls (710 en XIVe) et lignes de groupe `PO0` (146 lignes sur 14 scrutins XVIIe), comptés à part ; lois promulguées par législature contre le JO (les lois sans dossier rattaché sont nommées). Depuis le 15/11/2026 (issue #63, doc. 5, Q43), avertissement à part : chaque loi du JO absente de l'Assemblée est nommée avec la raison de R-LOI-DOSSIER, sauf si R-LOI-DOSSIER la relie ou si elle précède la première loi du périmètre que le JO publie avec ses travaux préparatoires (seulement comptées) ; une loi de l'Assemblée absente du JO est nommée ; décomptes par législature dans le détail (g14 : 11 nommées, 49 expliquées avant le JO, 11 reliées) |
 | A4 Double affichage | même objet sous deux clés (copies d'amendements, dossiers de la XIVe réapparus, compte rendu de la XVe dans l'archive de la XVIe, loi et son rectificatif, mandat local présent dans deux fichiers du RNE) |
 | A5 Famille à zéro pour tout le monde | (cas non bloquant : famille nouvelle ou optionnelle) |
 | A6 Couverture insuffisante | candidats sans fiche, personnes sans prise de parole sur une période couverte, groupes dont trop peu de membres ont des données |
 | A7 Entrées non résolues | files de relecture non vides, décisions qui ne s'appliquent plus, fin ou ouverture d'une législature détectée (doc. 1, 1.8) |
+| A10 Mandats locaux : homonymes non rattachés | le nom, le prénom et la date de naissance d'un candidat désignent deux élus de collectivités différentes dans un fichier où une personne n'a qu'un siège ; aucun n'est rattaché (Q53, module `controles_mandats_locaux`) |
 | A8 Mandat ouvert dans un organe clos | mandat sans date de fin dans un organe qui en a une (7 mandats GOUVERNEMENT dans le gouvernement Bayrou, clos le 09/09/2025 ; AMO30 du 03/11/2026) |
+| A9 Valeurs vidées ; liste des candidats | deux sujets sous le même code (13/11/2026, issue #42) : pour un fait présent dans la dernière publication et dans la candidate (même identité, que C1 ne compte pas comme perdu), un nombre qui passe à 0 ou à rien est toujours signalé, un autre champ vidé dès qu'il l'est pour plus de 50 faits ou plus de 1 % des faits du type (doc. 5, Q35 du 13/11/2026) ; et les écarts entre la liste des candidats (décision `candidature`) et Wikipédia, avec les fiches de candidat retirées cette nuit |
 
 ### 2.8.3 À la main, sans rien publier
 
@@ -538,8 +563,8 @@ elle prend effet à la mise à jour du soir.
 1. **Fenêtre** : rien d'écrit sur le dépôt public du lundi au vendredi entre 9 h et 19 h
    (heure de Paris), hors jours fériés. Dans la fenêtre interdite, la candidate n'est pas
    publiée ni gardée : la mise à jour suivante, hors de cette fenêtre, la recalcule (E3 à E5)
-   après avoir téléversé les segments acquis qui attendaient dans le cache de GitHub Actions
-   (2.4).
+   après avoir écrit l'acquis gardé dans l'artefact de la collecte (2.4). Pas encore codée
+   (2.1, point 4).
 2. **Conservation** : les fichiers de la candidate dont l'empreinte est nouvelle sont
    ajoutés au magasin des publications (actifs de *release*, un fichier par empreinte, groupés
    en paquets) ; le manifeste de la publication est enregistré.
@@ -592,7 +617,7 @@ publication.
 | Source injoignable ou réponse invalide | aucun changement dans Z1 pour cette source ; ses faits restent ceux du dernier relevé complet, et il n'y en a aucun si la source n'a jamais été relevée avec succès (la couverture et l'alerte le disent : « aucun relevé n'a encore abouti », 13/11/2026, issue #33) | fiches : « à jour au » de la famille reste à la date du dernier relevé réussi, couverture `panne depuis le …` ; page des sources : état de la source ; alerte `panne:<source>` ouverte une fois |
 | Réponse suspecte (taille, nombre d'objets) | idem, plus le relevé gardé pour examen | alerte avec la cause ; la propriétaire peut confirmer par décision que la baisse est réelle |
 | Objet illisible | prévu : ses faits précédents restent. **Réalisé** (13/11/2026, issue #39) : la version illisible ne donne aucun fait, pas même les lots lus avant l'erreur, et elle est relue à la mise à jour suivante ; ses faits manquent donc tant qu'elle reste illisible, et C1 bloque la publication (la perte n'est pas expliquée par le changement de la source). Garder les faits de la version précédente reste à faire | compté dans le rapport, alerte `lecture:illisibles` ; C1 nomme les faits perdus |
-| Tâche interrompue (6 h, panne de machine) | tout ce qui est passé par E2 est acquis ; le cache de lecture est conservé | la mise à jour suivante reprend sans relever deux fois |
+| Tâche interrompue (limite de la tâche, panne de machine) | une collecte finie a remis son acquis en artefact (14 jours) : `ecrire` l'écrit, ou la nuit suivante s'il n'a pas été écrit (2.4). La collecte s'arrête d'elle-même après 270 min pour déposer son acquis avant la limite de 330 min (#38) ; une machine perdue **pendant** la collecte perd l'acquis de cette nuit, sauf les octets des gros fichiers coupés, gardés en cache (#32). Le cache des faits lus est conservé | la mise à jour suivante écrit l'acquis gardé et relève de nouveau ce qui ne l'a pas été |
 | Contrôle bloquant | rien publié ; l'acquis est gardé | alerte `controle:<id>` avec les faits nommés ; le site reste dans son état précédent complet |
 | Panne de GitHub Pages au déploiement | registre non écrit | nouvelle tentative à la mise à jour suivante |
 
@@ -631,27 +656,30 @@ flowchart TB
 ```mermaid
 flowchart LR
     subgraph GARDE["Gardé"]
-        G1["Relevés et versions<br/>des sources finies"]
-        G2["Cache de lecture"]
+        G1["Acquis d'une collecte finie<br/>artefact de l'exécution, 14 jours"]
+        G2["Cache des faits lus"]
+        G3["Octets des gros fichiers coupés<br/>gardés en cache"]
     end
     subgraph PERDU["Perdu, sans gravité"]
-        L1["Source en cours<br/>de relevé"]
+        L1["Collecte en cours<br/>si la machine tombe avant le dépôt"]
         L2["Graphe Z3,<br/>candidate non publiée"]
     end
-    I["Interruption<br/>6 h atteintes, panne de machine"] --> GARDE
+    I["Interruption<br/>limite de la tâche, panne de machine"] --> GARDE
     I --> PERDU
-    GARDE --> N["Mise à jour suivante :<br/>reprend sans relever deux fois"]
+    GARDE --> N["Mise à jour suivante :<br/>écrit l'acquis gardé,<br/>relève ce qui manque"]
     PERDU --> N
 ```
 
-Une interruption coûte au plus le travail de la source en cours. Le reste est soit acquis
-(E1–E2 écrivent source par source), soit recalculable (E3–E5).
+Une interruption coûte au plus la collecte de la nuit en cours. Une collecte finie a remis
+son acquis en artefact, que `ecrire` ou la nuit suivante écrit dans l'entrepôt (2.4) ; la
+collecte s'arrête d'elle-même après 270 min pour le déposer à temps (#38). Le reste est
+recalculable (E3–E5).
 
 #### Les autres cas
 
 | Situation | Données | Ce qui se voit |
 | --- | --- | --- |
-| Objet illisible (un acteur mal formé) | ses faits précédents restent | compté dans le rapport ; alerte au-delà d'un seuil |
+| Objet illisible (un acteur mal formé) | prévu : ses faits précédents restent. Réalisé (#39) : la version illisible ne donne aucun fait, elle est relue à la mise à jour suivante, et C1 bloque la publication (2.11 ; question Q58) | compté dans le rapport ; alerte `lecture:illisibles` dès le premier |
 | Panne de GitHub Pages au déploiement | registre non écrit | nouvelle tentative le lendemain |
 | Pas de mise à jour depuis plus de 26 h | — | alerte `planification` |
 
@@ -845,9 +873,9 @@ Aucun secret n'est nécessaire : le jeton fourni à chaque exécution suffit.
 
 | Tâche | Étapes | Droits | Elle produit |
 | --- | --- | --- | --- |
-| `preparer` | E0 | `contents: read` | le plan de la nuit ; refus immédiat d'une option invalide |
-| `collecter` | E1, E2, E3 | `contents: read` | artefact « acquis » (relevés, nouvelles versions, listes des membres) ; cache de lecture |
-| `calculer` | E4, E5, E6 | `contents: read` | artefact « candidate » (fichiers servis, export plat, page minimale, ajouts aux registres, rapport, anomalies) |
+| `preparer` | E0 | `contents: read`, `actions: read` | le plan de la nuit ; l'acquis d'une nuit non écrite à rattraper (2.4) ; refus immédiat d'une option invalide |
+| `collecter` | E1, E2 | `contents: read`, `actions: read` (lire l'artefact d'une nuit à rattraper) | artefact « acquis » (relevés, nouvelles versions, listes des membres) ; copie de travail en cache |
+| `calculer` | E3, E4, E5, E6 | `contents: read` | cache des faits lus (Z2) ; artefact « candidate » (fichiers servis, export plat, page minimale, ajouts aux registres, rapport, anomalies) |
 | `ecrire` | E7 | `contents: write` | **seule écriture** : entrepôt (acquis, registres), magasin des publications, export, rapport. Si `calculer` a échoué ou qu'un contrôle bloque : l'acquis et les ajouts aux registres seulement |
 | `alerter` | E8 | `issues: write` | les issues d'alerte, une par sujet ; aucun fichier |
 
@@ -872,22 +900,24 @@ flowchart LR
     subgraph PUB["Dépôt public"]
         R1["Code publié<br/>étiquette code-publie"]
         R2["references/<br/>copie publique"]
-        R3["registre/adresses.csv"]
         R4["registre/publications.jsonl"]
     end
 
-    subgraph ACT["Machine GitHub Actions, jetable"]
-        A1["Tâche de mise à jour<br/>Z3 temporaire dans DuckDB"]
+    subgraph ACT["Machines GitHub Actions, jetables"]
+        A1["preparer, collecter, calculer<br/>lecture seule<br/>Z3 temporaire dans DuckDB"]
+        A2["ecrire<br/>seule tâche qui écrit"]
+        A3["alerter<br/>issues seulement"]
     end
 
     subgraph REL["Releases du dépôt public"]
-        L1[("Entrepôt<br/>Z0 et Z1")]
+        L1[("Entrepôt<br/>Z0, Z1 et registres ZI<br/>identités, lignées, adresses des lignées")]
         L2[("Magasin des publications")]
         L3[("Jeu téléchargeable")]
         L4[("Comptes rendus<br/>release rapports")]
     end
 
-    CACHE[("Cache Actions<br/>copie de travail, Z2,<br/>segments en attente")]
+    CACHE[("Cache Actions<br/>copie de travail, Z2,<br/>octets des gros fichiers coupés")]
+    ART[("Artefacts de l'exécution<br/>acquis et candidate, 14 jours")]
     PAGES["GitHub Pages<br/>le site"]
     DG["data.gouv.fr"]
     MOI["Machine de la propriétaire"]
@@ -897,31 +927,36 @@ flowchart LR
     R1 -- "code exécuté" --> A1
     R2 -- "décisions lues" --> A1
     CACHE <-- "accélère" --> A1
-    A1 <-- "lit et écrit l'acquis" --> L1
-    A1 -- "E7" --> L2
-    A1 -- "E7" --> L3
-    A1 -- "E7 déploie" --> PAGES
-    A1 -- "E7 une ligne" --> R4
-    A1 -- "E7 empreinte racine" --> DG
-    A1 -- "E8 compte rendu" --> L4
-    A1 -- "E8 alertes" --> P3
+    L1 -- "lit l'acquis" --> A1
+    A1 -- "acquis, candidate" --> ART
+    ART --> A2
+    A2 -- "écrit l'acquis" --> L1
+    A2 -- "E7" --> L2
+    A2 -- "E7" --> L3
+    A2 -- "E7 déploie" --> PAGES
+    A2 -- "E7 une ligne" --> R4
+    A2 -- "E7 empreinte racine" --> DG
+    A2 -- "E8 compte rendu" --> L4
+    A3 -- "E8 alertes" --> P3
     L1 -. "extrait" .-> MOI
 ```
 
 | Lieu | Ce qu'on y trouve | Si on le perd |
 | --- | --- | --- |
 | **Dépôt privé** | le développement, les tickets, les **alertes** (issues), les **décisions** au moment où la propriétaire les écrit | rien de publié n'est touché |
-| **Dépôt public** | le code publié, la copie publique des **décisions** (importée chaque soir), le registre des adresses, le registre des publications, les tâches planifiées | les décisions et registres sont dans git : ils ont un historique |
-| ***Releases*** | l'**entrepôt** (Z0, Z1 : segments de 90 Mo au plus, une *release* par année), le **magasin des publications**, le **jeu téléchargeable** (`donnees-derniere`, remplacée chaque soir, et une édition datée par mois), les **comptes rendus** (*release* `rapports`) | c'est l'acquis : à protéger (document 3, J4 ; sauvegarde hebdomadaire, question ouverte Q16) |
-| **Cache Actions** | une copie de travail ; les faits lus **Z2** ; les segments acquis en fenêtre interdite, en attente de téléversement | Z2 se reconstruit depuis Z1 ; des segments en attente non lus pendant 7 jours seraient perdus (voir 2.1, « En image : la fenêtre horaire ») |
+| **Dépôt public** | le code publié, la copie publique des **décisions** (importée chaque soir), le registre des publications, les tâches planifiées | les décisions et registres sont dans git : ils ont un historique |
+| ***Releases*** | l'**entrepôt** (Z0, Z1 : segments de 90 Mo au plus, une *release* par année ; les registres d'identité ZI, dont les adresses des lignées, doc. 1, 1.3.4), le **magasin des publications**, le **jeu téléchargeable** (`donnees-derniere`, remplacée chaque soir, et une édition datée par mois), les **comptes rendus** (*release* `rapports`) | c'est l'acquis : à protéger (document 3, J4 ; sauvegarde hebdomadaire, question ouverte Q16) |
+| **Cache Actions** | une copie de travail (sans les octets) ; les faits lus **Z2** ; les octets déjà reçus des gros fichiers coupés (#32) | rien d'acquis : la copie de travail se restaure depuis l'entrepôt, Z2 se reconstruit depuis Z1, un fichier coupé se retélécharge |
+| **Artefacts de l'exécution** | l'acquis de la collecte et la candidate (14 jours), le rapport de la nuit (90 jours) | un acquis que ni `ecrire` ni la nuit suivante n'a écrit en 14 jours serait perdu (2.4) |
 | **Machine Actions** | le graphe Z3, le temps du calcul | rien : tout se recalcule |
 | **GitHub Pages** | le site : code et données d'**une** publication, en fichiers `.json.gz` (≈ 0,21 Go, sous la limite de 1 Go) | on redéploie depuis le magasin |
 | **Machine de la propriétaire** | l'audit, l'essai hors ligne, les indices de contrôle interdits de publication (dossier local, hors dépôt) | rien de publié |
 
 Deux remarques :
 
-- L'entrepôt est **public** : c'est voulu (transparence). C'est pourquoi les présences et
-  les collaborateurs sont filtrés **avant** tout stockage (E2).
+- L'entrepôt est **public** : c'est voulu (transparence). Les présences et les
+  collaborateurs y restent comme à la source, données publiques de celle-ci ; aucun lecteur
+  ne les lit et rien ne les sert (décision du 06/11/2026, doc. 1, 1.3.2).
 - Les journaux de GitHub Actions sont publics aussi. Les indices de contrôle interdits n'y
   passent jamais : ils restent sur la machine de la propriétaire.
 
