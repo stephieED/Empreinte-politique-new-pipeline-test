@@ -129,10 +129,13 @@ TABLES = {
     "amendement_canonique": [
         {"acteur": a, "amendement": u, "numero_long": u, "date_depot": d, "sort": "rejete", "famille_sort": fs,
          "commission": "PO420120", "commission_libelle": "Affaires sociales", "dossier": "DL1",
-         "document": "PIONANR5L17B0001", "article_designation": "Article 1", "source_url": None}
-        for a, u, d, fs in (("PA1", "AM1", "2025-01-20", "discute"), ("PA3", "AM2", "2025-01-21", "irrecevable_40"),
-                            ("PA3", "AM3", "2025-05-02", "discute"),     # après son départ : pas au groupe
-                            ("PA9", "AM9", "2025-03-03", "discute"))],
+         "document": "PIONANR5L17B0001", "article_designation": "Article 1", "source_url": None,
+         "type_auteur": t}
+        for a, u, d, fs, t in (("PA1", "AM1", "2025-01-20", "discute", "Député"),
+                               ("PA3", "AM2", "2025-01-21", "irrecevable_40", "Depute"),   # graphie de la XIVe
+                               ("PA1", "AM4", "2025-02-10", "discute", "Rapporteur"),
+                               ("PA3", "AM3", "2025-05-02", "discute", "Député"),   # après son départ : pas au groupe
+                               ("PA9", "AM9", "2025-03-03", "discute", "Député"))],
     "amendement_auteur": [
         {"acteur": "PA4", "amendement": "AM9", "role": "cosignataire", "date_depot": "2025-03-03",
          "commission": "PO420120"},
@@ -260,9 +263,17 @@ def test_textes_et_amendements_pendant_l_appartenance(sortie):
     assert sum(a["dossiers_distincts"] for a in agr) == 2                 # DL1 compté une fois par rôle
     a = _rows(_lire(racine, "lignees/socialistes/amendements.json.gz"))
     assert len(a) == 1
-    assert (a[0]["nb_amendements"], a[0]["nb_irrecevables_40"], a[0]["nb_signatures_cosignataire"]) == (1, 1, 1)
+    assert (a[0]["nb_amendements"], a[0]["nb_irrecevables_40"], a[0]["nb_signatures_cosignataire"]) == (2, 1, 1)
+    # Par type de déposant (cahier 4.3) : des décomptes parmi nb_amendements, irrecevables à part.
+    assert (a[0]["nb_amendements_depute"], a[0]["nb_amendements_rapporteur"]) == (1, 1)
     liste = _rows(_lire(racine, "lignees/socialistes/amendements-2025.json.gz"))
-    assert [x["amendement"] for x in liste] == ["AM1", "AM2"]
+    assert [(x["amendement"], x["type_auteur"]) for x in liste] == \
+        [("AM1", "depute"), ("AM2", "depute"), ("AM4", "rapporteur")]
+
+
+def test_type_de_deposant():
+    assert [composeur._type_deposant(t) for t in ("Député", "Depute", "Rapporteur", "Gouvernement", None, "")] == \
+        ["depute", "depute", "rapporteur", None, None, None]
 
 
 def test_votes_decompte_publie_et_q30(sortie):

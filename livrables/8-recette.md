@@ -67,7 +67,7 @@ Z2 = faits lus (doc. 1, 1.4) ; Z3 = graphe relié (doc. 1, 1.5) ; règles : doc.
 | En bref | `mandat` GP, `organe` ASSEMBLEE | `appartenance` (effectif jour par jour), `position_declaree` | `fiche.json` | couvert (en XVIIe, les 14 GP sont « non déclarés » : AMO30 du 03/11/2026) |
 | Qui sont-ils | — | `appartenance`, drapeau `population = candidat` | `membres.json` | couvert |
 | Sur quoi ils ont pris la parole | — | `intervention_attribuee` ∩ `appartenance`, `sujet_intervention` | `paroles.json` | couvert (qualité : R-QUALITE, T01) |
-| Ce qu'ils ont proposé | — | `texte_porte`, `amendement_canonique` (distincts, par type de déposant), `signature` comptée à part | `proposes.json` | couvert |
+| Ce qu'ils ont proposé | — | `texte_porte`, `amendement_canonique` (distincts ; type de déposant servi en code `type_auteur`, décomptés par commission et année ; #70), `signature` comptée à part | `proposes.json`, `amendements-<annee>.json` | couvert |
 | Ce qu'ils ont voté | — | `position_groupe_scrutin` (numérateur, dénominateur, position majoritaire publiée, `divise`) ; R-RATIO | `votes-<leg>.json` | couvert : décomptes servis, ratio et seuil calculés par l'interface (doc. 5, Q1) ; lignes `PO0` : doc. 1, 1.6 R-APPARTENANCE (T09) |
 | Avec qui ils votent | `decompte_groupe` | position majoritaire publiée de chaque groupe ; `place_mediane` (R-HEMICYCLE) | `avec-qui-<leg>.json` | couvert |
 | Ce qu'on n'a pas pu lire | — | couverture par maillon | `fiche.json` | couvert |
