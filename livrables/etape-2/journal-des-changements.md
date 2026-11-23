@@ -1048,6 +1048,21 @@ Branche `etape-2-natures-parole`, issue #87.
 | Regroupement `nature_parole` (`references/regroupement/nature_parole.yaml`), 7 cases : questions au gouvernement (QG, QPM), questions orales (QOSD), textes, motion de censure, explications de vote, commission (aucun code : comptes rendus de commission non relevés), autres | issue #87 | — |
 | Forme commune : `ordre` facultatif d'une case (l'ordre de la légende peut différer de l'ordre de rangement) ; le fichier servi donne `champs`, l'ordre dans lequel le code d'une valeur est cherché | une motion de censure doit être rangée avant « Textes » mais vient après dans la légende | 1 (1.3.3) |
 
+## C1 : la ligne « Non-inscrits » reconnue sans ses sièges (23/11/2026)
+
+Branche `etape-2-c1-non-inscrits`, alerte #156.
+
+Constat : les nuits du 21 et du 22/11/2026 (g21, g22) sont refusées par C1 pour une seule « perte », la ligne « Non-inscrits » des groupes de la XVIIe (`legislature/17`, section `groupes`, `effectif_groupe`, sans identifiant). Dernière publication : g20.
+
+Cause vérifiée sur les faits publiés de la g20 et ceux de la nuit du 22/11 (run 45067231642) : la ligne passe de `"effectif":11,"au":"2026-11-20",…,"sieges_dans_l_hemicycle":11` à `"effectif":12,"au":"2026-11-22",…,"sieges_dans_l_hemicycle":12`, rien d'autre ne change (David Habib, LIOT, n'est plus dans l'hémicycle publié ; PA642905 y entre non-inscrit). C1 reconnaît un fait sans identifiant à sa valeur sans ses dates de compte ni ses compteurs `nb_…` et `effectif…` ; `sieges_dans_l_hemicycle`, égal à l'effectif, n'en faisait pas partie. Dans la g20, c'est le seul compteur hors de cette convention parmi les 1 964 faits sans identifiant (1 961 `actes_compte`, 3 lignes « Non-inscrits » des XVe à XVIIe).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| C1 : les champs de compte d'un fait sans identifiant sont nommés (`CHAMPS_DE_COMPTE`, `PREFIXES_DE_COMPTE`) ; `sieges_dans_l_hemicycle` s'y ajoute. Une ligne « Non-inscrits » qui disparaît, ou dont le sigle, le libellé ou le rattachement change, reste une perte | fausse perte à chaque arrivée ou départ d'un non-inscrit (alerte #156). Rejoué en local sur la g20 et la nuit du 22/11 : la ligne n'est plus perdue (7 s, pic 4,1 Go) | — |
+
+Essai 45190042750, sur l'entrepôt de la nuit du 22/11, comparé à la g20 : **publication autorisée**. 72 fiches, 2 971 077 faits publiés ; A2 : votes 40/40, signataires 20/20 ; calcul 10 min 36 s, pic 6,4 Go.
+
+Après la fusion de #144, #151 et #152 dans `main`, essai 45193620673 (branche à jour de `main`, même entrepôt, comparé à la g20) : **publication autorisée**, aucune anomalie C1 ; 72 fiches, 2 971 066 faits publiés ; A2 : votes 40/40, signataires 20/20 ; calcul 12 min 32 s, pic 6,4 Go. Avertissements : A3 (lois, connu) et A9 (5 276 liens `amendement_lignee.source_url` vidés, attendu par #152). Faits sans identifiant de l'essai : mêmes types que dans la g20 (1 961 `actes_compte`, 3 lignes « Non-inscrits » ; plus les 11 095 `parole_sujet`, reconnus à leur contenu), aucun n'est perdu.
 
 ## Les onze lois d'A3 : travaux préparatoires lus dans les signataires (23/11/2026)
 

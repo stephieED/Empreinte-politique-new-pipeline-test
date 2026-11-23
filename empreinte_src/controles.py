@@ -44,6 +44,11 @@ IDENTITE_PAR_CONTENU = {"parole_sujet": ("sujet", "type_sujet", "dossiers")}
 # n'est pas un fait perdu : ses amendements ont changé de case (commission établie à la source,
 # essai du 13/11/2026 : 122 amendements de 2026 passés de « commission non établie » à PO419610).
 DECOMPTES_VERIFIES_UN_PAR_UN = {"amendements_compte", "amendements_compte_lignee"}
+# C1 : champs de compte d'un fait sans identifiant, qui changent légitimement d'une nuit à l'autre
+# et ne font pas son identité : ses dates de compte et ses compteurs (`nb_…`, `effectif…`, et les
+# sièges de la ligne « Non-inscrits » des groupes, égaux à son effectif : alerte #156, 21/11/2026).
+CHAMPS_DE_COMPTE = ("au", "du", "date_reference", "sieges_dans_l_hemicycle")
+PREFIXES_DE_COMPTE = ("nb_", "effectif")
 
 
 # Champs de la valeur qui distinguent plusieurs faits publiés sous une même identité (A9) : un
@@ -344,8 +349,8 @@ class Controles:
             if isinstance(v, dict) and type_fait in IDENTITE_PAR_CONTENU:
                 v = {k: v.get(k) for k in IDENTITE_PAR_CONTENU[type_fait]}
             elif isinstance(v, dict):
-                v = {k: x for k, x in v.items() if not (k in ("au", "du", "date_reference")
-                                                        or k.startswith(("nb_", "effectif")))}
+                v = {k: x for k, x in v.items() if not (k in CHAMPS_DE_COMPTE
+                                                        or k.startswith(PREFIXES_DE_COMPTE))}
             return (fiche, type_fait, json.dumps(v, sort_keys=True, ensure_ascii=False))
         sans_a = con.execute(f"SELECT fiche, section, type_fait, valeur FROM read_parquet('{faits_avant}') "
                              f"WHERE {sans_id(faits_avant)}").fetchall()
