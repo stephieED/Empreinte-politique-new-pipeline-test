@@ -38,6 +38,9 @@ par changement, la plus récente en bas.
 | 23/11/2026 | Q52 : mandats locaux passés déclarés par Wikidata (P39) | 1 (`fonction_wikidata`, R-MANDAT-LOCAL), 2 (point `wd-fonctions-candidats`), 5 (Q52) |
 | 23/11/2026 | Q53 : clé ambiguë, aucun rattachement, avertissement A10 | 1 (R-MANDAT-LOCAL), 2 (A10), 5 (Q53) |
 | 23/11/2026 | Q48 (issue #63) : « Ranger par la date » : R-ETAPE ne retiendra dans une législature que les actes datés entre son début et sa fin, l'identifiant de l'archive ne servant que faute de date (PR à part, pas encore autorisée) | 1 (R-ETAPE), 5 (Q48) |
+| 23/11/2026 | Q55 : C1 compte comme perte expliquée la disparition d'une ligne Wikidata P39 ; A10 rapatrié dans `controles.py` | 2 (C1, A10), 5 (Q55) |
+| 23/11/2026 | Q56 : les lignes Wikidata disparues sont nommées en A11, à part des homonymes (A10) | 2 (A10, A11), 5 (Q56) |
+| 23/11/2026 | Q57 : toute disparition d'une ligne Wikidata est expliquée, la raison dite quand elle est connue | 2 (C1, A11), 5 (Q57) |
 
 ## Corrections demandées par la commande de réalisation
 
@@ -1211,3 +1214,11 @@ Branche `etape-2-a3-onze-lois`, alerte #146 ; décision de la propriétaire du 2
 | A3 : l'explication `avant_les_travaux_au_jo` et son seuil sont retirés | elle reposait sur l'erreur de lecture corrigée plus haut | 2 (A3) |
 
 Mesuré sur la g20 (chaîne rejouée en local) : 59 lois expliquées ainsi (52 de la XIVe, 7 de la XVe), **aucune nommée** ; XIVe 396 présentes, XVe 334 présentes et 12 reliées ; XVIe et XVIIe identiques au JO. 2018-1214 est comprise : le JO cite un « projet » n° 631 qui n'existe pas (le texte est la proposition n° 631, dans le dossier DLR5L14N36253). Contrôle : appliquée aux 1 027 lois présentes ou reliées, la règle n'en expliquerait aucune.
+Suite décidée le même jour (Q55 « Perte expliquée dans C1 », puis Q56 « Un code à part, A11 » et
+Q57 « Oui, toute perte Wikidata »), branche `etape-2-c1-wikidata` (sur `etape-2-mandats-locaux`) :
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| C1 : une ligne perdue dont `id_mandat` est `wikidata:<déclaration>` est toujours expliquée (sauf sur une fiche retirée, déjà expliquée et nommée en A9) ; comptée (`expliques.c1_lignes_wikidata`) et nommée en A11 avec sa raison : « déclaration supprimée dans Wikidata » (absente de la réponse, son élément présent), « le libellé ne désigne plus une fonction locale », « élément absent de la réponse Wikidata », « réponse Wikidata non lue ou vide », sinon « raison non établie : déclaration toujours présente et locale ». `cli` passe à C1 l'état des déclarations (`r_mandat_local.declarations_wikidata`, mêmes motifs que la règle, factorisés dans `_niveau_wd_sql`) | Q55, Q57 : le risque C1 relevé ci-dessus | 2 (C1) |
+| Avertissement A11, à part de A10 | Q56 | 2 (A11) |
+| A10 (homonymes, Q53) rapatrié dans `controles.py` (`Controles.a10_elus_ambigus`), même comportement ; module `controles_mandats_locaux` supprimé | le module à part ne servait qu'à ne pas toucher `controles.py` pendant #161 ; demandé avec Q55 | 2 (A10) |
