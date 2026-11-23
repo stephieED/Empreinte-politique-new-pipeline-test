@@ -235,6 +235,9 @@ def collecter(entrepot: Entrepot, transport: Transport, config: dict, mesures: M
             elif pa_cfg["format"] == "sycomore_fiches":     # mandats d'avant 2002 (collecte_sycomore)
                 from .collecte_sycomore import relever_sycomore
                 lot = [relever_sycomore(entrepot, transport, pa_cfg, params)]
+            elif pa_cfg["format"] == "wd_fonctions":        # mandats locaux passés (collecte_wd_fonctions, Q52)
+                from .collecte_wd_fonctions import relever_fonctions
+                lot = [relever_fonctions(entrepot, transport, pa_cfg, params)]
             else:
                 lot = [relever_archive(entrepot, transport, pa_cfg, params)]
             for r in lot:

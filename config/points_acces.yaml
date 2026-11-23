@@ -13,6 +13,7 @@ parametres:
   duree_collecte_max_s: 16200     # 270 min : la collecte se termine avant la limite de la tâche (330 min) et dépose son acquis (#38)
   verification_croisee: 20        # Q14 : scrutins relus sur les pages publiques (2 faits chacun, A2) ; 0 pour ne pas relire
   verification_amendements: 20    # #63 : signataires d'amendements servis relus sur leur page publique (1 fait chacun, A2) ; 0 pour ne pas relire
+  verification_textes: 20         # #63 : textes servis relus sur la page de leur dossier (dépôt, étape, loi : 2 ou 3 faits chacun, A2) ; 0 pour ne pas relire
 
 points_acces:
 
@@ -486,6 +487,19 @@ points_acces:
     uid: ep_votes
     taille_min: 10000000
     licence: odbl-1.0
+
+  # --- Wikidata : les fonctions (P39) déclarées pour les éléments de la liste des candidats
+  # (décision Q52 du 23/11/2026 : « Ajouter Wikidata P39 maintenant »). R-MANDAT-LOCAL en retient
+  # les mandats locaux terminés que le Répertoire national des élus ne publie pas (avant 2020,
+  # mandats non municipaux terminés), inscrits comme « déclarés par Wikidata ». Une requête par
+  # nuit ; réponse gardée sous sa forme canonique (Q40). Voir empreinte_src/collecte_wd_fonctions.py.
+  - id: wd-fonctions-candidats
+    source: wikidata
+    type: fonctions_wikidata
+    url: https://query.wikidata.org/sparql
+    format: wd_fonctions
+    references: references
+    licence: cc0-1.0
 
   # --- Sycomore (www2.assemblee-nationale.fr, « tous droits réservés ») : mandats de député des
   # candidats, pour ceux d'avant le 19/06/2002 que l'archive des acteurs ne donne pas (cahier 3.11
