@@ -1078,3 +1078,11 @@ Relu sur les archives des dossiers XIVe-XVIIe du 04/11/2026 (`travail/sources`),
 
 Restent dans l'alerte #118, hors de cette branche : les écarts de date de promulgation entre le JO
 et l'Assemblée (lois 2014-567 à 2024-582, une dizaine).
+
+## Liste des candidats : lecture franceinfo du 23/11/2026 (alerte #155)
+
+Branche `etape-2-candidature-2026-11-23`. La page franceinfo a été téléchargée par la propriétaire, qui a autorisé l'agent à la lire une fois ; elle n'est pas collectée (option « A » du 13/11/2026).
+
+| Changement | Pourquoi | Documents à aligner |
+| --- | --- | --- |
+| Décision `candidature` : nouveau fichier `references/candidature/2026-11-23-franceinfo.yaml` (38 déclarés, 7 retirés, X. Bertrand `non_listee`). Dominique de Villepin (La France humaniste, Q131660) et Serge Tinland (Divers, sans article ni élément Wikidata) entrent comme déclarés ; François Ruffin passe de déclaré à retiré. Le fichier du 13/11 reste, la liste en vigueur est la plus récente | alerte #155 (A9) : Wikipédia disait Villepin déclaré et Ruffin retiré, la liste du 13/11 l'inverse ; la page du 23/11 donne raison à Wikipédia | — |
