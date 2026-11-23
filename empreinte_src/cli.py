@@ -205,7 +205,7 @@ def cmd_calculer(a):
             if getattr(ctrl, "bilan_a2_amendements", None):
                 ctrl.bilan_a2_amendements["duree_s"] = round(_t.monotonic() - t0, 1)
         ctrl.a2_mandats()                            # fiches Sycomore déjà relevées : aucune page lue
-        ctrl.a3_totaux(ctx.decisions)
+        ctrl.a3_totaux()
         ctrl.a4_double_affichage()
         ctrl.a5_famille_a_zero()
         ctrl.a6_couverture()
