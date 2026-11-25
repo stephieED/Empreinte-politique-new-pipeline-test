@@ -106,6 +106,46 @@ def test_references_et_revision(section1):
     assert c["Jean-Luc Mélenchon"]["nb_references"] == 15
 
 
+def test_references_qui_etablissent_la_date(section1):
+    """Issue #72 : les 15 références de la ligne de Mélenchon sourcent surtout ses soutiens
+    (note « Candidature soutenue par ») ; seules 3, celles de la phrase datée, établissent la date."""
+    c = {x["nom"]: x for x in section1["candidature"]}
+    m = c["Jean-Luc Mélenchon"]
+    assert (m["nb_references_declaration"], m["references_declaration_portee"]) == (3, "phrase")
+    assert [u.split("/")[2] for u in m["references_declaration"]] == [
+        "www.lemonde.fr", "www.huffingtonpost.fr", "www.rtl.fr"]
+    assert set(m["references_declaration"]) <= set(m["references"])
+    # Référence en fin de paragraphe, après une autre phrase : celles du paragraphe.
+    li = c["David Lisnard"]
+    assert (li["references_declaration_portee"], li["nb_references_declaration"]) == ("paragraphe", 1)
+    assert li["references_declaration"][0].startswith("https://www.franceinfo.fr/")
+    assert c["Florian Philippot"]["references_declaration_portee"] == "paragraphe"
+    # Sans date, aucune référence d'établissement.
+    le_pen = c["Marine Le Pen"]
+    assert (le_pen["references_declaration"], le_pen["nb_references_declaration"],
+            le_pen["references_declaration_portee"]) == ([], 0, None)
+
+
+def test_references_de_la_phrase_nommees_et_apres_le_point():
+    ligne = ("! {{TriNom|Jeanne|Essai}}<br>(40 ans)<ref>{{Lien web |url=https://soutien.invalid/a}}</ref>\n"
+             "| texte\n|\n"
+             # Référence réutilisée, définie plus loin dans l'article, et référence après le point.
+             "Elle annonce sa candidature le {{date|2 mars 2026}}<ref name=\"ann\"/>."
+             "<ref>[https://journal.invalid/b titre]</ref> Elle quitte son parti<ref>"
+             "{{Lien web |url=https://parti.invalid/c}}</ref>.\n")
+    texte = ("== Candidats déclarés ==\n{| class=\"wikitable\"\n! scope=\"col\" | Candidat\n|-\n"
+             + ligne + "|}\n== Notes ==\nVoir<ref name=\"ann\">{{Article |lire en ligne="
+             "https://journal.invalid/a}}</ref>.\n")
+    (c,) = _lire(_reponse(texte))["candidature"]
+    assert c["date_declaration"] == "2026-03-02"
+    assert c["references_declaration"] == ["https://journal.invalid/a", "https://journal.invalid/b"]
+    assert (c["nb_references_declaration"], c["references_declaration_portee"]) == (2, "phrase")
+    # La ligne garde toutes ses références ; la réutilisée n'y a toujours que son nom.
+    assert c["references"] == ["https://soutien.invalid/a", "https://journal.invalid/b",
+                               "https://parti.invalid/c"]
+    assert c["references_nommees"] == ["ann"] and c["nb_references"] == 4
+
+
 def test_page_entiere_avec_candidatures_retirees_forme_1():
     texte = "Intro.\n\n" + _section_declares(["! {{TriNom|Gabriel|Attal}}<br>(37 ans)"]) + RETIREES
     r = _lire(_reponse(texte, v1=True))                       # wikitext: {"*": …}
@@ -121,6 +161,8 @@ def test_page_entiere_avec_candidatures_retirees_forme_1():
     lu = c["Benjamin Lucas-Lundy"]
     assert lu["date_declaration"] == "2026-05-15"
     assert lu["references"] == [] and lu["references_nommees"] == ["tf1"] and lu["nb_references"] == 1
+    # Référence réutilisée dont le nom n'est défini nulle part : comptée, sans adresse.
+    assert (lu["references_declaration"], lu["nb_references_declaration"]) == ([], 1)
     assert lu["article_existe"] is None                         # pas de liste `links` dans la réponse
 
 

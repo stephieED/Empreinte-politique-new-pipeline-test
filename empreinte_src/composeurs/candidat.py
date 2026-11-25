@@ -29,6 +29,15 @@ Les tranches de l'index de mots ne sont pas des sections (elles n'affichent rien
 écrites hors de la liste des sections, pour garder l'en-tête léger ; l'en-tête liste les
 tranches existantes.
 
+Le bloc `candidature` de l'en-tête (issue #72) dit, pour chaque candidat suivi : son statut et sa
+liste (franceinfo, recopiée à la main, `source_lue_le` : date de la liste en vigueur) ; sa date
+de déclaration, reprise de Wikipédia avec la révision lue (`revision_wikipedia`) ; les adresses
+des **références qui établissent cette date** (`references_declaration` : celles de la phrase qui
+la donne, à défaut de son paragraphe, `references_declaration_portee` dit lequel) et, à part,
+toutes celles de la ligne de Wikipédia (`references_ligne`, qui sourcent aussi parti, soutiens,
+fonctions) ; enfin `wikipedia_lue_le`, la date de notre dernier relevé réussi de l'article (la
+date de la révision elle-même n'est pas relevée : l'API ne la donne pas dans notre requête).
+
 Règles éditoriales appliquées ici (cahier, partie 2) : aucun score, aucun classement, aucun taux
 (ni de présence, ni d'adoption) ; un 49.3 est un fait de procédure, jamais une position ; la
 bande des divergences ne porte **aucun total** (règle 7) : une seule liste, chaque ligne dit
@@ -280,10 +289,33 @@ def composer(ctx, ecr):
         return
     au = ctx.date_reference or dt.date.today().isoformat()
     commun = _commun(ctx, au)
+    commun["lecture_wp"] = _lecture_wikipedia(ecr)
     ident = {r["per"]: r for r in _lignes(ctx, "SELECT * FROM personne_identite")} \
         if _vue(ctx, "personne_identite") else {}
     for c in _lignes(ctx, "SELECT * FROM candidat WHERE publie AND adresse IS NOT NULL ORDER BY adresse"):
         _composer_un(ctx, ecr, c, ident.get(c["per"]), commun)
+
+
+def _lecture_wikipedia(ecr) -> tuple[str | None, str | None]:
+    """(date de notre dernier relevé réussi de l'article des candidatures, raison si inconnue),
+    prise dans l'état des points de l'Ecrivain (le même que `sources.json.gz`)."""
+    for e in ecr.etat_points():
+        if e["point_acces"] == PA_WP:
+            return e["dernier_releve_reussi"], e["raison_dernier_releve"]
+    return None, "état du relevé de l'article non transmis"
+
+
+def _raison_references(c) -> str | None:
+    """Pourquoi aucune adresse n'établit la date de déclaration (None s'il y en a une)."""
+    if c["references_declaration"]:
+        return None
+    if not c["date_declaration_source_url"]:
+        return "la liste de Wikipédia ne cite pas cette personne"
+    if not c["date_declaration_phrase"]:
+        return "aucune phrase de la ligne de Wikipédia ne date la déclaration"
+    if not c["nb_references_declaration"]:
+        return "la phrase qui date la déclaration et son paragraphe ne citent aucune référence"
+    return "références citées sans adresse lisible"
 
 
 def _commun(ctx, au) -> dict:
@@ -441,6 +473,15 @@ def _composer_un(ctx, ecr, c, ident, commun):
             "date_declaration_source_url": c["date_declaration_source_url"],
             "date_declaration_source_point": PA_WP if c["date_declaration_source_url"] else None,
             "revision_wikipedia": c["revision_wikipedia"],
+            # Références qui établissent la date (issue #72), puis toutes celles de la ligne.
+            "references_declaration": list(c["references_declaration"] or []),
+            "nb_references_declaration": c["nb_references_declaration"],
+            "references_declaration_portee": c["references_declaration_portee"],
+            "raison_references_declaration": _raison_references(c),
+            "references_ligne": list(c["references"] or []),
+            "nb_references_ligne": c["nb_references"],
+            "wikipedia_lue_le": commun["lecture_wp"][0],
+            "raison_wikipedia_lue_le": commun["lecture_wp"][1],
             "article_frwiki": c["article_frwiki"], "article_url": c["article_url"],
             "element_wikidata": c["element_wikidata"], "element_url": c["element_url"],
             "rattachement": c["rattachement"], "raison_rattachement": c["raison_rattachement"],
