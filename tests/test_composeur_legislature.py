@@ -156,6 +156,19 @@ def ctx(tmp_path):
         {"numero_loi": "2026-103", "dossier": "D-PLF", "date_promulgation": "2026-02-19", "legislature": 17, "regle": "R-LOIS@1"},
         {"numero_loi": "2024-1", "dossier": "D-OLD", "date_promulgation": "2024-11-10", "legislature": 17, "regle": "R-LOIS@1"},
         {"numero_loi": "2023-9", "dossier": "D-OLD", "date_promulgation": "2023-03-01", "legislature": 16, "regle": "R-LOIS@1"}])
+    # #83 : législature d'adoption (R-LOI-ADOPTION). 2024-1 : adoptée sous la XVIe, promulguée sous
+    # la XVIIe ; 2025-7 : le Sénat a clos sous la XVIIe un texte que l'Assemblée a voté sous la XVIe.
+    la = lambda loi, dossier, prom, lp, la_, preuve=None, raison=None, lv=None, lc=None: {
+        "numero_loi": loi, "dossier": dossier, "date_promulgation": prom, "legislature_promulgation": lp,
+        "legislature_adoption": la_, "preuve_adoption": preuve, "raison_adoption": raison,
+        "legislature_dernier_vote_an": lv if lv is not None else la_, "legislature_cloture": lc if lc is not None else la_,
+        "legislature_derniere_seance_an": lv if lv is not None else la_, "regle": "R-LOI-ADOPTION@1"}
+    vue(c, "loi_adoption", [
+        la("2026-103", "D-PLF", "2026-02-19", 17, 17, "vote_final_de_l_assemblee"),
+        la("2024-1", "D-OLD", "2024-11-10", 17, 16, "vote_final_de_l_assemblee"),
+        la("2023-9", "D-OLD", "2023-03-01", 16, 16, "cloture_hors_assemblee_meme_legislature"),
+        la("2025-7", None, "2025-01-20", 17, None, raison="cloture_hors_assemblee_sous_une_autre_legislature",
+           lv=16, lc=17)])
     sn = lambda uid, date, solennel, moc, sort, nature: {
         "scrutin": uid, "legislature": 17, "date": date, "solennel": solennel, "motion_censure": moc,
         "sort": sort, "nature": nature, "regle": "R-NATURE-SCRUTIN@1"}
@@ -246,6 +259,15 @@ def test_fichiers_et_entete(ctx, tmp_path):
     assert c["lois"]["valeur"] == 2                         # promulguées dans la XVIIe seulement
     assert c["lois"]["par_legislature_du_dossier"] == [{"legislature": 16, "lois": 1},
                                                        {"legislature": 17, "lois": 1}]
+    # #83 : par adoption, à côté (le compte par promulgation ne change pas) ; 2024-1, promulguée
+    # sous la XVIIe, est une loi de la XVIe ; 2025-7 n'est comptée nulle part (Q65) : partiel.
+    pa_ = c["lois_par_adoption"]
+    assert (pa_["valeur"], pa_["statut"], pa_["promulguees_pendant_et_adoptees_sous_une_autre"],
+            pa_["promulguees_hors_de_la_legislature"]) == (1, "partiel", 1, 0)
+    assert pa_["sans_legislature_d_adoption"] == [
+        {"raison": "cloture_hors_assemblee_sous_une_autre_legislature", "lois": 1}]
+    assert pa_["regle"] == "R-LOI-ADOPTION@1" and pa_["promulgations_lues_au"] == REF
+    assert list(c).index("lois_par_adoption") == list(c).index("lois") + 1
     assert c["votes_solennels"]["valeur"] == 1
     assert c["motions_censure"]["valeur"] == 2 and c["motions_censure"]["adoptees"] == 1
     # 49.3 : le texte adopté compte, pas le dossier « engagement » (procédure 13) ; un acte.
@@ -298,6 +320,11 @@ def test_textes_et_commissions(ctx, tmp_path):
     assert ls["D-SEN"]["commission_libelle"] == "Saisi au Sénat seulement"
     assert ls["D-OLD"]["commission"] is None and ls["D-OLD"]["matiere_statut"] == "non_etablie"
     assert ls["D-OLD"]["sort_pendant_la_legislature"] is True
+    # #83 : la législature d'adoption de la loi de chaque texte promulgué, sa preuve ; rien sinon.
+    assert (ls["D-PLF"]["legislature_adoption_loi"], ls["D-PLF"]["preuve_adoption_loi"]) == (
+        17, "vote_final_de_l_assemblee")
+    assert (ls["D-OLD"]["numero_loi"], ls["D-OLD"]["legislature_adoption_loi"]) == ("2024-1", 16)
+    assert (ls["D-SEN"]["legislature_adoption_loi"], ls["D-SEN"]["raison_adoption_loi"]) == (None, None)
     # #71 : vote solennel dans la législature ; un scrutin non solennel ne compte pas
     assert ls["D-PLF"]["vote_solennel"] is True and ls["D-PLF"]["scrutins_solennels"] == ["VT3"]
     assert ls["D-SEN"]["vote_solennel"] is False and ls["D-SEN"]["scrutins_solennels"] is None
@@ -341,7 +368,11 @@ def test_couverture_faits_et_controles(ctx, tmp_path):
 def test_sortie_de_regle_absente(ctx, tmp_path):
     ctx.x("DROP VIEW hemicycle")
     ctx.x("DROP VIEW ordre_du_jour")
+    ctx.x("DROP VIEW loi_adoption")
     _, man, _, lire = composer(ctx, tmp_path)
+    # Sans R-LOI-ADOPTION : pas de compte par adoption, colonnes des textes servies vides.
+    assert "lois_par_adoption" not in {c["famille"] for c in lire("fiche")["compteurs"]}
+    assert all(l["legislature_adoption_loi"] is None for l in lignes(lire("textes")))
     h = lire("hemicycle")
     assert h["lignes"] == [] and h["couverture"]["statut"] == "non_relu"
     assert "hemicycle" in h["couverture"]["detail"]
@@ -356,6 +387,13 @@ def test_legislature_close_sans_hemicycle(ctx, tmp_path):
     ecr, man, racine, lire = composer(ctx, tmp_path, numero=16)
     f = lire("fiche")
     assert f["titre"] == "XVIe législature" and f["au"] == "2024-06-09"
+    # #83 : arrêté à la fin de la législature, mais les promulgations sont lues au jour de référence :
+    # 2024-1, adoptée sous la XVIe, promulguée sous la XVIIe, en est.
+    c = {x["famille"]: x for x in f["compteurs"]}
+    assert (c["lois"]["valeur"], c["lois_par_adoption"]["valeur"]) == (1, 2)
+    assert (c["lois_par_adoption"]["au"], c["lois_par_adoption"]["promulgations_lues_au"]) == ("2024-06-09", REF)
+    assert c["lois_par_adoption"]["par_legislature_de_promulgation"] == [{"legislature": 16, "lois": 1},
+                                                                        {"legislature": 17, "lois": 1}]
     assert "hemicycle_legislature_close" in {l["sujet"] for l in f["limites"]}
     assert lire("hemicycle")["couverture"]["statut"] == "borne_historique"
     # Aucune séance de la XVIe dans l'agenda du jeu d'essai : un trou de la source, pas « 0, complet ».
