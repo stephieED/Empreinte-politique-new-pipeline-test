@@ -8,6 +8,18 @@ Les questions sont classées par urgence : **A** = à trancher avant la premièr
 publication ; **B** = à trancher avant d'activer la fonction concernée ; **C** = réglage, le
 défaut peut rester.
 
+> **Depuis le 25/11/2026, les nouvelles questions ne s'ajoutent plus ici**, pour éviter un
+> conflit à chaque fusion : chacune est un fichier à part, `questions/Qnn.md` (le numéro suit le
+> plus grand pris, ici ou dans `questions/`). Sa première ligne dit où elle va :
+> `<!-- partie: A -->` (ou `B`, `C`) pour une question ouverte, suivie de sa section
+> `### Qnn (JJ/MM/AAAA). Titre` ; `<!-- partie: tranchee -->` pour une question tranchée, suivie
+> de sa ligne du tableau « Tranchées » (`| Qnn (date). Question | Réponse | Où c'est appliqué |`).
+> Trancher une question ne change que son fichier. Ses liens relatifs partent du dossier
+> `questions/` (`../` mène à `livrables/`). Les questions ci-dessous restent où elles sont ; si
+> l'une d'elles se tranche, sa section est retirée d'ici et elle prend son fichier. La page
+> publiée (documentation de Pages) ajoute les questions ouvertes à la fin de leur partie et les
+> tranchées à la fin du tableau, dans l'ordre de leur numéro.
+
 ---
 
 ## Tranchées (04/11 et 06/11/2026)
