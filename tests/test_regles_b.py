@@ -820,3 +820,67 @@ def test_suite_absente_datee_par_le_journal_officiel(tmp_path):
             a["2025-200"]["date_adoption_an_lue_au_jo"]) == (17, "derniere_adoption_an_lue_au_jo", "2025-02-10")
     assert (a["2025-201"]["legislature_adoption"], a["2025-201"]["raison_adoption"],
             a["2025-201"]["date_adoption_an_lue_au_jo"]) == (None, "suite_absente_des_archives", "2023-05-15")
+
+
+def test_censure_apres_49_3_et_texte_de_cmp(tmp_path):
+    """Issue #89 (cas réel : PLFSS 2025, DLR5L17N50588, actes recopiés de la g24). Le gouvernement
+    Barnier engage sa responsabilité sur le texte de CMP le 02/12/2024 ; la motion de censure est
+    adoptée le 04/12/2024 (TSORTMOT01, scrutin VTANR5L17V519) : rejet via 49.3. Le texte est repris
+    et promulgué : le sort reste celui du dossier. Une motion rejetée (TSORTMOT02) n'est pas un rejet ;
+    une motion dont le code ne nomme pas la lecture (« MOTION-VOTE ») est rattachée à l'engagement le
+    plus récent. Un texte promulgué dont la clôture lue est une décision de CMP sans chambre
+    (CMP-DEBATS-DEC) est adopté sur le texte de CMP ; cette dernière décision garde sa chambre vide
+    (R-SORT-FINAL v6 : `max_by` lui donnait celle de la décision précédente)."""
+    dossiers = [_dos("PS", "Projet de loi de financement de la sécurité sociale pour 2025", "4"),
+                _dos("RJ", "Projet de loi, motion rejetée", "1"), _dos("CM", "Texte de CMP sans chambre")]
+    actes = [
+        _depot("PS", "PRJLANR5L17B0325", date="2024-10-10"),
+        _decision("PS", "L17-PS-1", "AN1-DEBATS-DEC", "TSORTF01", "2024-11-05"),
+        _decision("PS", "L17-PS-2", "SN1-DEBATS-DEC", "TSORTF05", "2024-11-26", "modifié"),
+        _acte("PS", "L17-VD222534", "DeclarationGouvernement_Type", "CMP-DGVT", "2024-12-02",
+              type_declaration_code="Art.49.3"),
+        _decision("PS", "L17-VD222686DEC", "CMP-DEBATS-AN-DEC", "TSORTF24", "2024-12-04",
+                  "considéré comme rejeté par l'Assemblée nationale en application de l'article 49, alinéa 3"),
+        _acte("PS", "L17-VD222690", "DecisionMotionCensure_Type", "CMP-MOTION-VOTE", "2024-12-04",
+              decision_code="TSORTMOT01", decision_libelle="Motion adoptée", scrutins=["VTANR5L17V519"]),
+        _acte("PS", "L17-VD223530", "DeclarationGouvernement_Type", "ANNLEC-DGVT", "2025-02-03",
+              type_declaration_code="Art.49.3"),
+        _acte("PS", "L17-VD223655", "DecisionMotionCensure_Type", "ANNLEC-MOTION-VOTE", "2025-02-05",
+              decision_code="TSORTMOT02", decision_libelle="Motion rejetée", scrutins=["VTANR5L17V694"]),
+        _decision("PS", "L17-VD223800DEC", "ANNLEC-DEBATS-DEC", "TSORTF06", "2025-02-12",
+                  "considéré comme adopté par l'Assemblée nationale en application de l'article 49, alinéa 3"),
+        {**_decision("PS", "L17-VD223916DEC", "SNNLEC-DEBATS-DEC", "TSORTFnull", "2025-02-17"),
+         "conclusion_libelle": None},
+        _acte("PS", "L17-PS-P", "Promulgation_Type", "PROM-PUB", "2025-02-28", code_loi="2025-199"),
+        _depot("RJ", "PRJLANR5L16B0001", date="2023-09-01"),
+        _acte("RJ", "L16-RJ-E", "DeclarationGouvernement_Type", "ANNLEC-DGVT", "2023-09-27",
+              type_declaration_code="Art.49.3"),
+        _acte("RJ", "L16-RJ-M", "DecisionMotionCensure_Type", "MOTION-VOTE", "2023-09-30",
+              decision_code="TSORTMOT02", decision_libelle="Motion rejetée"),
+        _depot("CM", "PIONANR5L16B0005", date="2023-04-28"),
+        _decision("CM", "L16-CM-1", "AN1-DEBATS-DEC", "TSORTF01", "2024-01-29"),
+        _decision("CM", "L16-CM-2", "SN1-DEBATS-DEC", "TSORTF05", "2024-05-21", "modifiée"),
+        _decision("CM", "L17-CM-3", "CMP-DEBATS-DEC", "TSORTF18", "2024-11-07"),
+        _acte("CM", "L17-CM-P", "Promulgation_Type", "PROM-PUB", "2024-11-19", code_loi="2024-1039"),
+    ]
+    ctx, b = _relier(_z2(tmp_path / "z2", actes=actes, dossiers=dossiers), tmp_path / "z3")
+    c = {x["acte_motion"]: x for x in _lignes(ctx, "SELECT * FROM censure_49_3")}
+    assert {k: (x["dossier"], x["acte_engagement"], x["issue"], x["scrutin"]) for k, x in c.items()} == {
+        "L17-VD222690": ("PS", "L17-VD222534", "adoptee", "VTANR5L17V519"),
+        "L17-VD223655": ("PS", "L17-VD223530", "rejetee", "VTANR5L17V694"),
+        "L16-RJ-M": ("RJ", "L16-RJ-E", "rejetee", None)}
+    assert b["R-49-3"]["couverture"]["issue_de_la_motion_lue"] == [3, 3]
+    e = {x["dossier"]: x for x in _lignes(ctx, "SELECT DISTINCT dossier, sort, par_49_3, adopte_par_49_3, "
+                                               "rejete_par_censure_49_3, date_censure_49_3, scrutin_censure_49_3, "
+                                               "motif_adoption, adopte_sur_texte_cmp, numero_loi FROM etat_dossier")}
+    assert (e["PS"]["sort"], e["PS"]["adopte_par_49_3"], e["PS"]["rejete_par_censure_49_3"],
+            e["PS"]["date_censure_49_3"], e["PS"]["scrutin_censure_49_3"], e["PS"]["numero_loi"]) == (
+        "promulgue", True, True, "2024-12-04", "VTANR5L17V519", "2025-199")
+    assert (e["RJ"]["par_49_3"], e["RJ"]["rejete_par_censure_49_3"]) == (True, False)
+    assert (e["CM"]["sort"], e["CM"]["motif_adoption"], e["CM"]["adopte_sur_texte_cmp"]) == (
+        "promulgue", None, True)
+    assert e["PS"]["adopte_sur_texte_cmp"] is False
+    # La dernière décision est lue ligne entière (v6) : publiée sans libellé (TSORTFnull), elle ne
+    # prend plus celui de la décision précédente (« considéré comme adopté… »).
+    dl = _un(ctx, "etat_dossier", dossier="PS")
+    assert (dl["date_derniere_decision"], dl["derniere_conclusion"]) == ("2025-02-17", None)

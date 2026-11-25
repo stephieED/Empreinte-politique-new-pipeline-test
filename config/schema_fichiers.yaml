@@ -18,6 +18,12 @@ vocabulaires:
   - retire
   - rejete
   - non_connu
+  # Motif de l'adoption définitive (R-ETAPE, `adoptions_definitives`), servi depuis l'issue #89.
+  motif_adoption:
+  - lecture_definitive
+  - une_seule_chambre
+  - texte_cmp_adopte_par_les_deux_chambres
+  - adoption_conforme
   raison_sort:
   - pas_de_texte_depose
   - revision_constitutionnelle
@@ -757,8 +763,13 @@ colonnes:
   - date_sort
   - raison_sort
   - sort_pendant_la_legislature
+  - motif_adoption
+  - adopte_sur_texte_cmp
   - par_49_3
   - adopte_par_49_3
+  - rejete_par_censure_49_3
+  - date_censure_49_3
+  - scrutin_censure_49_3
   - numero_loi
   - date_promulgation
   - url_loi
@@ -799,8 +810,13 @@ colonnes:
   - date_sort
   - raison_sort
   - sort_pendant_la_legislature
+  - motif_adoption
+  - adopte_sur_texte_cmp
   - par_49_3
   - adopte_par_49_3
+  - rejete_par_censure_49_3
+  - date_censure_49_3
+  - scrutin_censure_49_3
   - numero_loi
   - date_promulgation
   - url_loi
