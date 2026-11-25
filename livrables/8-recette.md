@@ -98,7 +98,7 @@ Z2 = faits lus (doc. 1, 1.4) ; Z3 = graphe relié (doc. 1, 1.5) ; règles : doc.
 | En bref : comptes | `scrutin` (SPS, MOC), `acte` (49.3), `loi`, `mandat` ASSEMBLEE, `organe` GOUVERNEMENT | comptes datés | `fiche.json` | couvert : terme légal, doc. 1, 1.6 R-TERME-LEGAL (T35) ; motions de censure par le code `MOC`, doc. 1, 1.4 C (T07) ; archive XIVe tronquée, doc. 1, 1.5.5 (T10) |
 | Qui siégeait | `siege`, `mandat` GP | `place_mediane`, `appartenance` à une date | `hemicycle.json` | couvert |
 | À l'ordre du jour | `reunion` (statut), `point_odj` (dossiers cités) | séances confirmées ; dossier lié, sinon « non lié » en couverture | `ordre-du-jour-<annee>.json` | couvert : borne de la XIVe, doc. 1, 1.5.5 (T16) |
-| Les textes de la législature | `dossier`, `document`, `acte`, `loi` | `etape_dossier` (par législature), `sort_dossier`, `matiere`, initiateurs | `textes.json` | couvert : lois promulguées sous la législature suivante, doc. 1, 1.6 R-LOI-DOSSIER (T18) |
+| Les textes de la législature | `dossier`, `document`, `acte`, `loi` | `etape_dossier` (par législature), `sort_dossier`, `matiere`, initiateurs | `textes.json` | couvert : lois promulguées sous la législature suivante, doc. 1, 1.6 R-LOI-DOSSIER (T18) ; lois comptées aussi par leur adoption à l'Assemblée, 1.6 R-LOI-ADOPTION (#83) |
 | Le travail des commissions | `acte` (saisie au fond) | `matiere`, `etape_dossier` | `commissions.json` | couvert (dossiers saisis au seul Sénat : « saisi au Sénat seulement », doc. 5, Q19) |
 | Ce qu'on n'a pas pu lire | — | couverture | `fiche.json` | couvert |
 | Articles de la période | — | — | `catalogue/articles.json` (doc. 1, 1.7.2) | couvert (T34) |

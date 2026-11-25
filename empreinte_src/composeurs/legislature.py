@@ -4,11 +4,11 @@ Fichiers de `legislatures/<numero>/` :
 
 | fichier | ce que voit le lecteur | règles lues |
 | --- | --- | --- |
-| `fiche.json.gz` | en-tête (nom, période, mode de fin), en bref (gouvernements, comptes datés), limites | R-LEGISLATURES, R-GOUVERNEMENTS, R-DEPUTES, R-LOIS, R-NATURE-SCRUTIN, R-49-3, R-SORT-FINAL |
+| `fiche.json.gz` | en-tête (nom, période, mode de fin), en bref (gouvernements, comptes datés), limites | R-LEGISLATURES, R-GOUVERNEMENTS, R-DEPUTES, R-LOIS, R-LOI-ADOPTION, R-NATURE-SCRUTIN, R-49-3, R-SORT-FINAL |
 | `hemicycle.json.gz` | qui siège : un siège par député en fonction au jour de constat | R-HEMICYCLE |
 | `groupes.json.gz` | qui siège : effectif de chaque groupe, position déclarée | R-APPARTENANCE, R-HEMICYCLE |
 | `ordre-du-jour-<annee>.json.gz` | le calendrier des séances et leurs points | R-ORDRE-DU-JOUR, R-MATIERE |
-| `textes.json.gz` | les textes : matière, étape, sort, initiateur | R-ETAPE, R-SORT-FINAL, R-MATIERE |
+| `textes.json.gz` | les textes : matière, étape, sort, initiateur, législature d'adoption de la loi | R-ETAPE, R-SORT-FINAL, R-MATIERE, R-LOI-ADOPTION |
 | `commissions.json.gz` | dossiers par commission saisie au fond et par étape (décomptes) | R-MATIERE, R-ETAPE |
 
 Ce que le composeur ne fait pas : il ne déduit rien que les règles ne disent pas. Deux exceptions,
@@ -24,6 +24,13 @@ législature, quelle que soit la législature d'ouverture du dossier. La capture
 dit 141 ; ce compte donne 150 au 06/11/2026 (dont 37 dossiers ouverts sous une législature
 antérieure, 9 de procédure « loi organique ») : l'écart n'est pas expliqué, le détail est servi
 avec le compte.
+
+À côté (issue #83), le compte des **lois par adoption** (`lois_par_adoption`, R-LOI-ADOPTION) :
+les lois que l'Assemblée a adoptées en dernier pendant la législature, puis promulguées, même
+après sa fin. Il est `partiel` quand des lois qui ont pu l'être n'ont pas de législature
+d'adoption établie (raisons servies : dossier absent des archives, vote final du Sénat sous une
+autre législature, doc. 5, Q65…). Chaque texte promulgué porte la législature d'adoption de sa
+loi (`legislature_adoption_loi`, sa preuve ou sa raison).
 """
 from __future__ import annotations
 
@@ -37,7 +44,7 @@ NOM = "legislature"
 VERSION = 1
 DEPEND = ("R-LEGISLATURES", "R-GOUVERNEMENTS", "R-DEPUTES", "R-APPARTENANCE", "R-HEMICYCLE",
           "R-LOIS", "R-49-3", "R-NATURE-SCRUTIN", "R-ORDRE-DU-JOUR", "R-MATIERE", "R-ETAPE",
-          "R-SORT-FINAL")
+          "R-SORT-FINAL", "R-LOI-ADOPTION")
 
 # Législatures publiées : XIVe à XVIIe (cahier 4.1 ; module `perimetre`).
 PERIMETRE = LEGISLATURES
@@ -55,6 +62,9 @@ COLS_TEXTES = ["dossier", "titre", "date_depot", "texte_depose", "chambre_depot"
                "date_etape", "raison_etape", "sort", "date_sort", "raison_sort",
                "sort_pendant_la_legislature", "par_49_3", "adopte_par_49_3", "numero_loi",
                "date_promulgation", "url_loi",
+               # #83 : législature où l'Assemblée a adopté la loi en dernier (R-LOI-ADOPTION), sa
+               # preuve, ou la raison qui l'empêche.
+               "legislature_adoption_loi", "preuve_adoption_loi", "raison_adoption_loi",
                # #71 : vote solennel dans la législature (R-NATURE-SCRUTIN, R-LIEN-SCRUTIN-DOSSIER) ;
                # initiateur nominatif : premier auteur du texte déposé (R-TEXTE-PORTE), son groupe à
                # la date du dépôt (R-APPARTENANCE) ; un projet de loi : le gouvernement, jamais un
@@ -350,6 +360,10 @@ def _compteurs(ctx, leg, au, lic, gouvs) -> list[dict]:
             par_legislature_du_dossier=[{"legislature": l, "lois": c} for l, c in par_leg],
             dont_procedure_organique=organiques))
 
+    # Lois par adoption (issue #83) : à côté du compte par promulgation, qui ne change pas.
+    if ctx.existe("loi_adoption"):
+        out.append(_compte_lois_par_adoption(ctx, numero, au, lic_an))
+
     # Votes solennels.
     if ctx.existe("scrutin_nature"):
         rows = ctx.x("""SELECT nature, count(*) FROM scrutin_nature
@@ -398,6 +412,51 @@ def _compteurs(ctx, leg, au, lic, gouvs) -> list[dict]:
             detail=f"Dont {_fr(adoptees)} adoptée(s).", points=_points(ctx, "an_scrutins__scrutin"),
             licences=lic_an, adoptees=adoptees))
     return out
+
+
+def _compte_lois_par_adoption(ctx, numero, au, lic_an) -> dict:
+    """Lois adoptées en dernier par l'Assemblée pendant la législature, puis promulguées
+    (R-LOI-ADOPTION). Daté comme les autres comptes (`au` : fin d'une législature close, toutes
+    ses adoptions sont antérieures) ; les promulgations sont lues à la date de référence
+    (`promulgations_lues_au`), car une loi adoptée avant la fin peut être promulguée après. Statut
+    `partiel` quand des lois qui ont pu être adoptées pendant la législature (promulguées, votées
+    par l'Assemblée, closes ou discutées en séance pendant celle-ci) n'ont pas de législature
+    d'adoption établie : leur nombre et leurs raisons sont servis."""
+    ref = _date_reference(ctx)
+    n, apres, avant = ctx.x("""
+        SELECT count(*) FILTER (legislature_adoption = $1),
+               count(*) FILTER (legislature_adoption = $1 AND legislature_promulgation IS DISTINCT FROM $1),
+               count(*) FILTER (legislature_promulgation = $1 AND legislature_adoption <> $1)
+        FROM loi_adoption WHERE date_promulgation <= $2""", [numero, ref])[0]
+    incertaines = ctx.x("""
+        SELECT raison_adoption, count(*) FROM loi_adoption
+        WHERE legislature_adoption IS NULL AND date_promulgation <= $2
+          AND $1 IN (legislature_promulgation, legislature_dernier_vote_an, legislature_cloture,
+                     legislature_derniere_seance_an)
+        GROUP BY 1 ORDER BY 2 DESC, 1""", [numero, ref])
+    nb_incertaines = sum(c for _, c in incertaines)
+    par_promulgation = ctx.x("""
+        SELECT legislature_promulgation, count(*) FROM loi_adoption
+        WHERE legislature_adoption = ? AND date_promulgation <= ? GROUP BY 1 ORDER BY 1 NULLS LAST""",
+                             [numero, ref])
+    return _compte(
+        "lois_par_adoption", n, au, _regle(ctx, "loi_adoption"),
+        "Lois adoptées en dernier par l'Assemblée pendant la législature, puis promulguées, même "
+        "après sa fin : date de la dernière décision de l'Assemblée qui adopte le texte, quand elle "
+        "clôt la navette ou que le vote final du Sénat tombe dans la même législature. Le compte "
+        "des lois promulguées pendant la législature est servi à côté.",
+        statut="complet" if nb_incertaines == 0 else "partiel",
+        detail=(f"Dont {_fr(apres)} promulguée(s) après la fin de la législature ou entre deux "
+                f"législatures. {_fr(avant)} loi(s) promulguée(s) pendant la législature, adoptée(s) "
+                f"sous une autre. {_fr(nb_incertaines)} loi(s) qui ont pu être adoptées pendant la "
+                "législature sans législature d'adoption établie"
+                + (" (" + ", ".join(f"{r} : {_fr(c)}" for r, c in incertaines) + ")."
+                   if incertaines else ".")),
+        points=_points(ctx, "an_dossiers__acte", "jo_actes__acte_reglementaire"), licences=lic_an,
+        promulgations_lues_au=ref, promulguees_hors_de_la_legislature=apres,
+        promulguees_pendant_et_adoptees_sous_une_autre=avant,
+        par_legislature_de_promulgation=[{"legislature": l, "lois": c} for l, c in par_promulgation],
+        sans_legislature_d_adoption=[{"raison": r, "lois": c} for r, c in incertaines])
 
 
 # --------------------------------------------------------------------------- qui siège
@@ -606,6 +665,11 @@ def _section_textes(ctx, f, leg, au, lic) -> list[dict]:
     else:
         ini = ("(SELECT NULL::VARCHAR AS document, NULL::BIGINT AS nb_auteurs, NULL::VARCHAR AS acteur, "
                "NULL::VARCHAR AS role, NULL::VARCHAR AS gouvernement WHERE false)")
+    # Législature d'adoption de la loi (#83, R-LOI-ADOPTION).
+    adop = ("(SELECT numero_loi, legislature_adoption, preuve_adoption, raison_adoption FROM loi_adoption)"
+            if ctx.existe("loi_adoption") else
+            "(SELECT NULL::VARCHAR AS numero_loi, NULL::INTEGER AS legislature_adoption, "
+            "NULL::VARCHAR AS preuve_adoption, NULL::VARCHAR AS raison_adoption WHERE false)")
     grp = ("""(SELECT a.acteur, a.groupe, a.debut, coalesce(a.fin, '9999-12-31') AS fin, g.sigle
                FROM appartenance a LEFT JOIN (SELECT organe, any_value(sigle) AS sigle FROM groupe GROUP BY 1) g
                     ON g.organe = a.groupe)""" if ctx.existe("appartenance") and ctx.existe("groupe")
@@ -634,6 +698,8 @@ def _section_textes(ctx, f, leg, au, lic) -> list[dict]:
                CASE WHEN e.date_sort IS NULL THEN NULL
                     ELSE e.date_sort >= ? AND e.date_sort <= ? END AS sort_pendant_la_legislature,
                e.par_49_3, e.adopte_par_49_3, e.numero_loi, e.date_promulgation, e.url_loi,
+               la.legislature_adoption AS legislature_adoption_loi, la.preuve_adoption AS preuve_adoption_loi,
+               la.raison_adoption AS raison_adoption_loi,
                sol.scrutins IS NOT NULL AS vote_solennel, sol.scrutins AS scrutins_solennels,
                ini.role AS initiateur_role, ini.acteur AS initiateur_acteur,
                (SELECT any_value(g.groupe) FROM {grp} g WHERE g.acteur = ini.acteur AND ini.role = 'auteur'
@@ -645,6 +711,7 @@ def _section_textes(ctx, f, leg, au, lic) -> list[dict]:
         FROM etat_dossier e
         JOIN depot p ON p.dossier = e.dossier
         LEFT JOIN {sol} sol ON sol.dossier = e.dossier
+        LEFT JOIN {adop} la ON la.numero_loi = e.numero_loi
         LEFT JOIN {ini} ini ON ini.document = p.texte_depose
         LEFT JOIN an_dossiers__dossier d ON d.uid = e.dossier
         LEFT JOIN matiere m ON m.dossier = e.dossier
@@ -755,7 +822,7 @@ def _couverture_regles(ctx) -> list[dict]:
     """Les règles lues par la fiche et leur version (page de méthodologie)."""
     out = []
     for vue in ("legislature", "gouvernement_legislature", "depute", "hemicycle", "effectif_groupe",
-                "loi", "scrutin_nature", "engagement_49_3", "ordre_du_jour", "matiere",
+                "loi", "loi_adoption", "scrutin_nature", "engagement_49_3", "ordre_du_jour", "matiere",
                 "etape_dossier", "etat_dossier"):
         r = _regle(ctx, vue)
         out.append({"sortie": vue, "regle": r, "presente": r is not None})
