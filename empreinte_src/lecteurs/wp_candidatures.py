@@ -28,6 +28,20 @@ citées (`<ref>…</ref>`) sont restituées par leur adresse (`url=`, `lire en l
 nu) ; une référence réutilisée (`<ref name="x"/>`) n'a pas d'adresse dans la ligne : elle est
 comptée dans `nb_references`, son nom gardé dans `references_nommees`.
 
+Deux listes de références, à ne pas confondre (issue #72) :
+- `references` : toutes celles de la **ligne** du tableau, qui sourcent aussi le parti, les
+  soutiens (note « Candidature soutenue par »), les fonctions… (22 pour Jean-Luc Mélenchon le
+  24/11/2026, dont 19 pour ses soutiens) ;
+- `references_declaration` : celles qui établissent la date, c'est-à-dire celles de la **phrase
+  qui date la déclaration** (y compris une référence placée juste après son point) ; si elle
+  n'en porte aucune, celles de son **paragraphe** (texte de la cellule entre deux sauts de ligne
+  ou `----`), car les contributeurs les placent souvent en fin de paragraphe, après une autre
+  phrase (David Lisnard : « Il déclare sa candidature pour la présidentielle le {{date|31 mars
+  2026}} […]. Il maintient sa volonté d'une primaire de la droite<ref>…</ref>. »). `references_declaration_portee` dit lequel (`phrase`,
+  `paragraphe`, vide sans référence). Une référence réutilisée (`<ref name="x"/>`) est
+  retrouvée par son nom dans tout l'article ; `nb_references_declaration` compte toutes celles
+  retenues, retrouvées ou non.
+
 Ce lecteur dépend de conventions de rédaction que tout contributeur peut changer : ses tests
 couvrent les formes rencontrées, et l'écart entre lignes et candidats extraits est mesuré à
 chaque lecture.
@@ -41,7 +55,7 @@ import orjson
 import pyarrow as pa
 
 NOM = "wp_candidatures"
-VERSION = 1
+VERSION = 2
 TYPES = ("candidatures",)
 ELECTION = "presidentielle-2027"
 
@@ -54,7 +68,10 @@ TABLES = {
         ("date_declaration", S), ("date_declaration_texte", S),
         ("date_declaration_raison", S), ("date_declaration_phrase", S),
         ("references", pa.list_(S)), ("references_nommees", pa.list_(S)),
-        ("nb_references", pa.int32()), ("revision", pa.int64()), ("page", S),
+        ("nb_references", pa.int32()),
+        ("references_declaration", pa.list_(S)), ("nb_references_declaration", pa.int32()),
+        ("references_declaration_portee", S),
+        ("revision", pa.int64()), ("page", S),
     ]),
     "candidature_lecture": pa.schema([
         ("election", S), ("revision", pa.int64()), ("page", S), ("section", S),
@@ -76,6 +93,11 @@ _REF = re.compile(r"<ref(\s[^>]*?)?(?:/>|>(.*?)</ref\s*>)", re.S | re.I)
 _REF_NOM = re.compile(r"""name\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s/>]+))""", re.I)
 _URL = re.compile(r"(?:\burl|lire en ligne|archive-url)\s*=\s*([^|}\s]+)", re.I)
 _URL_NUE = re.compile(r"\[?(https?://[^\s|\]}<]+)")
+# Une référence remplacée par un jeton (caractères d'usage privé) : paragraphes et phrases sont
+# découpés sans couper dans une référence, et chacun garde les siennes ; une référence placée
+# juste après la ponctuation finale appartient à la phrase qu'elle clôt.
+_JETON = re.compile("\ue000(\\d+)\ue001")
+_FIN_PHRASE = re.compile("[.!?]((?:\\s*\ue000\\d+\ue001)*)\\s+")
 _DATE_MODELE = re.compile(r"\{\{\s*[Dd]ate\s*\|([^{}]*)\}\}")
 _DATE_CLAIRE = re.compile(r"\b(1er|\d{1,2})\s+(" + "|".join(sorted(MOIS, key=len, reverse=True))
                           + r")\s+(\d{4})\b", re.I)
@@ -147,20 +169,31 @@ def nom_ecrit(cellule: str) -> dict | None:
     return None
 
 
+def _ref(m) -> tuple[str | None, str | None]:
+    """(adresse, nom) d'une référence trouvée par `_REF` ; l'un ou l'autre peut manquer."""
+    attrs, corps = m.group(1) or "", m.group(2)
+    nm = _REF_NOM.search(attrs)
+    nom = next((g for g in nm.groups() if g), None) if nm else None
+    u = (_URL.search(corps) or _URL_NUE.search(corps)) if corps is not None else None
+    return (u.group(1).strip() if u else None), nom
+
+
+def adresses_nommees(wiki: str) -> dict[str, str]:
+    """Nom -> adresse des références nommées de tout l'article (la première définition)."""
+    out = {}
+    for m in _REF.finditer(wiki):
+        u, nom = _ref(m)
+        if u and nom:
+            out.setdefault(nom, u)
+    return out
+
+
 def _refs(texte: str):
     urls, noms, n = [], [], 0
     for m in _REF.finditer(texte):
         n += 1
-        attrs, corps = m.group(1) or "", m.group(2)
-        nm = _REF_NOM.search(attrs)
-        nom = next((g for g in nm.groups() if g), None) if nm else None
-        if corps is None:
-            if nom:
-                noms.append(nom)
-            continue
-        u = _URL.search(corps) or _URL_NUE.search(corps)
+        u, nom = _ref(m)
         if u:
-            u = u.group(1).strip()
             if u not in urls:
                 urls.append(u)
         elif nom:
@@ -185,10 +218,6 @@ def _date_iso(texte_date: str) -> str | None:
     return f"{a:04d}-{mo:02d}-{j:02d}"
 
 
-def _sans_refs(t: str) -> str:
-    return _REF.sub("", t)
-
-
 def _dates(phrase: str) -> list[tuple[int, str]]:
     """(position, date telle qu'écrite) : modèle {{date|…}}, date en clair, mois et année."""
     out = [(m.start(), m.group(1)) for m in _DATE_MODELE.finditer(phrase)]
@@ -203,12 +232,34 @@ def _dates(phrase: str) -> list[tuple[int, str]]:
     return sorted(out)
 
 
-def date_declaration(texte: str) -> dict:
+def _phrases(texte: str):
+    """(phrase sans références, références de la phrase, références de son paragraphe). Les
+    paragraphes sont séparés par un saut de ligne ou `----`, les phrases par une ponctuation
+    finale suivie d'un blanc, comme dans le texte sans références."""
+    refs = []
+
+    def jeton(m):
+        refs.append(m)
+        return f"\ue000{len(refs) - 1}\ue001"
+    for par in re.split(r"\n+|----", _REF.sub(jeton, texte)):
+        du_paragraphe = [refs[int(i)] for i in _JETON.findall(par)]
+        debut, morceaux = 0, []
+        for m in _FIN_PHRASE.finditer(par):
+            morceaux.append(par[debut:m.end(1)])
+            debut = m.end()
+        morceaux.append(par[debut:])
+        for x in morceaux:
+            yield _JETON.sub("", x), [refs[int(i)] for i in _JETON.findall(x)], du_paragraphe
+
+
+def date_declaration(texte: str, nommees: dict[str, str] | None = None) -> dict:
     """Première phrase qui dit la candidature et porte une date ; la date retenue est la
     première qui suit l'expression (« … officialise sa candidature le … »), à défaut la
-    dernière qui la précède (« Le {{date|…}}, elle annonce sa candidature »)."""
-    propre = _sans_refs(texte)
-    for phrase in re.split(r"(?<=[.!?])\s+|\n+|----", propre):
+    dernière qui la précède (« Le {{date|…}}, elle annonce sa candidature »). Rend aussi les
+    adresses des références de cette phrase, à défaut de son paragraphe
+    (`references_declaration`, `references_declaration_portee`) ; une référence
+    réutilisée (`<ref name="x"/>`) est retrouvée dans `nommees` (nom -> adresse, tout l'article)."""
+    for phrase, de_la_phrase, du_paragraphe in _phrases(texte):
         m = _PHRASE_CANDIDATURE.search(phrase)
         if not m:
             continue
@@ -219,11 +270,23 @@ def date_declaration(texte: str) -> dict:
         brut = apres[0][1] if apres else dates[-1][1]
         lisible = brut.replace("|", "/") if re.fullmatch(r"[\d|]+", brut) else brut.replace("|", " ")
         iso = _date_iso(brut)
+        portee, refs = (("phrase", de_la_phrase) if de_la_phrase
+                        else ("paragraphe", du_paragraphe) if du_paragraphe else (None, []))
+        urls = []
+        for r in refs:
+            u, nom = _ref(r)
+            u = u or (nommees or {}).get(nom)
+            if u and u not in urls:
+                urls.append(u)
         return {"date_declaration": iso, "date_declaration_texte": " ".join(lisible.split()),
                 "date_declaration_raison": None if iso else "date incomplète",
-                "date_declaration_phrase": " ".join(phrase.split()).lstrip("|! ")[:500]}
+                "date_declaration_phrase": " ".join(phrase.split()).lstrip("|! ")[:500],
+                "references_declaration": urls, "nb_references_declaration": len(refs),
+                "references_declaration_portee": portee}
     return {"date_declaration": None, "date_declaration_texte": None,
-            "date_declaration_raison": "non connue", "date_declaration_phrase": None}
+            "date_declaration_raison": "non connue", "date_declaration_phrase": None,
+            "references_declaration": [], "nb_references_declaration": 0,
+            "references_declaration_portee": None}
 
 
 def _lignes_tableau(sec: str) -> list[tuple[str, str]]:
@@ -268,6 +331,7 @@ def lire(m):
     rev, wiki, titre, existe = _texte_wiki(orjson.loads(m.octets))
     page = f"https://fr.wikipedia.org/w/index.php?title={quote((titre or '').replace(' ', '_'))}"
     candidatures, bilans = [], []
+    nommees = adresses_nommees(wiki)
     for statut, nom_section in SECTIONS.items():
         sec = section(wiki, nom_section)
         lignes = [] if sec is None else (
@@ -286,7 +350,7 @@ def lire(m):
                 "election": ELECTION, "statut": statut, "rang": extraits,
                 "personne_source": n["article"] or n["nom"], **n,
                 "article_existe": existe.get(n["article"]) if n["article"] else None,
-                **date_declaration(texte),
+                **date_declaration(texte, nommees),
                 "references": urls, "references_nommees": noms, "nb_references": nb,
                 "revision": rev, "page": titre,
                 "prov_url": f"{page}&oldid={rev}#{ancre}" if rev else f"{page}#{ancre}",

@@ -31,7 +31,7 @@ import pyarrow as pa
 from .r_candidatures import vue_ou_vide
 
 NOM = "R-IDENTITE"
-VERSION = 4
+VERSION = 5
 DEPEND = ("R-CANDIDATURES",)
 SORTIES = ("candidat", "personne_identite", "correspondance")
 DESCRIPTION = (
@@ -244,7 +244,9 @@ def appliquer(ctx):
                     WHEN b.adresse IS NULL THEN 'adresse non établie' END AS raison_non_publie,
                b.n_homonymes, c.statut_source, c.date_declaration_texte, c.date_declaration_raison,
                c.date_declaration_phrase, c.sycomore, c.acteur_connu_an, c.matricule_connu_senat,
-               c."references", c.revision_wikipedia, c.date_declaration_source_url, c.statut_wikipedia,
+               c."references", c.nb_references, c.references_declaration, c.nb_references_declaration,
+               c.references_declaration_portee,
+               c.revision_wikipedia, c.date_declaration_source_url, c.statut_wikipedia,
                c.nom_liste, c.nom_wikipedia, c.parti, c.origine_element, c.rattachement_par_nom,
                c.source_liste, c.source_titre, c.date_liste, c.decision,
                c.eurodepute, c.eurodepute_connu_pe,

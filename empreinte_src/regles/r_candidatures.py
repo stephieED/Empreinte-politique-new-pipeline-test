@@ -29,15 +29,18 @@ Sénat. Rattachements :
   n'est retenu, la raison est écrite.
 
 **Wikipédia** (article « Candidatures à l'élection présidentielle française de 2027 ») reste lu,
-pour deux usages : la date de déclaration (la ligne qui cite le même article, ou à défaut le même
-nom écrit que celui inscrit dans `nom_wikipedia`), et un **détecteur** : un candidat que
+pour deux usages : la date de déclaration et les références qui l'établissent (la ligne qui
+cite le même article, ou à défaut le même nom écrit que celui inscrit dans `nom_wikipedia` ;
+`references_declaration` : celles de la phrase qui date la déclaration, à défaut de son
+paragraphe ; `references` : toutes celles de la ligne, qui sourcent aussi parti, soutiens et
+fonctions, issue #72), et un **détecteur** : un candidat que
 Wikipédia dit déclaré et que la liste ne cite pas ou dit retiré, ou que la liste dit déclaré et
 Wikipédia retiré, est un écart (table `candidature_ecart_wikipedia`, avertissement A9). L'écart n'ajoute ni
 ne retire personne : seule une nouvelle décision le fait.
 """
 
 NOM = "R-CANDIDATURES"
-VERSION = 4
+VERSION = 5
 DEPEND = ()
 SORTIES = ("candidature", "candidature_ecart_wikipedia")
 DESCRIPTION = (
@@ -66,7 +69,9 @@ COLONNES_CANDIDATURE = {
     "nom": "VARCHAR", "prenom": "VARCHAR", "nom_famille": "VARCHAR", "forme_nom": "VARCHAR",
     "article": "VARCHAR", "date_declaration": "VARCHAR", "date_declaration_texte": "VARCHAR",
     "date_declaration_raison": "VARCHAR", "date_declaration_phrase": "VARCHAR",
-    "references": "VARCHAR[]", "nb_references": "INTEGER", "revision": "BIGINT",
+    "references": "VARCHAR[]", "nb_references": "INTEGER",
+    "references_declaration": "VARCHAR[]", "nb_references_declaration": "INTEGER",
+    "references_declaration_portee": "VARCHAR", "revision": "BIGINT",
     "page": "VARCHAR", "prov_url": "VARCHAR", "prov_version": "INTEGER",
 }
 COLONNES_WD = {"element": "VARCHAR", "propriete": "VARCHAR", "identifiant": "VARCHAR",
@@ -260,6 +265,9 @@ def appliquer(ctx):
                CASE WHEN rattachement = 'wikidata' AND len(ids_senat) = 1
                     THEN ids_senat[1] IN (SELECT matricule FROM {sen}) END AS matricule_connu_senat,
                w."references" AS "references", w.nb_references AS nb_references,
+               w.references_declaration AS references_declaration,
+               w.nb_references_declaration AS nb_references_declaration,
+               w.references_declaration_portee AS references_declaration_portee,
                source AS source_liste, source_url, source_titre, "date" AS date_liste, fichier AS decision,
                note,
                CASE WHEN article IS NOT NULL

@@ -22,16 +22,21 @@ CR = "https://www.assemblee-nationale.fr/dyn/17/comptes-rendus/seance/"
 SC = "https://www.assemblee-nationale.fr/dyn/17/scrutins/"
 
 
-def _cand(per, nom, adresse, acteur=None, statut="declaree", ratt="wikidata", connu=True):
+def _cand(per, nom, adresse, acteur=None, statut="declaree", ratt="wikidata", connu=True, refs=False):
+    decl = ["https://journal.invalid/annonce", "https://radio.invalid/annonce"] if refs else []
     return {"per": per, "nom": nom, "statut": statut, "date_declaration": "2026-01-10",
             "article_frwiki": nom, "element_wikidata": "Q1" if acteur else None, "acteur": acteur,
             "matricule_senat": None, "adresse": adresse, "publie": statut == "declaree",
             "rattachement": ratt, "raison_rattachement": None, "raison_adresse": None,
             "raison_non_publie": None, "n_homonymes": 0, "statut_source": statut,
             "date_declaration_texte": "10/01/2026", "date_declaration_raison": None,
-            "date_declaration_phrase": None, "sycomore": None,
+            "date_declaration_phrase": "Elle annonce sa candidature le 10/01/2026." if refs else None,
+            "sycomore": None,
             "acteur_connu_an": connu if acteur else None, "matricule_connu_senat": None,
-            "references": [], "revision_wikipedia": 1,
+            "references": decl + ["https://parti.invalid/soutien"] if refs else [],
+            "nb_references": 3 if refs else 0, "references_declaration": decl,
+            "nb_references_declaration": len(decl), "references_declaration_portee": "phrase" if refs else None,
+            "revision_wikipedia": 1,
             "date_declaration_source_url": "https://fr.wikipedia.org/w/index.php?title=Liste&oldid=1",
             "statut_wikipedia": statut, "nom_liste": nom, "nom_wikipedia": None, "parti": "Parti d'essai",
             "origine_element": "decision" if acteur else None, "rattachement_par_nom": False,
@@ -145,7 +150,7 @@ TABLES = {
                                  {"gouvernement": "GB", "legislature": 17, "debut": "2024-12-14", "fin": None}],
     "groupe": [{"organe": "POG", "legislature": 17, "sigle": "ECOS", "libelle": "Écologiste et Social",
                 "debut": "2024-07-19", "fin": None, "position_declaree": "non_declaree"}],
-    "candidat": [_cand("per:000001", "Alice Martin", "alice-martin", "PA1"),
+    "candidat": [_cand("per:000001", "Alice Martin", "alice-martin", "PA1", refs=True),
                  _cand("per:000002", "Éric Zemmour", "eric-zemmour", ratt="sans_identifiant_parlementaire"),
                  _cand("per:000003", "Jean Ancien", "jean-ancien", "PA3"),
                  _cand("per:000004", "Rémi Retiré", "remi-retire", "PA4", statut="retiree")],
@@ -253,13 +258,13 @@ TABLES = {
 }
 
 
-def _composer(tmp_path, tables=TABLES, **remplace):
+def _composer(tmp_path, tables=TABLES, ecrivain=None, **remplace):
     os.makedirs(tmp_path / "z2", exist_ok=True)
     ctx = Contexte(str(tmp_path / "z2"), str(tmp_path / "z3"), date_reference=AU)
     for nom, lignes in {**tables, **remplace}.items():
         if lignes is not None:
             ctx.con.register(nom, pa.Table.from_pylist(lignes))
-    ecr = Ecrivain(str(tmp_path / "site"), "essai")
+    ecr = Ecrivain(str(tmp_path / "site"), "essai", **(ecrivain or {}))
     composeur.composer(ctx, ecr)
     man = ecr.clore()
     return ecr, man, os.path.join(str(tmp_path / "site"), "donnees", "essai")
@@ -316,6 +321,28 @@ def test_entete_identite_groupe_et_liens_publies(sortie):
     assert (k["date_declaration"], k["date_declaration_source"]) == ("2026-01-10", "wikipedia")
     assert k["date_declaration_source_url"].startswith("https://fr.wikipedia.org/")
     assert k["parti"] == "Parti d'essai" and k["rattachement_valide_par_decision"] is False
+
+
+def test_references_de_la_declaration_et_derniere_lecture(sortie, tmp_path):
+    """Issue #72 : les références qui établissent la date, à part de toutes celles de la ligne,
+    et la date de notre dernier relevé réussi de l'article (ou sa raison)."""
+    _, _, racine = sortie
+    k = _lire(racine, "candidats/alice-martin/fiche.json.gz")["candidature"]
+    assert k["references_declaration"] == ["https://journal.invalid/annonce", "https://radio.invalid/annonce"]
+    assert (k["nb_references_declaration"], k["references_declaration_portee"],
+            k["raison_references_declaration"]) == (2, "phrase", None)
+    assert k["references_ligne"][-1] == "https://parti.invalid/soutien" and k["nb_references_ligne"] == 3
+    assert k["revision_wikipedia"] == 1 and k["source_lue_le"] == "2026-11-13"
+    # Relevés non transmis à l'Ecrivain : pas de date, la raison est écrite.
+    assert k["wikipedia_lue_le"] is None and k["raison_wikipedia_lue_le"]
+    z = _lire(racine, "candidats/eric-zemmour/fiche.json.gz")["candidature"]
+    assert (z["references_declaration"], z["references_declaration_portee"]) == ([], None)
+    assert z["raison_references_declaration"] == "aucune phrase de la ligne de Wikipédia ne date la déclaration"
+    # Avec l'état des relevés : la date du dernier relevé réussi de l'article.
+    _, _, r2 = _composer(tmp_path, ecrivain={"releves_reussis": {
+        "wp-candidatures-2027": "2026-11-24T20:44:43+00:00"}})
+    k2 = _lire(r2, "candidats/alice-martin/fiche.json.gz")["candidature"]
+    assert (k2["wikipedia_lue_le"], k2["raison_wikipedia_lue_le"]) == ("2026-11-24T20:44:43+00:00", None)
 
 
 def test_groupe_actuel_renvoie_a_sa_lignee(tmp_path):
