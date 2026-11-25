@@ -27,13 +27,14 @@ vocabulaires:
   - renvoye_en_commission
   - aucune_decision_finale
   # Législature d'adoption d'une loi (R-LOI-ADOPTION, issue #83) : sa preuve, ou la raison qui
-  # l'empêche (doc. 1, 1.6). Version 2 (décisions du 25/11/2026, Q65 à Q67).
+  # l'empêche (doc. 1, 1.6). Versions 2 et 3 (décisions du 25/11/2026, Q65 à Q67, Q69).
   preuve_adoption_loi:
   - vote_final_de_l_assemblee
   - cloture_hors_assemblee_meme_legislature
   - dernier_vote_de_l_assemblee_cloture_sous_une_autre_legislature
   - dernier_vote_enregistre_de_l_assemblee_seance_posterieure
   - encadree_par_la_promulgation
+  - derniere_adoption_an_lue_au_jo
   raison_adoption_loi:
   - loi_sans_dossier
   - dossier_anterieur_a_la_xive_hors_perimetre

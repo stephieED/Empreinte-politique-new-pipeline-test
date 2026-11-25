@@ -31,7 +31,8 @@ avec le compte.
 les lois que l'Assemblée a adoptées en dernier pendant la législature, puis promulguées, même
 après sa fin, même quand le Sénat a voté en dernier (doc. 5, Q65 et Q66). Il est `partiel` quand
 des lois qui ont pu l'être n'ont pas de législature d'adoption établie (raisons servies : dossier
-absent des archives, suite absente) ; une loi adoptée par l'Assemblée avant la XIVe est hors du
+absent des archives, suite absente ; depuis Q69, la date d'adoption lue au JO les établit toutes
+sur la g24, et les quatre comptes sont `complet`) ; une loi adoptée par l'Assemblée avant la XIVe est hors du
 périmètre (Q67) : elle est comptée parmi les lois adoptées sous une autre législature
 (`dont_adoptees_avant_le_perimetre`), jamais comme incertaine. Chaque texte promulgué porte la législature d'adoption de sa
 loi (`legislature_adoption_loi`, sa preuve ou sa raison).
