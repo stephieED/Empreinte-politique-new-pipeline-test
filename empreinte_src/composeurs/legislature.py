@@ -19,17 +19,21 @@ dépôt du dossier. Pas de place médiane d'un groupe : aucune règle ne la donn
 (voir `LIMITES`). Le **terme légal** (date à laquelle le mandat devait finir, hors dissolution)
 vient de R-LEGISLATURES (code électoral, L.O. 121) et est servi dans l'en-tête.
 
-Le compte des **lois** est celui des actes de promulgation (R-LOIS) dont la date tombe dans la
-législature, quelle que soit la législature d'ouverture du dossier. La capture du site actuel
+Le compte des **lois** est celui des numéros de loi des actes de promulgation (R-LOIS) dont la date
+tombe dans la législature, quelle que soit la législature d'ouverture du dossier ; une loi publiée
+par deux identifiants de dossier n'est comptée qu'une fois (décision du 25/11/2026, doc. 5, Q68 :
+2017-1338, la XVe passe de 335 à 334 sur la g24). La capture du site actuel
 dit 141 ; ce compte donne 150 au 06/11/2026 (dont 37 dossiers ouverts sous une législature
 antérieure, 9 de procédure « loi organique ») : l'écart n'est pas expliqué, le détail est servi
 avec le compte.
 
 À côté (issue #83), le compte des **lois par adoption** (`lois_par_adoption`, R-LOI-ADOPTION) :
 les lois que l'Assemblée a adoptées en dernier pendant la législature, puis promulguées, même
-après sa fin. Il est `partiel` quand des lois qui ont pu l'être n'ont pas de législature
-d'adoption établie (raisons servies : dossier absent des archives, vote final du Sénat sous une
-autre législature, doc. 5, Q65…). Chaque texte promulgué porte la législature d'adoption de sa
+après sa fin, même quand le Sénat a voté en dernier (doc. 5, Q65 et Q66). Il est `partiel` quand
+des lois qui ont pu l'être n'ont pas de législature d'adoption établie (raisons servies : dossier
+absent des archives, suite absente) ; une loi adoptée par l'Assemblée avant la XIVe est hors du
+périmètre (Q67) : elle est comptée parmi les lois adoptées sous une autre législature
+(`dont_adoptees_avant_le_perimetre`), jamais comme incertaine. Chaque texte promulgué porte la législature d'adoption de sa
 loi (`legislature_adoption_loi`, sa preuve ou sa raison).
 """
 from __future__ import annotations
@@ -39,6 +43,7 @@ import re
 from collections import Counter, defaultdict
 
 from ..perimetre import LEGISLATURES, LEGISLATURES_GOUVERNEMENTS
+from ..regles.r_loi_adoption import HORS_PERIMETRE
 
 NOM = "legislature"
 VERSION = 1
@@ -337,22 +342,27 @@ def _compteurs(ctx, leg, au, lic, gouvs) -> list[dict]:
 
     # Lois promulguées.
     if ctx.existe("loi"):
-        n = ctx.un("SELECT count(*) FROM loi WHERE legislature = ? AND date_promulgation <= ?",
+        # Q68 (25/11/2026, option 1) : des numéros de loi distincts. Une loi peut avoir deux actes de
+        # promulgation, un par identifiant de dossier (2017-1338 : DLR5L14N35824 et DLR5L15N35824) ;
+        # elle est rangée sous la plus ancienne législature de ses dossiers.
+        n = ctx.un("SELECT count(DISTINCT numero_loi) FROM loi WHERE legislature = ? AND date_promulgation <= ?",
                    [numero, au])
-        par_leg = ctx.x("""SELECT TRY_CAST(d.legislature AS INTEGER) AS l, count(*) FROM loi
-                           LEFT JOIN an_dossiers__dossier d ON d.uid = loi.dossier
-                           WHERE loi.legislature = ? AND loi.date_promulgation <= ?
+        par_leg = ctx.x("""SELECT l, count(*) FROM (
+                               SELECT loi.numero_loi, min(TRY_CAST(d.legislature AS INTEGER)) AS l FROM loi
+                               LEFT JOIN an_dossiers__dossier d ON d.uid = loi.dossier
+                               WHERE loi.legislature = ? AND loi.date_promulgation <= ? GROUP BY 1)
                            GROUP BY 1 ORDER BY 1""", [numero, au])
-        organiques = ctx.un("""SELECT count(*) FROM loi JOIN an_dossiers__dossier d ON d.uid = loi.dossier
+        organiques = ctx.un("""SELECT count(DISTINCT loi.numero_loi) FROM loi
+                               JOIN an_dossiers__dossier d ON d.uid = loi.dossier
                                WHERE loi.legislature = ? AND loi.date_promulgation <= ?
                                  AND d.procedure_libelle ILIKE '%organique%'""", [numero, au])
         anterieurs = sum(c for l, c in par_leg if l is not None and l < numero)
-        sans_leg = ctx.un("SELECT count(*) FROM loi WHERE legislature IS NULL")
+        sans_leg = ctx.un("SELECT count(DISTINCT numero_loi) FROM loi WHERE legislature IS NULL")
         out.append(_compte(
             "lois", n, au, _regle(ctx, "loi"),
-            "Lois promulguées pendant la législature : actes de promulgation des dossiers "
-            "législatifs dont la date tombe dans la législature, quelle que soit la législature "
-            "où le dossier a été ouvert.",
+            "Lois promulguées pendant la législature : numéros de loi des actes de promulgation "
+            "des dossiers législatifs dont la date tombe dans la législature, quelle que soit la "
+            "législature où le dossier a été ouvert.",
             detail=(f"Dont {_fr(anterieurs)} issues d'un dossier ouvert sous une législature "
                     f"antérieure et {_fr(organiques)} de procédure « loi organique ». "
                     f"{_fr(sans_leg)} promulgation(s) du corpus hors de toute législature."),
@@ -423,17 +433,21 @@ def _compte_lois_par_adoption(ctx, numero, au, lic_an) -> dict:
     par l'Assemblée, closes ou discutées en séance pendant celle-ci) n'ont pas de législature
     d'adoption établie : leur nombre et leurs raisons sont servis."""
     ref = _date_reference(ctx)
-    n, apres, avant = ctx.x("""
+    # Une loi adoptée par l'Assemblée avant le périmètre (Q67) a été adoptée sous une autre
+    # législature : elle est comptée comme telle, jamais comme incertaine.
+    n, apres, avant, hors = ctx.x("""
         SELECT count(*) FILTER (legislature_adoption = $1),
                count(*) FILTER (legislature_adoption = $1 AND legislature_promulgation IS DISTINCT FROM $1),
-               count(*) FILTER (legislature_promulgation = $1 AND legislature_adoption <> $1)
-        FROM loi_adoption WHERE date_promulgation <= $2""", [numero, ref])[0]
+               count(*) FILTER (legislature_promulgation = $1
+                                AND (legislature_adoption <> $1 OR raison_adoption = $3)),
+               count(*) FILTER (legislature_promulgation = $1 AND raison_adoption = $3)
+        FROM loi_adoption WHERE date_promulgation <= $2""", [numero, ref, HORS_PERIMETRE])[0]
     incertaines = ctx.x("""
         SELECT raison_adoption, count(*) FROM loi_adoption
-        WHERE legislature_adoption IS NULL AND date_promulgation <= $2
+        WHERE legislature_adoption IS NULL AND date_promulgation <= $2 AND raison_adoption <> $3
           AND $1 IN (legislature_promulgation, legislature_dernier_vote_an, legislature_cloture,
                      legislature_derniere_seance_an)
-        GROUP BY 1 ORDER BY 2 DESC, 1""", [numero, ref])
+        GROUP BY 1 ORDER BY 2 DESC, 1""", [numero, ref, HORS_PERIMETRE])
     nb_incertaines = sum(c for _, c in incertaines)
     par_promulgation = ctx.x("""
         SELECT legislature_promulgation, count(*) FROM loi_adoption
@@ -442,19 +456,22 @@ def _compte_lois_par_adoption(ctx, numero, au, lic_an) -> dict:
     return _compte(
         "lois_par_adoption", n, au, _regle(ctx, "loi_adoption"),
         "Lois adoptées en dernier par l'Assemblée pendant la législature, puis promulguées, même "
-        "après sa fin : date de la dernière décision de l'Assemblée qui adopte le texte, quand elle "
-        "clôt la navette ou que le vote final du Sénat tombe dans la même législature. Le compte "
-        "des lois promulguées pendant la législature est servi à côté.",
+        "après sa fin : date de la dernière décision enregistrée de l'Assemblée qui adopte le "
+        "texte, même quand le Sénat vote en dernier, sous la même législature ou la suivante. Le "
+        "compte des lois promulguées pendant la législature est servi à côté.",
         statut="complet" if nb_incertaines == 0 else "partiel",
         detail=(f"Dont {_fr(apres)} promulguée(s) après la fin de la législature ou entre deux "
                 f"législatures. {_fr(avant)} loi(s) promulguée(s) pendant la législature, adoptée(s) "
-                f"sous une autre. {_fr(nb_incertaines)} loi(s) qui ont pu être adoptées pendant la "
+                f"sous une autre"
+                + (f", dont {_fr(hors)} avant la XIVe (hors périmètre)" if hors else "")
+                + f". {_fr(nb_incertaines)} loi(s) qui ont pu être adoptées pendant la "
                 "législature sans législature d'adoption établie"
                 + (" (" + ", ".join(f"{r} : {_fr(c)}" for r, c in incertaines) + ")."
                    if incertaines else ".")),
         points=_points(ctx, "an_dossiers__acte", "jo_actes__acte_reglementaire"), licences=lic_an,
         promulgations_lues_au=ref, promulguees_hors_de_la_legislature=apres,
         promulguees_pendant_et_adoptees_sous_une_autre=avant,
+        dont_adoptees_avant_le_perimetre=hors,
         par_legislature_de_promulgation=[{"legislature": l, "lois": c} for l, c in par_promulgation],
         sans_legislature_d_adoption=[{"raison": r, "lois": c} for r, c in incertaines])
 

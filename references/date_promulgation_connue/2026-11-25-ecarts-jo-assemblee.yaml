@@ -1,0 +1,18 @@
+# Issue #118, avertissement A7 (décision de la propriétaire du 25/11/2026, option 1) : lois dont la
+# date de promulgation de l'acte de l'Assemblée diffère de celle du Journal officiel. La date du JO
+# reste celle qui est publiée (R-LOIS) ; ces écarts sont notés comme connus : A7 ne les nomme plus,
+# il les compte dans le bilan (`expliques.a7_dates_de_promulgation_connues`). Un écart qui change
+# (autre date d'un côté ou de l'autre) redevient nommé, et la décision devient sans objet.
+type: date_promulgation_connue
+date: 2026-11-25
+motif: "Date de promulgation de l'acte de l'Assemblée erronée ; celle du Journal officiel fait foi (issue #118)."
+decisions:
+  - {numero_loi: "2014-567", date_jo: "2014-06-02", date_assemblee: "2014-06-03"}
+  - {numero_loi: "2015-988", date_jo: "2015-08-05", date_assemblee: "2015-08-06"}
+  - {numero_loi: "2016-1973", date_jo: "2016-12-30", date_assemblee: "2017-01-30"}
+  - {numero_loi: "2017-115", date_jo: "2017-02-01", date_assemblee: "2017-01-01"}
+  - {numero_loi: "2017-86", date_jo: "2017-01-27", date_assemblee: "2017-01-26"}
+  - {numero_loi: "2020-85", date_jo: "2020-02-05", date_assemblee: "2020-02-06"}
+  - {numero_loi: "2021-191", date_jo: "2021-02-22", date_assemblee: "0021-02-24"}
+  - {numero_loi: "2024-582", date_jo: "2024-06-24", date_assemblee: "2024-06-23"}
+  - {numero_loi: "2025-136", date_jo: "2025-02-15", date_assemblee: "2025-02-14"}

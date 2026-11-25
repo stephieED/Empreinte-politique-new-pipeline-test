@@ -692,12 +692,16 @@ def test_legislature_d_adoption_d_une_loi(tmp_path):
     - AC : l'Assemblée clôt la navette (adoption conforme en deuxième lecture) ;
     - SC : le Sénat clôt dans la même législature, conclusion codée « modifié » (TSORTF05) à la
       source alors que la loi est promulguée (cas de 2021-303) ;
-    - SX : le Sénat clôt sous la législature suivante (cas de 2024-1017) : question Q65, pas de
-      législature d'adoption, les deux législatures servies ;
+    - SX : le Sénat clôt sous la législature suivante (cas de 2024-1017) : décision Q65 du
+      25/11/2026, la loi est de la législature du dernier vote de l'Assemblée (XVIe), les deux
+      législatures servies ;
     - DI : promulguée entre la dissolution et la XVIIe (2024-536), adoptée sous la XVIe ;
     - CM : séance de l'Assemblée sur le texte de CMP sous la XVIIe, sans décision de l'Assemblée
-      lue (la décision de CMP n'a pas de chambre) : son dernier vote n'est pas lu (2024-1039) ;
-    - loi du JO sans travaux préparatoires : pas de dossier, la raison est dite."""
+      lue (la décision de CMP n'a pas de chambre) : décision Q66 du 25/11/2026, la législature du
+      dernier vote enregistré de l'Assemblée (XVIe, 2024-1039) ;
+    - lois du JO sans dossier (Q67) : adoptée à l'Assemblée le 03/10/2011 d'après ses travaux
+      préparatoires (2012-1166) : hors périmètre ; adoptée le 28/11/2013 (2013-1118) ou sans
+      travaux préparatoires : pas de dossier, la raison est dite."""
     from empreinte_src.lecteurs import jo_actes
     dossiers = [_dos(d, f"Texte {d}") for d in ("AC", "SC", "SX", "DI", "CM")]
     prom = lambda d, date, loi: _acte(d, f"L17-{d}-P", "Promulgation_Type", "PROM-PUB", date, code_loi=loi)
@@ -728,10 +732,25 @@ def test_legislature_d_adoption_d_une_loi(tmp_path):
         _decision("CM", "L17-CM-3", "CMP-DEBATS-DEC", "TSORTF18", "2024-11-07"),
         prom("CM", "2024-11-19", "2024-1039"),
     ]
-    z2 = _z2(tmp_path / "z2", actes=actes, dossiers=dossiers)
+    xive = {"uid": "PO644420", "type_organe": "ASSEMBLEE", "legislature": "14",
+            "date_debut": "2012-06-20", "date_fin": "2017-06-20"}
+    z2 = _z2(tmp_path / "z2", actes=actes, dossiers=dossiers, organes=ORGANES + [xive])
     _ecrire(z2, jo_actes, "acte_reglementaire", [
-        {"uid": "jorf:J", "nature": "LOI", "numero": "2025-400", "date_signature": "2025-05-02"}])
-    _ecrire(z2, jo_actes, "travaux_preparatoires", [])
+        {"uid": "jorf:J", "nature": "LOI", "numero": "2025-400", "date_signature": "2025-05-02"},
+        {"uid": "jorf:K", "nature": "LOI", "numero": "2012-1166", "date_signature": "2012-10-19"},
+        {"uid": "jorf:L", "nature": "LOI", "numero": "2013-1118", "date_signature": "2013-12-06"}])
+    tp = lambda acte, chambre, ligne, numero=None, ta=None: {
+        "acte": acte, "chambre": chambre, "nature": "discussion" if ta else "projet_de_loi",
+        "numero": numero, "numero_ta": ta, "ligne": ligne}
+    _ecrire(z2, jo_actes, "travaux_preparatoires", [
+        tp("jorf:K", "AN", "Projet de loi n° 3139 (XIIIe législature)", "3139"),
+        tp("jorf:K", "AN", "Discussion et adoption (procédure d'examen simplifiée) le 3 octobre 2011 "
+                           "(TA n° 729)", ta="729"),
+        tp("jorf:K", "SN", "Discussion et adoption (procédure d'examen simplifiée) le 9 octobre 2012 "
+                           "(TA n° 3, 2012-2013)", ta="3"),
+        tp("jorf:L", "AN", "Discussion et adoption le 28 novembre 2013 (TA n° 249)", ta="249"),
+        tp("jorf:L", "SN", "Discussion les 28 février et 13 juin 2013 et adoption le 13 juin 2013 "
+                           "(TA n° 168, 2012-2013)", ta="168")])
     ctx, b = _relier(z2, tmp_path / "z3")
     a = {x["numero_loi"]: x for x in _lignes(ctx, "SELECT * FROM loi_adoption")}
     v = {k: (x["legislature_promulgation"], x["legislature_adoption"], x["preuve_adoption"],
@@ -739,10 +758,15 @@ def test_legislature_d_adoption_d_une_loi(tmp_path):
     assert v == {
         "2025-300": (17, 17, "vote_final_de_l_assemblee", None),
         "2025-301": (17, 17, "cloture_hors_assemblee_meme_legislature", None),
-        "2024-1017": (17, None, None, "cloture_hors_assemblee_sous_une_autre_legislature"),
+        "2024-1017": (17, 16, "dernier_vote_de_l_assemblee_cloture_sous_une_autre_legislature", None),
         "2024-536": (None, 16, "vote_final_de_l_assemblee", None),
-        "2024-1039": (17, None, None, "seance_de_l_assemblee_apres_son_dernier_vote_lu"),
-        "2025-400": (17, None, None, "loi_sans_dossier")}
+        "2024-1039": (17, 16, "dernier_vote_enregistre_de_l_assemblee_seance_posterieure", None),
+        "2025-400": (17, None, None, "loi_sans_dossier"),
+        "2012-1166": (14, None, None, "dossier_anterieur_a_la_xive_hors_perimetre"),
+        "2013-1118": (14, None, None, "loi_sans_dossier")}
+    # La date lue au JO est la dernière adoption de l'Assemblée, jamais celle du Sénat.
+    assert (a["2012-1166"]["date_adoption_an_lue_au_jo"], a["2013-1118"]["date_adoption_an_lue_au_jo"],
+            a["2025-400"]["date_adoption_an_lue_au_jo"]) == ("2011-10-03", "2013-11-28", None)
     assert (a["2025-300"]["motif_cloture"], a["2025-300"]["acte_dernier_vote_an"]) == (
         "adoption_conforme", "L17-AC-3")
     assert (a["2025-301"]["chambre_cloture"], a["2025-301"]["motif_cloture"],
@@ -753,7 +777,8 @@ def test_legislature_d_adoption_d_une_loi(tmp_path):
     assert (cm["acte_cloture"], cm["chambre_cloture"], cm["legislature_derniere_seance_an"]) == (
         "L17-CM-3", None, 17)
     assert a["2025-400"]["raison_lien"] == "pas_de_travaux_preparatoires"
-    assert b["R-LOI-ADOPTION"]["couverture"] == {"legislature_d_adoption_etablie": [3, 6],
-                                                 "meme_legislature_que_la_promulgation": [2, 3]}
+    assert b["R-LOI-ADOPTION"]["couverture"] == {"legislature_d_adoption_etablie": [5, 8],
+                                                 "meme_legislature_que_la_promulgation": [2, 5],
+                                                 "legislature_etablie_ou_hors_perimetre": [6, 8]}
     # R-LOIS ne change pas : la loi de la dissolution reste hors de toute législature.
     assert _un(ctx, "loi", numero_loi="2024-536")["legislature"] is None
