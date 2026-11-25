@@ -654,3 +654,32 @@ def test_a2_textes_tirage_et_avertissement(tmp_path):
     r = c.a2_textes(1, panne, "2026-11-20", nb_textes=5)
     assert r["ecarts"] == [] and len(r["non_verifies"]) == 2
     assert [a for a in _an(c, "A2") if a["titre"].startswith("Vérification des textes impossible")]
+
+
+# Deux amendements distincts dont les valeurs ont la même empreinte `hash()` sous DuckDB 2.0 (nuit du
+# 23/11/2026, alerte #174) : A4 compare les valeurs elles-mêmes, pas leur empreinte.
+VALEUR_AS1253 = ('{"amendement":"AMANR5L16PO420120B1164P0D1N001253","numero_long":"AS1253","date_depot":"202'
+    '3-05-31","sort":"irrecevable","famille_sort":"irrecevable_autre","commission":"PO420120","'
+    'commission_libelle":"Commission des affaires sociales","dossier":"DLR5L16N47635","titre_do'
+    'ssier":"Abroger le recul de l\'âge effectif de départ à la retraite et proposer la tenue d\''
+    'une conférence de financement du système de retraite","document":"PIONANR5L16B1164","artic'
+    'le_designation":"ARTICLE 2","acteur":"PA721062","nom":"Jean-Hugues Ratenon","type_auteur":'
+    '"depute","source_url":"https://www.assemblee-nationale.fr/dyn/16/amendements/AMANR5L16PO42'
+    '0120B1164P0D1N001253","raison_source_url":null,"licence":"etalab-2.0"}')
+VALEUR_AS1257 = ('{"amendement":"AMANR5L16PO420120B1164P0D1N001257","numero_long":"AS1257","date_depot":"202'
+    '3-05-31","sort":"irrecevable","famille_sort":"irrecevable_autre","commission":"PO420120","'
+    'commission_libelle":"Commission des affaires sociales","dossier":"DLR5L16N47635","titre_do'
+    'ssier":"Abroger le recul de l\'âge effectif de départ à la retraite et proposer la tenue d\''
+    'une conférence de financement du système de retraite","document":"PIONANR5L16B1164","artic'
+    'le_designation":"ARTICLE 2","acteur":"PA721062","nom":"Jean-Hugues Ratenon","type_auteur":'
+    '"depute","source_url":"https://www.assemblee-nationale.fr/dyn/16/amendements/AMANR5L16PO42'
+    '0120B1164P0D1N001257","raison_source_url":null,"licence":"etalab-2.0"}')
+
+
+def test_a4_ne_confond_pas_deux_valeurs_de_meme_empreinte(tmp_path):
+    faits = FAITS + [_fait("lignee/soc", "amendements-2023-29", VALEUR_AS1253, amendement="AS1253"),
+                     _fait("lignee/soc", "amendements-2023-29", VALEUR_AS1257, amendement="AS1257")]
+    c = _ctrl(tmp_path, faits=faits)
+    assert VALEUR_AS1253 != VALEUR_AS1257
+    c.a4_double_affichage()
+    assert not any("amendements-2023-29" in e for a in _an(c, "A4") for e in a["exemples"])

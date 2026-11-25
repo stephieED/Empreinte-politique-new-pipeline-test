@@ -879,8 +879,8 @@ class Controles:
 
     def a4_double_affichage(self):
         objets = [f"{f} / {s} : {n} lignes identiques" for f, s, n in self._x("""
-            SELECT fiche, section, count(*) - count(DISTINCT hash(valeur)) FROM _ctl_fp GROUP BY 1, 2
-            HAVING count(*) > count(DISTINCT hash(valeur)) ORDER BY 1, 2""")]
+            SELECT fiche, section, count(*) - count(DISTINCT valeur) FROM _ctl_fp GROUP BY 1, 2
+            HAVING count(*) > count(DISTINCT valeur) ORDER BY 1, 2""")]
         if self._a("amendement_canonique"):
             objets += [f"amendement {a} servi alors qu'il est une copie de {c}" for a, c in self._x("""
                 SELECT DISTINCT f.id_amendement, a.amendement FROM _ctl_fp f
