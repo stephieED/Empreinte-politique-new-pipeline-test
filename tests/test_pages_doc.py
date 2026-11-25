@@ -244,6 +244,185 @@ def test_sections_pour_la_recherche():
     assert all(x["modulename"] == "documentation.d1" for x in s)
 
 
+# -- un fichier par entrée : le journal et les questions ouvertes ------------------------------
+
+DOC5 = """# 5. Questions ouvertes
+
+Introduction.
+
+## Tranchées (04/11/2026)
+
+| Question | Réponse | Où |
+| --- | --- | --- |
+| Q2. Ancienne | Oui | doc. 1 |
+
+---
+
+## A — À trancher avant la première publication
+
+### Q5. Ancienne de A
+
+- Texte.
+
+---
+
+## B — À trancher avant d'activer la fonction
+
+### Q7. Ancienne de B
+
+---
+
+## C — Réglages (le défaut peut rester)
+
+| # | Réglage | Défaut |
+| --- | --- | --- |
+| Q12 | Seuil | 5 % |
+"""
+
+
+@pytest.fixture
+def morceaux(livrables):
+    """`livrables` avec un journal et un doc. 5, et leurs morceaux (dossier temporaire : aucune
+    fausse entrée dans le dépôt)."""
+    s = livrables
+    (s / "etape-2" / "journal-des-changements.md").write_text(
+        "# Journal des changements de l'étape 2\n\nIntro.\n\n## Ancienne entrée (23/11/2026)\n\n"
+        "Texte ancien.\n", encoding="utf-8")
+    (s / "etape-2" / "journal").mkdir()
+    # Dans le désordre, pour vérifier l'ordre des noms (donc des dates).
+    for nom, titre_e in (("2026-11-26-b.md", "B du 26"), ("2026-11-25-z.md", "Z du 25"),
+                         ("2026-11-26-a.md", "A du 26")):
+        (s / "etape-2" / "journal" / nom).write_text(f"## {titre_e} (26/11/2026)\n\nTexte.\n",
+                                                    encoding="utf-8")
+    # Un niveau plus bas que le journal : `../../` mène à `livrables/`, `../` à `etape-2/`.
+    (s / "etape-2" / "journal" / "2026-11-25-z.md").write_text(
+        "## Z du 25 (25/11/2026)\n\nVoir [le modèle](../../1-modele.md#données-servies), "
+        "[le cadrage](../0-cadrage-et-decisions.md), [Q61](../../questions/Q61.md), "
+        "[l'entrée A](2026-11-26-a.md), [plus haut](#ancienne-entrée-23112026) et "
+        "[ailleurs](https://exemple.org/x.md).\n\n```\n[dans un bloc](../../1-modele.md)\n```\n",
+        encoding="utf-8")
+    (s / "5-questions-ouvertes.md").write_text(DOC5, encoding="utf-8")
+    q = s / "questions"
+    q.mkdir()
+    (q / "Q100.md").write_text("<!-- partie: A -->\n### Q100 (26/11/2026). Cent\n\n- Texte.\n",
+                               encoding="utf-8")
+    (q / "Q61.md").write_text(
+        "<!-- partie: A -->\n### Q61 (25/11/2026). Soixante et un\n\n- **Bloque** : "
+        "[le modèle](../1-modele.md#données-servies), [la Q100](Q100.md), "
+        "[le journal](../etape-2/journal-des-changements.md#ancienne-entrée-23112026).\n",
+        encoding="utf-8")
+    (q / "Q62.md").write_text("<!-- partie: C -->\n### Q62 (25/11/2026). Un réglage\n",
+                              encoding="utf-8")
+    (q / "Q63.md").write_text(
+        "<!-- partie: tranchee -->\n| Q63 (25/11/2026). Tranchée ? | **Décidé** : oui | "
+        "[doc. 1](../1-modele.md) |\n", encoding="utf-8")
+    return s
+
+
+def test_rebaser_les_liens():
+    r = pages_doc.rebaser
+    assert r("[m](../../1-modele.md#x) [e](../3-rapport.md)", "etape-2/journal/e.md",
+             pages_doc.JOURNAL) == "[m](../1-modele.md#x) [e](3-rapport.md)"
+    assert r("[m](../1-modele.md) [d](../annexes/mesures/) [s](Q2.md)", "questions/Q1.md",
+             pages_doc.QUESTIONS) == "[m](1-modele.md) [d](annexes/mesures/) [s](questions/Q2.md)"
+    # Les ancres seules, les adresses absolues, le code et les images ne bougent pas.
+    t = "[a](#x) [b](https://e.org/a.md) [c](/a.md) `[d](../a.md)` ![i](../i.png)"
+    assert r(t, "questions/Q1.md", pages_doc.QUESTIONS) == t
+
+
+def test_journal_assemble_dans_l_ordre(morceaux, tmp_path):
+    textes = pages_doc._lire(str(morceaux))
+    j = textes[pages_doc.JOURNAL]
+    # Le journal d'abord, tel quel, puis les entrées dans l'ordre de leur nom.
+    assert j.startswith("# Journal des changements de l'étape 2\n\nIntro.\n\n## Ancienne entrée")
+    assert (j.index("## Ancienne entrée") < j.index("## Z du 25") < j.index("## A du 26")
+            < j.index("## B du 26"))
+    assert "\n\nTexte ancien.\n\n## Z du 25 (25/11/2026)\n\n" in j
+    assert j.endswith("## B du 26 (26/11/2026)\n\nTexte.\n")
+    # Liens rebasés depuis le journal (un niveau plus haut), code intact.
+    assert "[le modèle](../1-modele.md#données-servies)" in j
+    assert "[le cadrage](0-cadrage-et-decisions.md)" in j
+    assert "[dans un bloc](../../1-modele.md)" in j
+    # Les ancres des entrées sont celles du journal.
+    assert "ancienne-entrée-23112026" in pages_doc.ancres(j)
+    assert "z-du-25-25112026" in pages_doc.ancres(j)
+
+
+def test_questions_assemblees_a_leur_place(morceaux):
+    d = pages_doc._lire(str(morceaux))[pages_doc.QUESTIONS]
+    lignes = d.split("\n")
+    # La tranchée : à la fin du tableau « Tranchées », sans ligne vide qui le couperait.
+    i = lignes.index("| Q2. Ancienne | Oui | doc. 1 |")
+    assert lignes[i + 1] == "| Q63 (25/11/2026). Tranchée ? | **Décidé** : oui | [doc. 1](1-modele.md) |"
+    assert lignes[i + 2] == ""
+    # Les ouvertes : à la fin de leur partie, avant le séparateur, dans l'ordre des numéros (61
+    # avant 100) ; la ligne de partie n'est pas publiée.
+    a, b = d.index("## A —"), d.index("## B —")
+    assert a < d.index("### Q5.") < d.index("### Q61 ") < d.index("### Q100 ") < b
+    assert "- Texte.\n\n### Q61 (25/11/2026). Soixante et un\n" in d
+    assert "### Q100 (26/11/2026). Cent\n\n- Texte.\n\n---\n\n## B —" in d
+    assert d.index("## C —") < d.index("| Q12 |") < d.index("### Q62 ")
+    assert d.rstrip().endswith("### Q62 (25/11/2026). Un réglage")
+    assert "partie:" not in d
+    # Liens rebasés depuis le doc. 5 (à la racine de `livrables/`).
+    assert "[le modèle](1-modele.md#données-servies)" in d and "[la Q100](questions/Q100.md)" in d
+
+
+def test_morceaux_sans_page_et_liens_resolus(morceaux, tmp_path):
+    # Ni `etape-2/journal/` ni `questions/` n'ont de page : leurs fichiers sont dans leur document.
+    docs = pages_doc.documents(str(morceaux))
+    assert pages_doc.JOURNAL in docs and pages_doc.QUESTIONS in docs
+    assert not [c for c in docs if c.startswith(("etape-2/journal/", "questions/"))]
+    sortie = tmp_path / "paquet"
+    ecrits, remarques = pages_doc.ecrire(str(morceaux), str(sortie))
+    # Un module par document publié, plus les rubriques et le traitement : rien pour les morceaux.
+    rubriques = {"documentation", *(f"documentation.{r}" for r, _, _ in pages_doc.RUBRIQUES)}
+    assert set(ecrits) - rubriques == {pages_doc.module(c) for c in [*docs, pages_doc.TRAITEMENT]}
+    assert not [m for m in ecrits if re.search(r"q\d|2026|questions\.|journal\.", m)]
+    assert not list(sortie.rglob("q6*")) and not list(sortie.rglob("*2026_11*"))
+    lire = lambda m: open(sortie / (m.replace(".", "/") + ".py"), encoding="utf-8").read()
+    j = lire("documentation.mise_en_oeuvre.journal_des_changements")
+    # Les liens d'une entrée mènent où ils mènent depuis le journal ; un lien vers un morceau mène
+    # à la page de son document.
+    assert "[le modèle](../conception/d1_modele.html#donnees-servies)" in j
+    assert "[le cadrage](../decisions/d0_cadrage_et_decisions.html)" in j
+    assert "[Q61](../decisions/d5_questions_ouvertes.html)" in j
+    assert "[l'entrée A](#)" in j and "[plus haut](#ancienne-entree-23112026)" in j
+    assert "et des fichiers de `livrables/etape-2/journal/`" in j
+    q = lire("documentation.decisions.d5_questions_ouvertes")
+    assert "[le modèle](../conception/d1_modele.html#donnees-servies)" in q
+    assert "[la Q100](#)" in q
+    assert "[le journal](../mise_en_oeuvre/journal_des_changements.html#ancienne-entree-23112026)" in q
+    assert "[doc. 1](../conception/d1_modele.html)" in q
+    assert "et des fichiers de `livrables/questions/`" in q
+    assert not [r for r in remarques if "journal" in r or "question" in r]
+
+
+@pytest.mark.parametrize("nom, texte, message", [
+    ("questions/Q64.md", "### Q64. Sans partie\n", "première ligne"),
+    ("questions/Q64.md", "<!-- partie: D -->\n### Q64. Partie inconnue\n", "première ligne"),
+    ("questions/Q64.md", "<!-- partie: A -->\n### Q65. Mauvais numéro\n", "commence par"),
+    ("questions/Q64.md", "<!-- partie: tranchee -->\n| Q64 | a | b |\nUne phrase.\n", "qu'une ligne"),
+    ("questions/question.md", "<!-- partie: A -->\n### Q64. Nom\n", "Qnn.md"),
+    ("questions/Q5.md", "<!-- partie: A -->\n### Q5. Déjà dans le document\n", "aussi dans"),
+    ("questions/Q12.md", "<!-- partie: tranchee -->\n| Q12 | a | b |\n", "aussi dans"),
+    ("etape-2/journal/entree.md", "## Titre (25/11/2026)\n", "AAAA-MM-JJ"),
+    ("etape-2/journal/2026-11-25-x.md", "# Titre de niveau 1\n", "commence par"),
+])
+def test_morceau_mal_forme(morceaux, nom, texte, message):
+    (morceaux / nom).write_text(texte, encoding="utf-8")
+    with pytest.raises(ValueError, match=message):
+        pages_doc._lire(str(morceaux))
+
+
+def test_les_vrais_morceaux_s_assemblent():
+    """Les fichiers de `livrables/etape-2/journal/` et `livrables/questions/` du dépôt sont bien
+    formés (la construction de Pages s'arrêterait sinon)."""
+    if os.path.isdir(LIVRABLES):
+        textes = pages_doc._lire(LIVRABLES)
+        assert pages_doc.JOURNAL in textes and pages_doc.QUESTIONS in textes
+
+
 @pytest.fixture(scope="module")
 def doc(tmp_path_factory):
     """Toute la documentation, rendue par pdoc, sur une copie des vrais `livrables/` augmentée des
@@ -260,6 +439,18 @@ def doc(tmp_path_factory):
         "[un mot rare](autre.md#xylophone-rare).\n", encoding="utf-8")
     (source / "zz-essai" / "autre.md").write_text("# Autre\n\n## Xylophone rare\n\nTexte.\n",
                                                   encoding="utf-8")
+    if os.path.isdir(LIVRABLES):
+        # Un morceau de chaque sorte (copie temporaire), pour les pages rendues et leurs liens.
+        (source / "etape-2" / "journal").mkdir(exist_ok=True)
+        (source / "etape-2" / "journal" / "2099-12-31-essai.md").write_text(
+            "## Entrée d'essai (31/12/2099)\n\n[Le modèle](../../1-modele-de-donnees.md), "
+            "[le rapport](../3-rapport-de-mesures.md), [la question](../../questions/Q9999.md).\n",
+            encoding="utf-8")
+        (source / "questions").mkdir(exist_ok=True)
+        (source / "questions" / "Q9999.md").write_text(
+            "<!-- partie: B -->\n### Q9999 (31/12/2099). Question d'essai\n\n"
+            "[L'entrée](../etape-2/journal/2099-12-31-essai.md#entrée-dessai-31122099).\n",
+            encoding="utf-8")
     sortie = base / "doc"
     remarques = pages_doc.construire(str(source), str(sortie), commit="0123456789abcdef")
     return sortie, remarques
@@ -273,6 +464,23 @@ def test_pages_ecrites_avec_le_code(doc):
               "documentation/conception/liens.html"):
         assert (sortie / p).is_file(), p
     assert 'url=./documentation.html' in (sortie / "index.html").read_text(encoding="utf-8")
+
+
+def test_morceaux_dans_la_page_de_leur_document(doc):
+    sortie, _ = doc
+    if not os.path.isdir(LIVRABLES):
+        pytest.skip("pas de livrables/")
+    j = (sortie / pages_doc.page(pages_doc.module(pages_doc.JOURNAL))).read_text(encoding="utf-8")
+    assert "Entrée d'essai (31/12/2099)" in j and 'id="entree-dessai-31122099"' in j
+    q = (sortie / pages_doc.page(pages_doc.module(pages_doc.QUESTIONS))).read_text(encoding="utf-8")
+    assert "Q9999 (31/12/2099). Question d" in q
+    assert 'href="../mise_en_oeuvre/journal_des_changements.html#entree-dessai-31122099"' in q
+    # Aucune page à part, ni dans le menu.
+    pages = [str(p.relative_to(sortie)) for p in sortie.rglob("*.html")]
+    assert not [p for p in pages if "essai" in p.split("/")[-1] and "liens" not in p and "zz" not in p]
+    assert not [p for p in pages if "/questions" in p or "q9999" in p.lower() or "2099" in p]
+    nav = _nav(sortie / "documentation.html")
+    assert "Question d'essai" not in nav and "2099" not in nav
 
 
 def _nav(page) -> str:

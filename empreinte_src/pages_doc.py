@@ -41,6 +41,33 @@ pdoc.
 La recherche de pdoc indexe chaque docstring d'un bloc ; un long document y serait noyé. Les
 documents du paquet sont donc indexés section par section (`sections`) : un mot mène à la section
 qui le contient. Le code est indexé comme pdoc le fait.
+
+## Un fichier par entrée : le journal et les questions ouvertes
+
+Deux documents recevaient un ajout de presque chaque PR, et chaque fusion y faisait un conflit.
+Depuis le 25/11/2026, leurs nouvelles entrées s'écrivent chacune dans son fichier (`MORCEAUX`),
+que ce module assemble dans la page du document (`assembler`) ; ces dossiers n'ont pas de page à
+eux, et le document lui-même ne reçoit plus d'ajout :
+
+- **le journal des changements** (`etape-2/journal-des-changements.md`) : une entrée par fichier
+  `etape-2/journal/AAAA-MM-JJ-<sujet>.md`, qui commence par sa ligne `## Titre (JJ/MM/AAAA)`.
+  Les entrées viennent à la fin du journal, dans l'ordre de leur nom (donc de leur date).
+- **les questions ouvertes** (doc. 5, `5-questions-ouvertes.md`) : une question par fichier
+  `questions/Qnn.md`, dont la première ligne dit où elle va. Ouverte, `<!-- partie: A -->` (ou
+  `B`, `C`) puis sa section `### Qnn (JJ/MM/AAAA). Titre` ; elle vient à la fin de sa partie.
+  Tranchée, `<!-- partie: tranchee -->` puis sa ligne du tableau « Tranchées »
+  (`| Qnn (date). Question | Réponse | Où c'est appliqué |`) ; elle vient à la fin du tableau.
+  Dans la partie comme dans le tableau, l'ordre est celui des numéros. Trancher une question ne
+  change que son fichier. Une question ancienne, écrite dans le document, qui se tranche : sa
+  section en est retirée et elle prend son fichier (un même numéro aux deux endroits est une
+  erreur).
+
+Les liens relatifs d'un fichier s'écrivent depuis son dossier, comme sur GitHub
+(`etape-2/journal/` est un niveau plus bas que le journal : `../` mène à `etape-2/`, `../../` à
+`livrables/`) ; l'assemblage les réécrit depuis le document (`rebaser`). Un lien vers un de ces
+fichiers ou dossiers mène à la page du document. Un nom de fichier, une première ligne ou une
+partie mal formés arrêtent la construction (`ValueError`), avant la fusion : la tâche
+« documentation » des tests la lance sur chaque branche.
 """
 from __future__ import annotations
 
@@ -119,6 +146,12 @@ DOCUMENTS = (
 PAR_DEFAUT = (("etape-2/", "mise_en_oeuvre"), ("annexes/mesures/", "annexes.mesures"),
               ("annexes/", "annexes"), ("", "conception"))
 CODE_AVANT = "annexes"  # la documentation du code vient, dans la page d'entrée, avant cette rubrique
+# Les documents écrits en morceaux, un fichier par entrée (depuis le 25/11/2026, voir la docstring
+# du module) : dossier des morceaux → document où ils sont assemblés. Ces dossiers ne sont pas
+# publiés en pages à part.
+JOURNAL = "etape-2/journal-des-changements.md"
+QUESTIONS = "5-questions-ouvertes.md"
+MORCEAUX = {"etape-2/journal": JOURNAL, "questions": QUESTIONS}
 
 
 # -- rangement et noms ---------------------------------------------------------------------------
@@ -146,15 +179,21 @@ def _cle_menu(chemin: str):
     return rangs[rubrique(chemin)], rang, _cle_naturelle(chemin)
 
 
+def _sous(chemin: str, dossier: str) -> bool:
+    """`chemin` est-il le dossier `dossier` ou dedans ?"""
+    return chemin == dossier or chemin.startswith(dossier + "/")
+
+
 def documents(source: str) -> list[str]:
     """Rend les `.md` publiés de `source`, en chemins relatifs (séparateur `/`), rubrique par
     rubrique dans l'ordre de `RUBRIQUES` puis dans l'ordre du menu (`_cle_menu`) ; rien de
-    `EXCLUS`."""
+    `EXCLUS`, ni des dossiers de `MORCEAUX` (assemblés dans leur document)."""
     out = []
+    caches = (*EXCLUS, *MORCEAUX)
     for dossier, sous, fichiers in os.walk(source):
         rel = posixpath.relpath(dossier.replace(os.sep, "/"), source.replace(os.sep, "/"))
         rel = "" if rel == "." else rel
-        sous[:] = [n for n in sous if not any(f"{rel}/{n}".strip("/").startswith(x) for x in EXCLUS)]
+        sous[:] = [n for n in sous if not any(_sous(f"{rel}/{n}".strip("/"), x) for x in caches)]
         out += [f"{rel}/{n}".strip("/") for n in fichiers if n.endswith(".md")]
     return sorted(out, key=_cle_menu)
 
@@ -205,20 +244,24 @@ def titre(texte: str, defaut: str) -> str:
 
 # -- ancres --------------------------------------------------------------------------------------
 
+def _lignes_hors_blocs(lignes: list[str]):
+    """Les numéros des lignes hors des blocs de code délimités (``` ou ~~~), sans leurs
+    délimiteurs."""
+    clot = None
+    for i, l in enumerate(lignes):
+        m = re.match(r"\s{0,3}(`{3,}|~{3,})", l)
+        if m and clot is None:
+            clot = m.group(1)[0] * len(m.group(1))
+        elif m and l.strip().startswith(clot):
+            clot = None
+        elif clot is None:
+            yield i
+
+
 def _hors_blocs(texte: str):
     """Les lignes de `texte` hors des blocs de code délimités (``` ou ~~~)."""
-    clot = None
-    for l in texte.splitlines():
-        m = re.match(r"\s{0,3}(`{3,}|~{3,})", l)
-        if m:
-            if clot is None:
-                clot = m.group(1)[0] * len(m.group(1))
-                continue
-            if l.strip().startswith(clot):
-                clot = None
-                continue
-        if clot is None:
-            yield l
+    lignes = texte.splitlines()
+    return (lignes[i] for i in _lignes_hors_blocs(lignes))
 
 
 def titres(texte: str) -> list[str]:
@@ -304,6 +347,7 @@ def relier(texte: str, chemin: str, publies: dict[str, dict[str, str]], de: str 
             return m.group(0)
         chem, _, a = cible.partition("#")
         rel = posixpath.normpath(posixpath.join(dossier, chem)) if chem else chemin
+        rel = next((d for m, d in MORCEAUX.items() if _sous(rel, m)), rel)  # un morceau : son document
         if rel in publies:
             adresse = lien(de, module(rel)) if rel != chemin else ""
             if a:
@@ -319,17 +363,169 @@ def relier(texte: str, chemin: str, publies: dict[str, dict[str, str]], de: str 
         remarques.append(f"{chemin} : lien retiré (non publié) « {cible} »")
         return texte_lien
 
-    lignes, clot = [], None
-    for l in texte.split("\n"):
-        m = re.match(r"\s{0,3}(`{3,}|~{3,})", l)
-        if m and clot is None:
-            clot = m.group(1)[0] * len(m.group(1))
-        elif m and l.strip().startswith(clot):
-            clot = None
-        elif clot is None:
-            l = _hors_code(l, lambda s: _LIEN.sub(remplacer, s))
-        lignes.append(l)
-    return "\n".join(lignes), remarques
+    return _sur_les_liens(texte, remplacer), remarques
+
+
+def _sur_les_liens(texte: str, remplacer) -> str:
+    """Remplace chaque lien Markdown `[texte](cible)` de `texte` par `remplacer(m)`, hors des
+    blocs de code et des `code` (pas les images)."""
+    lignes = texte.split("\n")
+    hors = set(_lignes_hors_blocs(lignes))
+    return "\n".join(_hors_code(l, lambda s: _LIEN.sub(remplacer, s)) if i in hors else l
+                     for i, l in enumerate(lignes))
+
+
+def rebaser(texte: str, de: str, vers: str) -> str:
+    """Réécrit les liens relatifs d'un morceau `de` (son chemin dans `livrables/`) pour qu'ils
+    partent du dossier du document `vers` où il est assemblé (`../../1-modele.md` écrit dans
+    `etape-2/journal/x.md` devient `../1-modele.md` dans `etape-2/journal-des-changements.md`).
+    Les adresses absolues et les ancres seules ne changent pas."""
+    d_de, d_vers = posixpath.dirname(de), posixpath.dirname(vers) or "."
+
+    def remplacer(m: re.Match) -> str:
+        cible = m.group(2)
+        chem, diese, a = cible.partition("#")
+        if not chem or re.match(r"^[a-z][a-z0-9+.-]*:", chem, re.I) or chem.startswith("/"):
+            return m.group(0)
+        nouveau = posixpath.relpath(posixpath.normpath(posixpath.join(d_de, chem)), d_vers)
+        if chem.endswith("/") and not nouveau.endswith("/"):
+            nouveau += "/"
+        return f"[{m.group(1)}]({nouveau}{diese}{a}{m.group(3) or ''})"
+
+    return _sur_les_liens(texte, remplacer)
+
+
+# -- les documents écrits en morceaux (`MORCEAUX`) ------------------------------------------------
+
+_NOM_JOURNAL = re.compile(r"\d{4}-\d{2}-\d{2}-[^/]+\.md")
+_NOM_QUESTION = re.compile(r"Q(\d+)\.md")
+_PARTIE = re.compile(r"<!--\s*partie\s*:\s*([^\s>]*)\s*-->")
+_PARTIES = {"a": "A", "b": "B", "c": "C", "tranchee": "tranchee", "tranchée": "tranchee"}
+
+
+def _titre_de_partie(lignes: list[str], motif: str, chemin: str) -> int:
+    """Le numéro de la ligne du titre de niveau 2 qui commence par `motif` (regex)."""
+    for i in _lignes_hors_blocs(lignes):
+        if re.match(rf"##\s+{motif}", lignes[i]):
+            return i
+    raise ValueError(f"{chemin} : pas de titre « ## {motif} » où assembler les questions")
+
+
+def _fin_de_partie(lignes: list[str], debut: int) -> int:
+    """Où ajouter à la fin de la partie qui commence à la ligne `debut` : avant le titre suivant de
+    niveau 1 ou 2 (ou la fin du texte), et avant les lignes vides et le séparateur `---` qui le
+    précèdent."""
+    fin = next((i for i in _lignes_hors_blocs(lignes) if i > debut
+                and re.match(r"#{1,2}\s", lignes[i])), len(lignes))
+    while fin > debut + 1 and re.fullmatch(r"\s*|\s*(-{3,}|\*{3,}|_{3,})\s*", lignes[fin - 1]):
+        fin -= 1
+    return fin
+
+
+def _fin_du_tableau(lignes: list[str], debut: int, chemin: str) -> int:
+    """La ligne qui suit le premier tableau après la ligne `debut`."""
+    i = debut + 1
+    while i < len(lignes) and not lignes[i].lstrip().startswith("|"):
+        if re.match(r"#{1,2}\s", lignes[i]):
+            break
+        i += 1
+    if i >= len(lignes) or not lignes[i].lstrip().startswith("|"):
+        raise ValueError(f"{chemin} : pas de tableau « Tranchées » où assembler les questions")
+    while i < len(lignes) and lignes[i].lstrip().startswith("|"):
+        i += 1
+    return i
+
+
+def _premiere_ligne(texte: str) -> str:
+    return next((l for l in texte.splitlines() if l.strip()), "")
+
+
+def morceaux(source: str, dossier: str) -> list[str]:
+    """Les morceaux (`.md`) d'un dossier de `MORCEAUX`, en chemins relatifs à `source`, dans
+    l'ordre naturel de leur nom (dates, puis numéros) ; aucun si le dossier est absent."""
+    chemin = os.path.join(source, *dossier.split("/"))
+    if not os.path.isdir(chemin):
+        return []
+    noms = [n for n in os.listdir(chemin)
+            if n.endswith(".md") and os.path.isfile(os.path.join(chemin, n))]
+    return [f"{dossier}/{n}" for n in sorted(noms, key=_cle_naturelle)]
+
+
+def assembler_journal(texte: str, entrees: list[tuple[str, str]], chemin: str = JOURNAL) -> str:
+    """Ajoute au journal `texte` ses entrées (`(chemin, texte)` chacune, liens déjà rebasés), dans
+    l'ordre donné. Une entrée s'appelle `AAAA-MM-JJ-<sujet>.md` et commence par `## …`."""
+    out = texte.rstrip("\n") + "\n"
+    for c, t in entrees:
+        if not _NOM_JOURNAL.fullmatch(posixpath.basename(c)):
+            raise ValueError(f"{c} : une entrée du journal s'appelle AAAA-MM-JJ-<sujet>.md")
+        if not _premiere_ligne(t).startswith("## "):
+            raise ValueError(f"{c} : une entrée du journal commence par « ## Titre (JJ/MM/AAAA) »")
+        out += "\n" + t.strip("\n") + "\n"
+    return out
+
+
+def question(chemin: str, texte: str) -> tuple[int, str, str]:
+    """Lit un fichier `questions/Qnn.md` : rend son numéro, sa partie (`A`, `B`, `C` ou
+    `tranchee`, de la première ligne `<!-- partie: … -->`) et son texte sans cette ligne. Une
+    question ouverte commence par `### Qnn`, une tranchée est une ligne de tableau `| Qnn …`."""
+    m = _NOM_QUESTION.fullmatch(posixpath.basename(chemin))
+    if not m:
+        raise ValueError(f"{chemin} : une question s'appelle Qnn.md (Q61.md)")
+    n = int(m.group(1))
+    tete, _, corps = texte.lstrip("\n").partition("\n")
+    p = _PARTIE.fullmatch(tete.strip())
+    partie = _PARTIES.get(p.group(1).lower()) if p else None
+    if partie is None:
+        raise ValueError(f"{chemin} : la première ligne est <!-- partie: A -->, B, C ou tranchee")
+    corps = corps.strip("\n")
+    attendu = rf"\|\s*Q{n}\b" if partie == "tranchee" else rf"###\s+Q{n}\b"
+    if not re.match(attendu, _premiere_ligne(corps)):
+        forme = f"| Q{n} … |" if partie == "tranchee" else f"### Q{n} …"
+        raise ValueError(f"{chemin} : après la ligne de partie, la question commence par « {forme} »")
+    if partie == "tranchee" and any(l.strip() and not l.lstrip().startswith("|")
+                                    for l in corps.splitlines()):
+        raise ValueError(f"{chemin} : une question tranchée n'est qu'une ligne du tableau « Tranchées »")
+    return n, partie, corps
+
+
+def assembler_questions(texte: str, questions: list[tuple[str, str]],
+                        chemin: str = QUESTIONS) -> str:
+    """Ajoute au doc. 5 `texte` ses questions (`(chemin, texte)` chacune, liens déjà rebasés) :
+    une ouverte à la fin de sa partie (`## A …`, `## B …`, `## C …`), une tranchée à la fin du
+    tableau de `## Tranchées`, dans l'ordre des numéros. Un numéro déjà pris dans `texte` (titre
+    `### Qnn` ou ligne de tableau `| Qnn`) est une erreur."""
+    lignes = texte.split("\n")
+    pris = {int(m.group(1)) for i in _lignes_hors_blocs(lignes)
+            for m in [re.match(r"(?:###\s+|\|\s*)Q(\d+)\b", lignes[i])] if m}
+    lues = sorted((question(c, t) + (c,) for c, t in questions), key=lambda q: q[0])
+    for n, partie, corps, c in lues:
+        if n in pris:
+            raise ValueError(f"{c} : Q{n} est aussi dans {chemin} (une question tranchée en est "
+                             "retirée quand elle prend son fichier)")
+        if partie == "tranchee":
+            i = _fin_du_tableau(lignes, _titre_de_partie(lignes, "Tranch", chemin), chemin)
+            lignes[i:i] = [l for l in corps.split("\n") if l.strip()]
+        else:
+            i = _fin_de_partie(lignes, _titre_de_partie(lignes, rf"{partie}\b", chemin))
+            lignes[i:i] = ["", *corps.split("\n")]
+    return "\n".join(lignes)
+
+
+def assembler(source: str, chemin: str, texte: str) -> str:
+    """Le texte publié du document `chemin` de `source` : `texte`, plus ses morceaux s'il en a
+    (`MORCEAUX`), liens rebasés depuis le document."""
+    for dossier, document in MORCEAUX.items():
+        if document != chemin:
+            continue
+        lus = []
+        for c in morceaux(source, dossier):
+            with open(os.path.join(source, *c.split("/")), encoding="utf-8") as f:
+                lus.append((c, rebaser(f.read(), c, chemin)))
+        if chemin == JOURNAL:
+            texte = assembler_journal(texte, lus, chemin)
+        else:
+            texte = assembler_questions(texte, lus, chemin)
+    return texte
 
 
 # -- le paquet ---------------------------------------------------------------------------------
@@ -353,11 +549,12 @@ def _ecrire_module(racine: str, nom: str, doc: str, paquet: bool = False,
 
 
 def _lire(source: str) -> dict[str, str]:
-    """Le texte de chaque document publié de `source`, dans l'ordre du menu."""
+    """Le texte de chaque document publié de `source`, dans l'ordre du menu, ses morceaux
+    assemblés (`assembler`)."""
     textes = {}
     for c in documents(source):
         with open(os.path.join(source, c), encoding="utf-8") as f:
-            textes[c] = f.read()
+            textes[c] = assembler(source, c, f.read())
     return textes
 
 
@@ -395,7 +592,9 @@ def ecrire(source: str, sortie: str, commit: str | None = None, depot: str | Non
     for c in textes:
         corps, r = relier(textes[c], c, publies)
         remarques += r
-        corps = corps.rstrip() + f"\n\n---\n\n*Repris tel quel de `livrables/{c}`.*\n"
+        dossiers = "".join(f" et des fichiers de `livrables/{d}/`" for d, doc in MORCEAUX.items()
+                           if doc == c and morceaux(source, d))
+        corps = corps.rstrip() + f"\n\n---\n\n*Repris tel quel de `livrables/{c}`{dossiers}.*\n"
         _ecrire_module(sortie, module(c), corps)
         ecrits.append(module(c))
     traitement = module(TRAITEMENT)

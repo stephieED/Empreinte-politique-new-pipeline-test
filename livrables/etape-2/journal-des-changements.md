@@ -3,6 +3,13 @@
 Ce qui a changé dans les documents 1 à 8 depuis leur première version (04/11/2026). Une ligne
 par changement, la plus récente en bas.
 
+> **Depuis le 25/11/2026, les nouvelles entrées ne s'ajoutent plus ici**, pour éviter un conflit
+> à chaque fusion : chacune est un fichier à part, `etape-2/journal/AAAA-MM-JJ-<sujet>.md`, qui
+> commence par sa ligne `## Titre (JJ/MM/AAAA)`. Ses liens relatifs partent de ce dossier, un
+> niveau plus bas que ce fichier (`../` mène à `etape-2/`, `../../` à `livrables/`). Les entrées
+> ci-dessous restent où elles sont. La page publiée (documentation de Pages) ajoute les fichiers
+> du dossier `journal/` à la fin de ce journal, dans l'ordre de leur nom.
+
 ## Décisions de la propriétaire intégrées après la première version
 
 | Date | Décision | Documents touchés |
