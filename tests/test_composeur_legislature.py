@@ -52,14 +52,17 @@ def depot(dossier, texte, date, code="AN1-DEPOT"):
 
 
 def etat(dossier, etape, sort, date_etape, procedure="2", date_sort=None, par_49_3=False,
-         adopte_49_3=False, numero_loi=None):
+         adopte_49_3=False, numero_loi=None, **autres):
     return {"dossier": dossier, "legislature": 17, "etape_atteinte": etape, "sort": sort,
             "par_49_3": par_49_3, "adopte_par_49_3": adopte_49_3, "date_promulgation":
             date_sort if sort == "promulgue" else None, "numero_loi": numero_loi,
             "date_sort": date_sort, "raison_sort": None if sort != "non_connu" else "aucune_decision_en_seance",
             "date_etape": date_etape, "raison_etape": None, "procedure_code": procedure,
             "titre": f"Titre {dossier}", "url_loi": None, "source_url": URL + dossier,
-            "regle": "R-SORT-FINAL@1"}
+            # #89 (R-SORT-FINAL v6)
+            "motif_adoption": None, "adopte_sur_texte_cmp": False, "rejete_par_censure_49_3": False,
+            "date_censure_49_3": None, "scrutin_censure_49_3": None,
+            "regle": "R-SORT-FINAL@1", **autres}
 
 
 def matiere(dossier, statut, commission=None, libelle=None):
@@ -183,10 +186,13 @@ def ctx(tmp_path):
         {"dossier": "D-PLF", "date": "2026-01-20", "acte": "L17-VD229941", "procedure_code": "3", "regle": "R-49-3@1"},
         {"dossier": "D-49", "date": "2026-01-20", "acte": "L17-VD229941", "procedure_code": "13", "regle": "R-49-3@1"}])
     vue(c, "etat_dossier", [
-        etat("D-PLF", "promulgue", "promulgue", "2026-02-19", "3", "2026-02-19", True, True, "2026-103"),
+        # #89 : censuré après un 49.3, puis repris et promulgué (comme le PLFSS 2025).
+        etat("D-PLF", "promulgue", "promulgue", "2026-02-19", "3", "2026-02-19", True, True, "2026-103",
+             rejete_par_censure_49_3=True, date_censure_49_3="2025-12-04", scrutin_censure_49_3="VTANR5L17V519"),
         etat("D-PPL", "depot", "non_connu", "2024-10-02"),
         etat("D-SEN", "examen_commission", "non_connu", "2025-04-01"),
-        etat("D-OLD", "promulgue", "promulgue", "2024-11-10", "2", "2024-11-10", numero_loi="2024-1"),
+        etat("D-OLD", "promulgue", "promulgue", "2024-11-10", "2", "2024-11-10", numero_loi="2024-1",
+             motif_adoption="texte_cmp_adopte_par_les_deux_chambres", adopte_sur_texte_cmp=True),
         etat("D-RAP", "non_etablie", "non_connu", None, "21"),
         etat("D-49", "seance", "non_connu", "2026-01-20", "13", par_49_3=True)])
     vue(c, "matiere", [matiere("D-PLF", "assemblee", "PO59048", "Commission des finances"),
@@ -323,6 +329,12 @@ def test_textes_et_commissions(ctx, tmp_path):
     assert ls["D-SEN"]["commission_libelle"] == "Saisi au Sénat seulement"
     assert ls["D-OLD"]["commission"] is None and ls["D-OLD"]["matiere_statut"] == "non_etablie"
     assert ls["D-OLD"]["sort_pendant_la_legislature"] is True
+    # #89 : motif de l'adoption, texte de CMP, rejet via 49.3 et son scrutin, servis tels quels.
+    assert (ls["D-OLD"]["motif_adoption"], ls["D-OLD"]["adopte_sur_texte_cmp"]) == (
+        "texte_cmp_adopte_par_les_deux_chambres", True)
+    assert (ls["D-PLF"]["rejete_par_censure_49_3"], ls["D-PLF"]["date_censure_49_3"],
+            ls["D-PLF"]["scrutin_censure_49_3"], ls["D-PLF"]["sort"]) == (True, "2025-12-04", "VTANR5L17V519", "promulgue")
+    assert ls["D-SEN"]["rejete_par_censure_49_3"] is False and ls["D-SEN"]["motif_adoption"] is None
     # #83 : la législature d'adoption de la loi de chaque texte promulgué, sa preuve ; rien sinon.
     assert (ls["D-PLF"]["legislature_adoption_loi"], ls["D-PLF"]["preuve_adoption_loi"]) == (
         17, "vote_final_de_l_assemblee")

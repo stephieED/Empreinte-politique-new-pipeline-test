@@ -8,7 +8,7 @@ Fichiers de `legislatures/<numero>/` :
 | `hemicycle.json.gz` | qui siège : un siège par député en fonction au jour de constat | R-HEMICYCLE |
 | `groupes.json.gz` | qui siège : effectif de chaque groupe, position déclarée | R-APPARTENANCE, R-HEMICYCLE |
 | `ordre-du-jour-<annee>.json.gz` | le calendrier des séances et leurs points | R-ORDRE-DU-JOUR, R-MATIERE |
-| `textes.json.gz` | les textes : matière, étape, sort, initiateur, législature d'adoption de la loi | R-ETAPE, R-SORT-FINAL, R-MATIERE, R-LOI-ADOPTION |
+| `textes.json.gz` | les textes : matière, étape, sort (motif de l'adoption, texte de CMP, rejet via 49.3), initiateur, législature d'adoption de la loi | R-ETAPE, R-SORT-FINAL, R-49-3, R-MATIERE, R-LOI-ADOPTION |
 | `commissions.json.gz` | dossiers par commission saisie au fond et par étape (décomptes) | R-MATIERE, R-ETAPE |
 
 Ce que le composeur ne fait pas : il ne déduit rien que les règles ne disent pas. Deux exceptions,
@@ -31,7 +31,8 @@ avec le compte.
 les lois que l'Assemblée a adoptées en dernier pendant la législature, puis promulguées, même
 après sa fin, même quand le Sénat a voté en dernier (doc. 5, Q65 et Q66). Il est `partiel` quand
 des lois qui ont pu l'être n'ont pas de législature d'adoption établie (raisons servies : dossier
-absent des archives, suite absente) ; une loi adoptée par l'Assemblée avant la XIVe est hors du
+absent des archives, suite absente ; depuis Q69, la date d'adoption lue au JO les établit toutes
+sur la g24, et les quatre comptes sont `complet`) ; une loi adoptée par l'Assemblée avant la XIVe est hors du
 périmètre (Q67) : elle est comptée parmi les lois adoptées sous une autre législature
 (`dont_adoptees_avant_le_perimetre`), jamais comme incertaine. Chaque texte promulgué porte la législature d'adoption de sa
 loi (`legislature_adoption_loi`, sa preuve ou sa raison).
@@ -65,7 +66,12 @@ COLS_TEXTES = ["dossier", "titre", "date_depot", "texte_depose", "chambre_depot"
                "procedure_code", "procedure_libelle", "legislature_dossier", "matiere_statut",
                "commission", "commission_libelle", "type_commission", "raison_matiere", "etape",
                "date_etape", "raison_etape", "sort", "date_sort", "raison_sort",
-               "sort_pendant_la_legislature", "par_49_3", "adopte_par_49_3", "numero_loi",
+               "sort_pendant_la_legislature",
+               # #89 : le motif de l'adoption définitive, l'adoption sur le texte de CMP, le rejet via
+               # 49.3 (motion de censure adoptée après engagement) et son scrutin (R-SORT-FINAL v6).
+               "motif_adoption", "adopte_sur_texte_cmp",
+               "par_49_3", "adopte_par_49_3",
+               "rejete_par_censure_49_3", "date_censure_49_3", "scrutin_censure_49_3", "numero_loi",
                "date_promulgation", "url_loi",
                # #83 : législature où l'Assemblée a adopté la loi en dernier (R-LOI-ADOPTION), sa
                # preuve, ou la raison qui l'empêche.
@@ -714,7 +720,10 @@ def _section_textes(ctx, f, leg, au, lic) -> list[dict]:
                e.sort, e.date_sort, e.raison_sort,
                CASE WHEN e.date_sort IS NULL THEN NULL
                     ELSE e.date_sort >= ? AND e.date_sort <= ? END AS sort_pendant_la_legislature,
-               e.par_49_3, e.adopte_par_49_3, e.numero_loi, e.date_promulgation, e.url_loi,
+               e.motif_adoption, e.adopte_sur_texte_cmp,
+               e.par_49_3, e.adopte_par_49_3,
+               e.rejete_par_censure_49_3, e.date_censure_49_3, e.scrutin_censure_49_3,
+               e.numero_loi, e.date_promulgation, e.url_loi,
                la.legislature_adoption AS legislature_adoption_loi, la.preuve_adoption AS preuve_adoption_loi,
                la.raison_adoption AS raison_adoption_loi,
                sol.scrutins IS NOT NULL AS vote_solennel, sol.scrutins AS scrutins_solennels,
