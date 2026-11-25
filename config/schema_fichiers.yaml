@@ -26,6 +26,18 @@ vocabulaires:
   - conclusion_non_classee
   - renvoye_en_commission
   - aucune_decision_finale
+  # Législature d'adoption d'une loi (R-LOI-ADOPTION, issue #83) : sa preuve, ou la raison qui
+  # l'empêche (doc. 1, 1.6).
+  preuve_adoption_loi:
+  - vote_final_de_l_assemblee
+  - cloture_hors_assemblee_meme_legislature
+  - encadree_par_la_promulgation
+  raison_adoption_loi:
+  - loi_sans_dossier
+  - suite_absente_des_archives
+  - aucune_adoption_de_l_assemblee_lue
+  - seance_de_l_assemblee_apres_son_dernier_vote_lu
+  - cloture_hors_assemblee_sous_une_autre_legislature
   etape_atteinte:
   - depot
   - examen_commission
@@ -748,6 +760,9 @@ colonnes:
   - numero_loi
   - date_promulgation
   - url_loi
+  - legislature_adoption_loi
+  - preuve_adoption_loi
+  - raison_adoption_loi
   - vote_solennel
   - scrutins_solennels
   - initiateur_role
@@ -787,6 +802,9 @@ colonnes:
   - numero_loi
   - date_promulgation
   - url_loi
+  - legislature_adoption_loi
+  - preuve_adoption_loi
+  - raison_adoption_loi
   - vote_solennel
   - scrutins_solennels
   - initiateur_role
