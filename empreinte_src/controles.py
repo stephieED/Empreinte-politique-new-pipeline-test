@@ -398,6 +398,34 @@ class Controles:
             self.lignes_wikidata_disparues.append(
                 f"{x[0]} : {quoi} ({quand}), déclaration {d} : {_raison_perte_wikidata(d, declarations_wikidata or {})}")
         perdus = restent
+        # Mots des titres d'une législature (#82) : le nuage ne garde que les mots les plus
+        # fréquents, reclassés chaque nuit. Un mot dépassé par d'autres sort du nuage sans rien
+        # perdre (nuit du 24/11/2026 : « emploi » et « européen », 30 textes chacun, sortis du
+        # nuage de la XVIIe). Perte expliquée (décision du 25/11/2026, option 1) si le nuage de la
+        # fiche n'a pas rétréci et si chacun de ses mots porte au moins autant de textes que le mot
+        # sorti ; sinon (normalisation changée, titres perdus), la perte reste bloquante.
+        self.bilan_c1_mots_titres_sortis = 0
+        if any(x[2] == "mot_titre_legislature" for x in perdus):
+            def nuages(fichier):
+                return {f: (n, m) for f, n, m in con.execute(f"""
+                    SELECT fiche, count(*), min(TRY_CAST(json_extract_string(valeur, '$.textes') AS INTEGER))
+                    FROM read_parquet('{fichier}') WHERE type_fait = 'mot_titre_legislature'
+                    GROUP BY 1""").fetchall()}
+            avant_n, apres_n = nuages(faits_avant), nuages(faits_apres)
+
+            def sorti_du_nuage(x):
+                if x[2] != "mot_titre_legislature":
+                    return False
+                try:
+                    t = json.loads(x[3]).get("textes")
+                except (ValueError, AttributeError):
+                    return False
+                n, m = apres_n.get(x[0], (0, None))
+                return (isinstance(t, int) and m is not None and n >= avant_n.get(x[0], (0, None))[0]
+                        and t <= m)
+            restent = [x for x in perdus if not sorti_du_nuage(x)]
+            self.bilan_c1_mots_titres_sortis = len(perdus) - len(restent)
+            perdus = restent
         perdus = [x[:4] for x in perdus]
         # Faits sans aucun identifiant (comptes par ministère et par nature, par exemple) : leur
         # identité est leur valeur sans ses comptes ni ses dates, qui changent légitimement.
@@ -1118,6 +1146,7 @@ class Controles:
                 # tait, pour que le rapport de la nuit le dise (décisions du 13, du 14 et du 15/11/2026).
                 "expliques": {k: v for k, v in (("c1_identite_enrichie", getattr(self, "bilan_c1_identite_enrichie", None)),
                                                 ("c1_lignes_wikidata", len(getattr(self, "lignes_wikidata_disparues", []))),
+                                                ("c1_mots_titres_sortis", getattr(self, "bilan_c1_mots_titres_sortis", None)),
                                                 ("a3", getattr(self, "bilan_a3", None)),
                                                 ("a3_lois", getattr(self, "bilan_a3_lois", None)),
                                                 ("a5", getattr(self, "bilan_a5", None)),

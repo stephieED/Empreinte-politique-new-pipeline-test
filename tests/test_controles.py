@@ -392,3 +392,35 @@ def test_element_wikidata_d_une_declaration():
     assert _element_wikidata("Q3018298-E1B2") == "Q3018298"
     assert _element_wikidata("q42$F078E5B3") == "Q42"
     assert _element_wikidata("sans-element") is None
+
+
+def _mot(mot, textes, fiche="legislature/17"):
+    v = json.dumps({"mot": mot, "forme": mot, "textes": textes, "dossiers": []})
+    return {"fiche": fiche, "section": "mots-titres", "type_fait": "mot_titre_legislature",
+            "valeur": v, "id_autre": mot}
+
+
+def test_c1_mot_sorti_du_nuage_explique(tmp_path):
+    """Nuit du 24/11/2026 : « emploi » (30 textes) sort du nuage, dépassé par un mot qui gagne un
+    texte. Le nuage garde sa taille et chacun de ses mots porte au moins 30 textes : perte
+    expliquée (décision du 25/11/2026, option 1), comptée, sans blocage."""
+    avant = _faits(tmp_path / "a.parquet", [_mot("loi", 40), _mot("emploi", 30)])
+    apres = _faits(tmp_path / "b.parquet", [_mot("loi", 40), _mot("travail", 31)])
+    c = Controles(str(tmp_path))
+    c.c1_c6_comparer(avant, apres)
+    b = c.bilan()
+    assert b["publication_autorisee"] and not c.anomalies
+    assert b["expliques"]["c1_mots_titres_sortis"] == 1
+
+
+def test_c1_mot_perdu_du_nuage_reste_bloquant(tmp_path):
+    """Un mot fréquent qui disparaît alors qu'un mot moins fréquent reste (normalisation changée,
+    titres perdus), ou un nuage qui rétrécit : la perte n'est pas expliquée."""
+    avant = _faits(tmp_path / "a.parquet", [_mot("loi", 40), _mot("emploi", 30)])
+    for apres_l in ([_mot("emploi", 30), _mot("travail", 31)],      # « loi » (40) perdu, 30 reste
+                    [_mot("loi", 40)]):                              # nuage rétréci
+        apres = _faits(tmp_path / "b.parquet", apres_l)
+        c = Controles(str(tmp_path))
+        c.c1_c6_comparer(avant, apres)
+        assert not c.bilan()["publication_autorisee"]
+        assert c.anomalies[0]["controle"] == "C1"
