@@ -1,4 +1,4 @@
-## Décisions du 25/11/2026 sur les lois et les candidats appliquées (Q61 à Q68, #118, PR #NN) (25/11/2026)
+## Décisions du 25/11/2026 sur les lois et les candidats appliquées (Q61 à Q68, #118, PR #183) (25/11/2026)
 
 La propriétaire a tranché sept questions et l'avertissement A7 de l'issue #118.
 
