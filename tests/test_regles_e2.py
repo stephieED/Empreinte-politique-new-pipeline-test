@@ -107,7 +107,11 @@ RUFFIN = "PA722142"
 def _composition(ctx):
     ctx.ecrire("membre_gouvernement", """
         SELECT m.organe AS gouvernement, m.acteur, min(m.date_debut) AS debut,
-               max(least(coalesce(m.date_fin, g.fin, '9999-12-31'), coalesce(g.fin, '9999-12-31'))) AS fin
+               max(least(coalesce(m.date_fin, g.fin, '9999-12-31'), coalesce(g.fin, '9999-12-31'))) AS fin,
+               -- portefeuille inconnu ici : lu par R-DEPOT-GOUVERNEMENT (ministère porteur, #79)
+               NULL::VARCHAR AS mandat, NULL::VARCHAR AS ministere, NULL::VARCHAR AS portefeuille,
+               false AS premier_ministre, NULL::VARCHAR AS tutelle_statut,
+               NULL::VARCHAR[] AS ministeres_tutelle
         FROM an_acteurs__mandat m JOIN gouvernement g ON g.organe = m.organe
         WHERE m.type_organe = 'GOUVERNEMENT' GROUP BY 1, 2""")
     return {}

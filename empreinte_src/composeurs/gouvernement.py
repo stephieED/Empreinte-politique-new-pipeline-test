@@ -10,7 +10,7 @@ son adresse est `gouvernement.adresse` (« lecornu-ii »). Fichiers servis :
 | `composition.json.gz` | membres par ministère, Premier ministre en tête, ministres délégués sous leur tutelle | à la demande |
 | `paroles.json.gz` | sujets de parole (débats) : séances, prises de parole, membres intervenus, sans texte | à la demande |
 | `paroles-textes-<nnn>.json.gz` | extraits (300 caractères) et lien du paragraphe, par paquets de sujets (≈ 300 Ko bruts) | au clic sur un sujet |
-| `deposes.json.gz` | projets de loi : matière, sort, 49.3, date | à la demande |
+| `deposes.json.gz` | projets de loi : matière, sort, 49.3, date, ministère porteur | à la demande |
 | `procedure-49-3.json.gz` | engagements de responsabilité (fait de procédure, jamais un vote) | à la demande |
 | `actes.json.gz` | actes du JO de la période couverte, comptés par ministère (tel que publié) et par nature | à la demande |
 | `actes-<aaaa-mm>.json.gz`, `actes-nominatives-<aaaa-mm>.json.gz` | liste des actes d'un mois ; mesures nominatives à part | au clic |
@@ -570,13 +570,18 @@ def _deposes(ctx, f, g, commun, debut_lu):
            if etat else "")
     rows = _lignes(ctx, f"""
         SELECT p.dossier, p.document, p.titre_dossier, p.date_depot, p.chambre_depot,
-               p.procedure_libelle, {sel_m}, {sel_e}, p.source_url
+               p.procedure_libelle, {sel_m}, {sel_e},
+               p.ministere_porteur, p.ministere_porteur_libelle, p.ministeres_porteurs,
+               p.ministeres_porteurs_libelles, p.ministere_porteur_statut, p.raison_ministere_porteur,
+               p.portefeuilles_presentateurs, p.portefeuilles_presentateurs_libelles, p.source_url
         FROM projet_gouvernement p {j_m} {j_e}
         WHERE p.gouvernement = ? ORDER BY p.date_depot, p.dossier""", [org])
     for r in rows:
-        r["ministere_porteur"] = None
         r["licence"] = lic
     n = len(rows)
+    # Ministère porteur (R-DEPOT-GOUVERNEMENT version 2, issue #79) : un ou plusieurs ministères.
+    porteur = sum(1 for r in rows if r["ministere_porteur_statut"] in ("etabli", "plusieurs_ministeres"))
+    plusieurs = sum(1 for r in rows if r["ministere_porteur_statut"] == "plusieurs_ministeres")
     adoptes = sum(1 for r in rows if r["sort"] in ("adopte", "promulgue")) if etat else None
     promulgues = sum(1 for r in rows if r["sort"] == "promulgue") if etat else None
     par_sort = defaultdict(int)
@@ -584,7 +589,12 @@ def _deposes(ctx, f, g, commun, debut_lu):
         par_sort[r["sort"] or "non_etabli"] += 1
     phrase = ("Projets de loi reconnus au texte du premier dépôt (PRJL), rattachés au gouvernement en "
               "fonction ce jour-là. La matière est la commission saisie au fond (aide à la lecture). "
-              "Le ministère porteur n'est pas encore établi (règle à venir).")
+              f"Le ministère porteur est celui des ministres qui présentent le projet (cosignataires du "
+              f"texte déposé ; le Premier ministre, au nom duquel il est présenté, en est l'auteur), "
+              f"rattachés à leur portefeuille ce jour-là, et un ministre délégué à sa tutelle : établi pour "
+              f"{porteur} projets sur {n}, dont {plusieurs} présentés par plusieurs ministères (tous donnés, "
+              f"dans l'ordre publié)" + (" ; les autres sont « non établi », avec leur raison" if porteur < n else "")
+              + ". Un projet n'est jamais l'acte personnel d'un ministre : aucune personne n'est servie.")
     if g["debut"] < debut_lu:
         couv = _couv("textes", _avant(g, debut_lu, au),
                      f"Dossiers législatifs lus à partir de la XIVe législature (le {_fr(debut_lu)}, "
@@ -596,7 +606,10 @@ def _deposes(ctx, f, g, commun, debut_lu):
     cols = ["dossier", "document", "titre_dossier", "date_depot", "chambre_depot", "procedure_libelle",
             "matiere", "matiere_statut", "matiere_commission", "sort", "date_sort", "raison_sort",
             "par_49_3", "adopte_par_49_3", "nb_engagements_49_3", "numero_loi", "date_promulgation",
-            "url_loi", "etape_atteinte", "etape_legislature", "ministere_porteur", "source_url", "licence"]
+            "url_loi", "etape_atteinte", "etape_legislature", "ministere_porteur", "ministere_porteur_libelle",
+            "ministeres_porteurs", "ministeres_porteurs_libelles", "ministere_porteur_statut",
+            "raison_ministere_porteur", "portefeuilles_presentateurs", "portefeuilles_presentateurs_libelles",
+            "source_url", "licence"]
     f.section("deposes", rows, type_fait="projet_de_loi",
               ids={"dossier": "dossier", "document": "document"}, date="date_depot",
               couverture=couv, colonnes=cols,
