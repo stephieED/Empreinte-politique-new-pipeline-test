@@ -71,7 +71,7 @@ Le détail est dans les documents 3 et 8 et dans `annexes/mesures/`.
 | 2 | [Processus de collecte et de publication](2-processus-collecte-publication.md) | la spécification : étapes, cadence, pannes, contrôles, publication, exploitation ; chaque section avec ses schémas « En image » (une soirée normale, pannes, levée d'un contrôle, traçabilité) |
 | 3 | [Justifications](3-justifications.md) | chaque choix, les alternatives écartées, et là où le cahier paraît trop étroit |
 | 4 | [Estimations](4-estimations.md) | volumes, poids par fiche, durées, mémoire, coût, avec leur méthode |
-| 5 | [Questions ouvertes](5-questions-ouvertes.md) | ce qui reste à trancher, ce que ça bloque, ce qu'on fait en attendant |
+| 5 | [Questions ouvertes](5-questions-ouvertes.md) | ce qui reste à trancher, ce que ça bloque, ce qu'on fait en attendant ; depuis le 25/11/2026, une question par fichier dans `questions/` (voir l'en-tête du document) |
 | 6 | [Le processus, illustré](6-doc-processus.md) | fusionné dans le document 2 le 13/11/2026 : dit où chaque schéma est passé |
 | 7 | [Le modèle, illustré](7-doc-modele.md) | fusionné dans le document 1 le 13/11/2026 : dit où chaque schéma est passé |
 | 8 | [Recette](8-recette.md) | les tables de la partie 7 : besoins, règles, pièges, exigences, scénarios |
