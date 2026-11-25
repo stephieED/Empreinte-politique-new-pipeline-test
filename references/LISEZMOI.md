@@ -26,7 +26,9 @@ Types en usage : `levee_controle`, `fin_legislature`, `rattachement_portefeuille
 (adresse de l'ancien site citée par un article publié, menant à sa fiche : issue #86), `regroupement`
 (table d'un regroupement pour l'affichage : chaque entrée met un code de la source dans une case ;
 servie à part dans `regroupements.json.gz`, issue #88), `nom_point_acces` (nom affiché d'un point
-d'accès, servi dans `sources.json.gz` : issue #73) (voir le document 1, 1.3.3).
+d'accès, servi dans `sources.json.gz` : issue #73), `date_promulgation_connue` (écart connu entre la
+date de promulgation du JO et celle de l'acte de l'Assemblée, que l'avertissement A7 ne nomme
+plus : issue #118) (voir le document 1, 1.3.3).
 
 Une décision `rattachement_portefeuille` donne le ou les ministères de tutelle d'un portefeuille
 (`rattache_a PO…`, ou `rattache_a PO… PO…` pour une co-tutelle, dans l'ordre où la source les

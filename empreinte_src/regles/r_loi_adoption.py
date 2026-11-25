@@ -28,6 +28,17 @@ La législature d'adoption (`legislature_adoption`), avec sa preuve :
 - `vote_final_de_l_assemblee` : la clôture est une décision de l'Assemblée ; sa législature ;
 - `cloture_hors_assemblee_meme_legislature` : le Sénat (ou une CMP, le Congrès) vote en dernier,
   dans la législature du dernier vote de l'Assemblée ; cette législature ;
+- `dernier_vote_de_l_assemblee_cloture_sous_une_autre_legislature` (version 2, décision du
+  25/11/2026, doc. 5, Q65 « Dans la législature du dernier vote de l'Assemblée ») : le Sénat (ou une
+  CMP, le Congrès) vote en dernier sous une autre législature ; la loi est de celle du dernier vote
+  de l'Assemblée, qui a voté le texte devenu loi (lois 2022-1053 et 2022-1055 : Assemblée en
+  janvier et février 2022, XVe, Sénat le 19/07/2022). Les deux législatures sont servies
+  (`legislature_dernier_vote_an`, `legislature_cloture`) ; 21 lois sur la g24 ;
+- `dernier_vote_enregistre_de_l_assemblee_seance_posterieure` (version 2, Q66, option 2) :
+  l'Assemblée a discuté le texte en séance sous une législature postérieure à son dernier vote lu,
+  sans décision de l'Assemblée publiée (texte de CMP dont la décision n'a pas de chambre :
+  2024-1039, 2025-175, 2025-541) ; la législature est celle du dernier vote enregistré (XVIe),
+  comme pour Q65 ;
 - `encadree_par_la_promulgation` : la loi n'a pas d'acte de promulgation à l'Assemblée (reliée par
   le JO) et l'archive de son dossier s'arrête avant la promulgation (`fin_archive_du_dossier`, date
   du dernier acte passé de cette archive) ; le dernier vote de l'Assemblée est alors le dernier lu,
@@ -39,38 +50,53 @@ La législature d'adoption (`legislature_adoption`), avec sa preuve :
   13/10/2016 (XIVe), promulguée le 28/06/2018 (XVe), son dossier n'a aucun acte numéroté de la XVe.
 
 Sinon, pas de législature, et la raison (`raison_adoption`) :
-- `loi_sans_dossier` : aucun dossier (la raison de R-LOI-DOSSIER est dans `raison_lien`) ;
+- `dossier_anterieur_a_la_xive_hors_perimetre` (version 2, Q67 : « La législature XIII est hors
+  scope ») : aucun dossier, et la dernière adoption à l'Assemblée que citent les travaux
+  préparatoires de la loi au JO (« Discussion et adoption le 3 octobre 2011 »,
+  `date_adoption_an_lue_au_jo`) précède le début de la XIVe, première législature du périmètre :
+  la loi n'est d'aucune législature publiée, et ne rend pas un compte partiel (16 lois sur la g24,
+  dont 2012-1166, 2014-1392) ;
+- `loi_sans_dossier` : aucun dossier, et pas de dernière adoption à l'Assemblée lue au JO avant la
+  XIVe (la raison de R-LOI-DOSSIER est dans `raison_lien` ; 43 lois sur la g24, dont la date lue
+  au JO tombe sous la XIVe ou la XVe) ;
 - `suite_absente_des_archives` : la suite du dossier manque, et les bornes tombent dans deux
   législatures (2018-527, 2020-839) ;
 - `aucune_adoption_de_l_assemblee_lue` : aucune décision d'adoption de l'Assemblée avant la
   promulgation ;
-- `seance_de_l_assemblee_apres_son_dernier_vote_lu` : l'Assemblée a discuté le texte en séance
-  sous une législature postérieure à son dernier vote lu, sans décision de l'Assemblée publiée
-  (texte de CMP dont la décision n'a pas de chambre : 2024-1039, 2025-175, 2025-541 ; doc. 5, Q66) ;
-- `cloture_hors_assemblee_sous_une_autre_legislature` : le Sénat (ou une CMP, le Congrès) vote en
-  dernier sous une autre législature que le dernier vote de l'Assemblée (lois 2022-1053 et
-  2022-1055 : Assemblée en janvier et février 2022, Sénat le 19/07/2022). Option prudente en
-  attendant la décision (doc. 5, Q65) : la loi n'est comptée nulle part par adoption ; les deux
-  législatures sont servies (`legislature_dernier_vote_an`, `legislature_cloture`).
+
+Version 1 (PR #182) : les cas de Q65 et Q66 n'avaient pas de législature (raisons
+`cloture_hors_assemblee_sous_une_autre_legislature` et
+`seance_de_l_assemblee_apres_son_dernier_vote_lu`), en attendant la décision.
 
 Une loi peut avoir deux dossiers (même texte renuméroté d'une archive à l'autre : 2017-1338,
 DLR5L14N35824 et DLR5L15N35824) : leurs décisions sont lues ensemble."""
 
+from ..perimetre import LEGISLATURES
 from .r_etape import adoptions_definitives, date_ref, decisions, legislature_acte
 from .r_lois import legislature_a
 
 NOM = "R-LOI-ADOPTION"
-VERSION = 1
+VERSION = 2
 DEPEND = ("R-LEGISLATURES", "R-LOIS", "R-LOI-DOSSIER", "R-ETAPE")
 SORTIES = ("loi_adoption",)
 DESCRIPTION = (
     "Une loi est aussi comptée dans la législature où l'Assemblée l'a adoptée en dernier, à côté de "
-    "la législature de sa promulgation. C'est la date de la dernière décision de l'Assemblée qui "
-    "adopte le texte avant la promulgation, quand cette décision clôt la navette. Quand le Sénat "
-    "vote en dernier, la loi n'est comptée que si son vote tombe dans la même législature que le "
-    "dernier vote de l'Assemblée. Une loi dont le dossier manque aux archives n'a de législature "
+    "la législature de sa promulgation. C'est la date de la dernière décision enregistrée de "
+    "l'Assemblée qui adopte le texte avant la promulgation, même quand le Sénat vote en dernier, "
+    "sous la même législature ou la suivante. Une loi adoptée par l'Assemblée avant la XIVe "
+    "législature est hors du périmètre. Une loi dont le dossier manque aux archives n'a de législature "
     "d'adoption que si la fin de l'archive et la promulgation tombent dans la même ; sinon, la "
     "raison est dite.")
+
+# Preuves d'une législature d'adoption établie (version 2 : Q65 et Q66, décisions du 25/11/2026).
+PREUVES = ("vote_final_de_l_assemblee", "cloture_hors_assemblee_meme_legislature",
+           "dernier_vote_de_l_assemblee_cloture_sous_une_autre_legislature",
+           "dernier_vote_enregistre_de_l_assemblee_seance_posterieure", "encadree_par_la_promulgation")
+# Raison d'une loi adoptée par l'Assemblée avant le périmètre (Q67, 25/11/2026) : jamais comptée
+# dans une législature publiée, elle ne rend pas un compte partiel.
+HORS_PERIMETRE = "dossier_anterieur_a_la_xive_hors_perimetre"
+MOIS = ("janvier", "fevrier", "mars", "avril", "mai", "juin", "juillet", "aout", "septembre",
+        "octobre", "novembre", "decembre")
 
 _VIDE_LIEN = ("SELECT NULL::VARCHAR AS numero_loi, NULL::VARCHAR AS dossier, NULL::VARCHAR AS raison, "
               "NULL::VARCHAR AS date_promulgation, NULL::VARCHAR AS dossier_assemblee, "
@@ -109,6 +135,10 @@ def appliquer(ctx):
             WHERE j.dossier_assemblee IS NULL AND j.numero_loi NOT IN (SELECT numero_loi FROM an)
               AND j.date_promulgation >= (SELECT d FROM debut)),
         lois AS (SELECT * FROM an UNION ALL SELECT * FROM jo),
+        -- Version 2 (Q67) : pour une loi sans dossier, la date de sa dernière adoption à l'Assemblée,
+        -- lue dans ses travaux préparatoires au JO (« Discussion et adoption le 3 octobre 2011 »).
+        adoption_jo AS ({_adoptions_an_au_jo(ctx)}),
+        debut_perimetre AS (SELECT min(debut) AS d FROM legislature WHERE numero = {min(LEGISLATURES)}),
         ld AS (SELECT numero_loi, unnest(dossiers) AS dossier FROM lois WHERE dossiers IS NOT NULL),
         -- Décisions d'adoption de chaque loi, au plus tard le jour de la promulgation ; une décision
         -- publiée sans conclusion (TSORTFnull, Sénat en nouvelle lecture) peut clore la navette, elle
@@ -156,7 +186,10 @@ def appliquer(ctx):
                    END AS motif_cloture,
                    i.fin_archive AS fin_archive_du_dossier,
                    s.date AS date_derniere_seance_an, s.legislature AS legislature_derniere_seance_an,
-                   CASE WHEN l.dossiers IS NULL THEN 'loi_sans_dossier'
+                   aj.date AS date_adoption_an_lue_au_jo,
+                   CASE WHEN l.dossiers IS NULL AND aj.date < (SELECT d FROM debut_perimetre)
+                             THEN '{HORS_PERIMETRE}'
+                        WHEN l.dossiers IS NULL THEN 'loi_sans_dossier'
                         -- Suite absente : le dernier vote de l'Assemblée est le dernier lu, ou tombe
                         -- entre la fin de l'archive et la promulgation.
                         WHEN i.numero_loi IS NOT NULL THEN
@@ -165,34 +198,60 @@ def appliquer(ctx):
                                   THEN 'encadree_par_la_promulgation'
                                   ELSE 'suite_absente_des_archives' END
                         WHEN v.acte IS NULL THEN 'aucune_adoption_de_l_assemblee_lue'
-                        WHEN s.legislature > v.legislature THEN 'seance_de_l_assemblee_apres_son_dernier_vote_lu'
+                        -- Q66 (option 2) : séance postérieure sans décision publiée : le dernier vote
+                        -- enregistré de l'Assemblée fait foi, comme pour Q65.
+                        WHEN s.legislature > v.legislature THEN 'dernier_vote_enregistre_de_l_assemblee_seance_posterieure'
                         WHEN c.chambre = 'AN' THEN 'vote_final_de_l_assemblee'
                         WHEN c.legislature = v.legislature THEN 'cloture_hors_assemblee_meme_legislature'
-                        ELSE 'cloture_hors_assemblee_sous_une_autre_legislature' END AS etat
+                        -- Q65 (option 1) : le Sénat clôt sous une autre législature ; la loi est de
+                        -- celle du dernier vote de l'Assemblée.
+                        ELSE 'dernier_vote_de_l_assemblee_cloture_sous_une_autre_legislature' END AS etat
             FROM lois l
             LEFT JOIN vote_an v USING (numero_loi)
             LEFT JOIN cloture c USING (numero_loi)
             LEFT JOIN motif m ON m.acte = c.acte
             LEFT JOIN incomplet i USING (numero_loi)
-            LEFT JOIN seance_an s USING (numero_loi))
+            LEFT JOIN seance_an s USING (numero_loi)
+            LEFT JOIN adoption_jo aj USING (numero_loi))
         SELECT numero_loi, dossier, dossiers, lien_dossier, raison_lien, date_promulgation,
                legislature_promulgation,
-               CASE WHEN etat IN ('vote_final_de_l_assemblee', 'cloture_hors_assemblee_meme_legislature')
-                         THEN legislature_dernier_vote_an
-                    WHEN etat = 'encadree_par_la_promulgation' THEN legislature_promulgation
+               CASE WHEN etat = 'encadree_par_la_promulgation' THEN legislature_promulgation
+                    WHEN etat IN {PREUVES} THEN legislature_dernier_vote_an
                END AS legislature_adoption,
-               CASE WHEN etat IN ('vote_final_de_l_assemblee', 'cloture_hors_assemblee_meme_legislature',
-                                  'encadree_par_la_promulgation') THEN etat END AS preuve_adoption,
-               CASE WHEN etat NOT IN ('vote_final_de_l_assemblee', 'cloture_hors_assemblee_meme_legislature',
-                                      'encadree_par_la_promulgation') THEN etat END AS raison_adoption,
+               CASE WHEN etat IN {PREUVES} THEN etat END AS preuve_adoption,
+               CASE WHEN etat NOT IN {PREUVES} THEN etat END AS raison_adoption,
                date_dernier_vote_an, acte_dernier_vote_an, lecture_dernier_vote_an,
                legislature_dernier_vote_an, date_cloture, acte_cloture, chambre_cloture, code_cloture,
                legislature_cloture, motif_cloture, date_derniere_seance_an,
-               legislature_derniere_seance_an, fin_archive_du_dossier, source_url
+               legislature_derniere_seance_an, fin_archive_du_dossier, date_adoption_an_lue_au_jo, source_url
         FROM x""")
     n = ctx.un("SELECT count(*) FROM loi_adoption")
     etablie = ctx.un("SELECT count(*) FROM loi_adoption WHERE legislature_adoption IS NOT NULL")
     meme = ctx.un("""SELECT count(*) FROM loi_adoption WHERE legislature_adoption IS NOT NULL
                      AND legislature_adoption IS NOT DISTINCT FROM legislature_promulgation""")
+    hors = ctx.un(f"SELECT count(*) FROM loi_adoption WHERE raison_adoption = '{HORS_PERIMETRE}'")
     return {"legislature_d_adoption_etablie": (etablie, n),
-            "meme_legislature_que_la_promulgation": (meme, etablie)}
+            "meme_legislature_que_la_promulgation": (meme, etablie),
+            "legislature_etablie_ou_hors_perimetre": (etablie + hors, n)}
+
+
+def _adoptions_an_au_jo(ctx) -> str:
+    """SQL (numero_loi, date) : la date la plus récente d'une adoption à l'Assemblée que citent les
+    travaux préparatoires d'une loi au JO (lignes de l'Assemblée, « … adoption … le 3 octobre
+    2011 »), toutes publications de la loi réunies. Vide sans les tables du JO."""
+    if not (ctx.existe("jo_actes__travaux_preparatoires") and ctx.existe("jo_actes__acte_reglementaire")):
+        return "SELECT NULL::VARCHAR AS numero_loi, NULL::VARCHAR AS date WHERE false"
+    mois = "|".join(MOIS)
+    liste = ", ".join(f"'{m}'" for m in MOIS)
+    return rf"""
+        WITH l AS (
+            SELECT r.numero AS numero_loi,
+                   regexp_extract(strip_accents(lower(t.ligne)),
+                                  'adopt.*? le (1er|\d{{1,2}}) ({mois}) (\d{{4}})', ['j', 'm', 'a']) AS x
+            FROM (SELECT DISTINCT uid, numero FROM jo_actes__acte_reglementaire
+                  WHERE nature IN ('LOI', 'LOI_ORGANIQUE') AND numero IS NOT NULL) r
+            JOIN jo_actes__travaux_preparatoires t ON t.acte = r.uid
+            WHERE t.chambre = 'AN')
+        SELECT numero_loi, max(x.a || '-' || lpad(CAST(list_position([{liste}], x.m) AS VARCHAR), 2, '0')
+                                || '-' || lpad(replace(x.j, '1er', '1'), 2, '0')) AS date
+        FROM l WHERE x.a <> '' GROUP BY 1"""

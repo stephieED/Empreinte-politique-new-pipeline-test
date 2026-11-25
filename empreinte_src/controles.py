@@ -1078,12 +1078,22 @@ class Controles:
                            "dossiers_dont_c_est_la_derniere_decision FROM conclusion_non_classee ORDER BY 1")]
         if self._a("loi"):
             # Date de promulgation de l'Assemblée qui contredit le Journal officiel : la date du JO
-            # est publiée, l'écart est nommé (sources à signaler ; 7 lois le 14/11/2026).
+            # est publiée, l'écart est nommé (sources à signaler ; 7 lois le 14/11/2026). Un écart
+            # noté comme connu (décision `date_promulgation_connue`, issue #118, 25/11/2026) n'est
+            # plus nommé, il est compté (`expliques`) ; s'il change, il redevient nommé, et la
+            # décision qui ne correspond plus à aucun écart est dite sans objet.
+            connus = {(str(d.get("numero_loi")), str(d.get("date_jo")), str(d.get("date_assemblee"))): d
+                      for d in decisions.get("date_promulgation_connue", [])}
+            ecarts = [(str(n), str(d), str(a)) for n, d, a in self._x(
+                "SELECT DISTINCT numero_loi, date_promulgation, date_assemblee FROM loi "
+                "WHERE source_date_promulgation = 'journal_officiel' "
+                "AND date_assemblee IS DISTINCT FROM date_promulgation ORDER BY 1")]
             objets += [f"loi {n} : promulguée le {d} au JO, le {a} selon l'acte de l'Assemblée"
-                       for n, d, a in self._x(
-                           "SELECT DISTINCT numero_loi, date_promulgation, date_assemblee FROM loi "
-                           "WHERE source_date_promulgation = 'journal_officiel' "
-                           "AND date_assemblee IS DISTINCT FROM date_promulgation ORDER BY 1")]
+                       for n, d, a in ecarts if (n, d, a) not in connus]
+            objets += [f"décision {x.get('fichier')} sans objet : loi {n}, le {d} au JO, le {a} "
+                       "selon l'acte de l'Assemblée, n'est plus un écart publié"
+                       for (n, d, a), x in sorted(connus.items()) if (n, d, a) not in set(ecarts)]
+            self.bilan_a7_dates_connues = sum(1 for e in ecarts if e in connus)
         self._avertir("A7", "Entrées non résolues", objets)
 
     def a9_liste_des_candidats(self):
@@ -1142,7 +1152,7 @@ class Controles:
                 "a2_amendements": getattr(self, "bilan_a2_amendements", None),
                 "a2_mandats": getattr(self, "bilan_a2_mandats", None),
                 "a2_textes": getattr(self, "bilan_a2_textes", None),
-                # Ce que A3, A5 et A6 ont compté comme expliqué : gardé même quand l'avertissement se
+                # Ce que A3, A5, A6 et A7 ont compté comme expliqué : gardé même quand l'avertissement se
                 # tait, pour que le rapport de la nuit le dise (décisions du 13, du 14 et du 15/11/2026).
                 "expliques": {k: v for k, v in (("c1_identite_enrichie", getattr(self, "bilan_c1_identite_enrichie", None)),
                                                 ("c1_lignes_wikidata", len(getattr(self, "lignes_wikidata_disparues", []))),
@@ -1150,7 +1160,9 @@ class Controles:
                                                 ("a3", getattr(self, "bilan_a3", None)),
                                                 ("a3_lois", getattr(self, "bilan_a3_lois", None)),
                                                 ("a5", getattr(self, "bilan_a5", None)),
-                                                ("a6", getattr(self, "bilan_a6", None))) if v}}
+                                                ("a6", getattr(self, "bilan_a6", None)),
+                                                ("a7_dates_de_promulgation_connues",
+                                                 getattr(self, "bilan_a7_dates_connues", None))) if v}}
 
 
 def _touche(valeur_json: str, uids: set[str]) -> bool:
