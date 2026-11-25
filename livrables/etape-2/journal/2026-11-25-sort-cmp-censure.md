@@ -1,4 +1,4 @@
-## Sort d'un texte : adoption sur le texte de CMP et rejet via 49.3 (issue #89, partie traitement, PR #NN) (25/11/2026)
+## Sort d'un texte : adoption sur le texte de CMP et rejet via 49.3 (issue #89, partie traitement, PR #186) (25/11/2026)
 
 Deux faits du sort d'un texte, lus jusqu'ici sans être servis ou sans être établis, sont servis
 dans les textes de la fiche de législature. Le regroupement en neuf sorts affichés n'est pas fait :
