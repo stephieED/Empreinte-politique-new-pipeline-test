@@ -110,10 +110,20 @@ TABLES = {
     "projet_gouvernement": [
         {"gouvernement": "PO3", "dossier": "DL1", "document": "PRJLANR5L17B0001", "titre_dossier": "Projet A",
          "date_depot": "2024-10-01", "chambre_depot": "AN", "procedure_libelle": "Projet de loi ordinaire",
-         "source_url": "https://www.assemblee-nationale.fr/dyn/17/dossiers/a"},
+         "source_url": "https://www.assemblee-nationale.fr/dyn/17/dossiers/a",
+         "ministere_porteur": "PO41", "ministere_porteur_libelle": "Ministère de l’économie",
+         "ministeres_porteurs": ["PO41"], "ministeres_porteurs_libelles": ["Ministère de l’économie"],
+         "ministere_porteur_statut": "etabli", "raison_ministere_porteur": None,
+         "portefeuilles_presentateurs": ["PO42"],
+         "portefeuilles_presentateurs_libelles": ["Ministère délégué chargé de l’industrie"],
+         "presentateurs": ["PA21"]},
         {"gouvernement": "PO3", "dossier": "DL2", "document": "PRJLSNR5S1", "titre_dossier": "Projet B",
          "date_depot": "2024-11-01", "chambre_depot": "SN", "procedure_libelle": "Projet de loi ordinaire",
-         "source_url": "https://www.assemblee-nationale.fr/dyn/17/dossiers/b"}],
+         "source_url": "https://www.assemblee-nationale.fr/dyn/17/dossiers/b",
+         "ministere_porteur": None, "ministere_porteur_libelle": None, "ministeres_porteurs": None,
+         "ministeres_porteurs_libelles": None, "ministere_porteur_statut": "non_etabli",
+         "raison_ministere_porteur": "seul_le_premier_ministre_cite", "portefeuilles_presentateurs": None,
+         "portefeuilles_presentateurs_libelles": None, "presentateurs": None}],
     "matiere": [
         {"dossier": "DL1", "statut": "assemblee", "libelle": "Commission des finances", "commission": "PO59048"},
         {"dossier": "DL2", "statut": "senat_seulement", "libelle": "Saisi au Sénat seulement",
@@ -304,6 +314,15 @@ def test_deposes_et_49_3_fait_de_procedure(sortie):
     assert [r["dossier"] for r in rows] == ["DL1", "DL2"]
     assert rows[0]["par_49_3"] is True and rows[0]["matiere"] == "Commission des finances"
     assert rows[1]["matiere"] == "Saisi au Sénat seulement" and rows[1]["ministere_porteur"] is None
+    # ministère porteur (issue #79) : servi avec sa raison quand il n'est pas établi ; aucune personne
+    assert (rows[0]["ministere_porteur"], rows[0]["ministere_porteur_libelle"],
+            rows[0]["ministere_porteur_statut"]) == ("PO41", "Ministère de l’économie", "etabli")
+    assert rows[0]["portefeuilles_presentateurs"] == ["PO42"]
+    assert (rows[1]["ministere_porteur_statut"], rows[1]["raison_ministere_porteur"]) == (
+        "non_etabli", "seul_le_premier_ministre_cite")
+    assert all("presentateurs" not in r for r in rows)
+    couv = _lire(racine, "gouvernements/gamma/deposes.json.gz")["couverture"]["detail"]
+    assert "établi pour 1 projets sur 2, dont 0 présentés par plusieurs ministères" in couv
     b = _lire(racine, "gouvernements/gamma/fiche.json.gz")["en_bref"]
     assert {k: b["projets_de_loi"][k] for k in ("deposes", "adoptes", "promulgues", "au")} == \
         {"deposes": 2, "adoptes": 1, "promulgues": 1, "au": AU}

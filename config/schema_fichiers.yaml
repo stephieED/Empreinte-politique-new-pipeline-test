@@ -53,6 +53,18 @@ vocabulaires:
   - assemblee
   - senat_seulement
   - non_etablie
+  # Ministère porteur d'un projet de loi (R-DEPOT-GOUVERNEMENT version 2, issue #79).
+  ministere_porteur_statut:
+  - etabli
+  - plusieurs_ministeres
+  - non_etabli
+  raison_ministere_porteur:
+  - gouvernement_non_etabli
+  - composition_non_calculee
+  - seul_le_premier_ministre_cite
+  - aucun_membre_du_gouvernement_cite
+  - presentateur_hors_gouvernement_a_la_date
+  - rattachement_non_etabli
   lecture:
   - premiere
   - deuxieme
@@ -620,6 +632,13 @@ colonnes:
   - etape_atteinte
   - etape_legislature
   - ministere_porteur
+  - ministere_porteur_libelle
+  - ministeres_porteurs
+  - ministeres_porteurs_libelles
+  - ministere_porteur_statut
+  - raison_ministere_porteur
+  - portefeuilles_presentateurs
+  - portefeuilles_presentateurs_libelles
   - source_url
   - licence
   gouvernements/paroles:
