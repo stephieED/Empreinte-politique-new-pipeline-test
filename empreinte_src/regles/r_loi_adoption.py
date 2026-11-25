@@ -47,7 +47,17 @@ La législature d'adoption (`legislature_adoption`), avec sa preuve :
   législature ne revient pas). Cas réels : 2018-581, 2018-582, 2018-869, 2018-957, 2019-744 (aucun
   vote de l'Assemblée avant la fin de l'archive de la XIVe, le 22/03/2018 : XVe) et 2018-287.
   La loi 2018-527 montre pourquoi ce critère, et non celui de R-SORT-FINAL : dernier vote lu le
-  13/10/2016 (XIVe), promulguée le 28/06/2018 (XVe), son dossier n'a aucun acte numéroté de la XVe.
+  13/10/2016 (XIVe), promulguée le 28/06/2018 (XVe), son dossier n'a aucun acte numéroté de la XVe ;
+- `derniere_adoption_an_lue_au_jo` (version 3, décision du 25/11/2026, doc. 5, Q69 « Utiliser la
+  date du JO ») : les archives de l'Assemblée ne donnent pas le dernier vote (loi sans dossier, ou
+  suite du dossier absente sans encadrement) ; la législature est celle de la dernière adoption à
+  l'Assemblée que citent les travaux préparatoires de la loi au JO (`date_adoption_an_lue_au_jo`,
+  « Discussion et adoption le 28 novembre 2013 »), si elle tombe dans une législature, au plus tard
+  le jour de la promulgation, et, pour une suite absente, pas avant le dernier vote lu. Sur la g24 :
+  45 lois (43 sans dossier, dont 2013-1118 et 2016-113 ; 2018-527, XIVe, et 2020-839, XVe). Contrôle
+  de la méthode : pour les 1 012 lois dont les archives donnent la législature et que le JO date,
+  1 009 sont dans la même législature ; les 3 autres sont les lois de Q66, que le JO date de la
+  séance de la XVIIe (2024-1039 : 07/11/2024).
 
 Sinon, pas de législature, et la raison (`raison_adoption`) :
 - `dossier_anterieur_a_la_xive_hors_perimetre` (version 2, Q67 : « La législature XIII est hors
@@ -56,11 +66,11 @@ Sinon, pas de législature, et la raison (`raison_adoption`) :
   `date_adoption_an_lue_au_jo`) précède le début de la XIVe, première législature du périmètre :
   la loi n'est d'aucune législature publiée, et ne rend pas un compte partiel (16 lois sur la g24,
   dont 2012-1166, 2014-1392) ;
-- `loi_sans_dossier` : aucun dossier, et pas de dernière adoption à l'Assemblée lue au JO avant la
-  XIVe (la raison de R-LOI-DOSSIER est dans `raison_lien` ; 43 lois sur la g24, dont la date lue
-  au JO tombe sous la XIVe ou la XVe) ;
-- `suite_absente_des_archives` : la suite du dossier manque, et les bornes tombent dans deux
-  législatures (2018-527, 2020-839) ;
+- `loi_sans_dossier` : aucun dossier, et pas de date d'adoption à l'Assemblée utilisable lue au JO
+  (la raison de R-LOI-DOSSIER est dans `raison_lien` ; aucune loi sur la g24 depuis la version 3,
+  43 avant) ;
+- `suite_absente_des_archives` : la suite du dossier manque, les bornes tombent dans deux
+  législatures, et le JO ne donne pas de date utilisable (2018-527 et 2020-839 avant la version 3) ;
 - `aucune_adoption_de_l_assemblee_lue` : aucune décision d'adoption de l'Assemblée avant la
   promulgation ;
 
@@ -76,7 +86,7 @@ from .r_etape import adoptions_definitives, date_ref, decisions, legislature_act
 from .r_lois import legislature_a
 
 NOM = "R-LOI-ADOPTION"
-VERSION = 2
+VERSION = 3
 DEPEND = ("R-LEGISLATURES", "R-LOIS", "R-LOI-DOSSIER", "R-ETAPE")
 SORTIES = ("loi_adoption",)
 DESCRIPTION = (
@@ -84,14 +94,18 @@ DESCRIPTION = (
     "la législature de sa promulgation. C'est la date de la dernière décision enregistrée de "
     "l'Assemblée qui adopte le texte avant la promulgation, même quand le Sénat vote en dernier, "
     "sous la même législature ou la suivante. Une loi adoptée par l'Assemblée avant la XIVe "
-    "législature est hors du périmètre. Une loi dont le dossier manque aux archives n'a de législature "
-    "d'adoption que si la fin de l'archive et la promulgation tombent dans la même ; sinon, la "
-    "raison est dite.")
+    "législature est hors du périmètre. Quand les archives de l'Assemblée ne donnent pas ce vote, "
+    "la date de la dernière adoption à l'Assemblée citée par les travaux préparatoires publiés au "
+    "Journal officiel avec la loi en tient lieu ; sinon, la raison est dite.")
 
 # Preuves d'une législature d'adoption établie (version 2 : Q65 et Q66, décisions du 25/11/2026).
 PREUVES = ("vote_final_de_l_assemblee", "cloture_hors_assemblee_meme_legislature",
            "dernier_vote_de_l_assemblee_cloture_sous_une_autre_legislature",
-           "dernier_vote_enregistre_de_l_assemblee_seance_posterieure", "encadree_par_la_promulgation")
+           "dernier_vote_enregistre_de_l_assemblee_seance_posterieure", "encadree_par_la_promulgation",
+           "derniere_adoption_an_lue_au_jo")
+# Version 3 (Q69, 25/11/2026) : la législature de la dernière adoption à l'Assemblée citée par les
+# travaux préparatoires du JO, quand les archives de l'Assemblée ne la donnent pas.
+PREUVE_JO = "derniere_adoption_an_lue_au_jo"
 # Raison d'une loi adoptée par l'Assemblée avant le périmètre (Q67, 25/11/2026) : jamais comptée
 # dans une législature publiée, elle ne rend pas un compte partiel.
 HORS_PERIMETRE = "dossier_anterieur_a_la_xive_hors_perimetre"
@@ -187,15 +201,24 @@ def appliquer(ctx):
                    i.fin_archive AS fin_archive_du_dossier,
                    s.date AS date_derniere_seance_an, s.legislature AS legislature_derniere_seance_an,
                    aj.date AS date_adoption_an_lue_au_jo,
+                   {legislature_a('aj.date')} AS legislature_adoption_an_lue_au_jo,
                    CASE WHEN l.dossiers IS NULL AND aj.date < (SELECT d FROM debut_perimetre)
                              THEN '{HORS_PERIMETRE}'
+                        -- Q69 (option 1) : sans dossier, la date de la dernière adoption à
+                        -- l'Assemblée lue au JO, si elle tombe dans une législature et pas après la
+                        -- promulgation.
+                        WHEN l.dossiers IS NULL AND aj.date <= l.date_promulgation
+                             AND {legislature_a('aj.date')} IS NOT NULL THEN '{PREUVE_JO}'
                         WHEN l.dossiers IS NULL THEN 'loi_sans_dossier'
                         -- Suite absente : le dernier vote de l'Assemblée est le dernier lu, ou tombe
-                        -- entre la fin de l'archive et la promulgation.
+                        -- entre la fin de l'archive et la promulgation ; à défaut d'encadrement,
+                        -- la date lue au JO (Q69), si elle n'est pas antérieure au dernier vote lu.
                         WHEN i.numero_loi IS NOT NULL THEN
                              CASE WHEN {legislature_a('i.fin_archive')} = l.legislature_promulgation
                                        AND (v.legislature IS NULL OR v.legislature = l.legislature_promulgation)
                                   THEN 'encadree_par_la_promulgation'
+                                  WHEN aj.date <= l.date_promulgation AND aj.date >= coalesce(v.date, '0000')
+                                       AND {legislature_a('aj.date')} IS NOT NULL THEN '{PREUVE_JO}'
                                   ELSE 'suite_absente_des_archives' END
                         WHEN v.acte IS NULL THEN 'aucune_adoption_de_l_assemblee_lue'
                         -- Q66 (option 2) : séance postérieure sans décision publiée : le dernier vote
@@ -216,6 +239,7 @@ def appliquer(ctx):
         SELECT numero_loi, dossier, dossiers, lien_dossier, raison_lien, date_promulgation,
                legislature_promulgation,
                CASE WHEN etat = 'encadree_par_la_promulgation' THEN legislature_promulgation
+                    WHEN etat = '{PREUVE_JO}' THEN legislature_adoption_an_lue_au_jo
                     WHEN etat IN {PREUVES} THEN legislature_dernier_vote_an
                END AS legislature_adoption,
                CASE WHEN etat IN {PREUVES} THEN etat END AS preuve_adoption,
